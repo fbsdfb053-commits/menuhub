@@ -380,7 +380,7 @@ function SalesReport({orders,onRefresh}:{orders:AdminOrder[];onRefresh:()=>void}
   const statuses = ['Novo','Preparando','Pronto','Concluído']
   const exportCsv = () => {
     const rows = [['Pedido','Data','Cliente','Tipo','Status','Total'],...periodOrders.map(order=>[String(order.id),new Date(order.criado_em).toLocaleString('pt-BR'),order.cliente_nome,order.tipo_entrega,order.status,Number(order.total).toFixed(2).replace('.',',')])]
-    const csv = '\\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n')
+    const csv = '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n')
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}))
     const link=document.createElement('a');link.href=url;link.download='relatorio-vendas-'+period+'-dias.csv';link.click();URL.revokeObjectURL(url)
   }
