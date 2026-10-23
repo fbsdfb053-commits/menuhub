@@ -994,3 +994,16 @@ body { background: #f7f8f4; color: #24352c; }
 .printer-logo-preview img { width: 74px; height: 74px; object-fit: contain; padding: 7px; border: 1px solid #e1e8e1; border-radius: 8px; filter: grayscale(1) contrast(2); image-rendering: pixelated; }
 .printer-help { max-width: 620px; margin: 0; color: #758279; font-size: 11px; line-height: 1.6; }
 @media (max-width: 680px) { .counter-fields { grid-template-columns: 1fr; } .counter-order-form, .printer-settings-form { padding: 16px; } .admin-orders-table { min-width: 980px; } }
+
+
+/* QZ Tray e modo expediente */
+.work-mode-button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid #dfe7df; border-radius: 8px; color: #52645a; background: #fff; font: 600 11px 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; }
+.work-mode-button--active { color: #245638; border-color: #c8dfca; background: #eef7ec; }
+.qz-panel { display: grid; gap: 13px; padding: 16px; border: 1px solid #e3eae2; border-radius: 10px; background: #fbfcfa; }
+.qz-panel .panel-heading { margin: 0; }
+.qz-panel .panel-heading h2 { margin: 2px 0 0; font-size: 16px; }
+.qz-status { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 20px; color: #8a6727; background: #fff4dc; font-size: 10px; font-weight: 700; }
+.qz-status--connected { color: #286642; background: #e7f4e8; }
+.qz-actions { display: flex; gap: 9px; flex-wrap: wrap; }
+.qz-panel select { width: 100%; border: 1px solid #dfe6df; border-radius: 8px; padding: 10px 11px; color: #26382e; background: white; font: 12px 'DM Sans', sans-serif; }
+@media (max-width: 760px) { .work-mode-button { font-size: 0; padding: 8px; } .work-mode-button svg { flex: none; } .admin-topbar__right { gap: 7px; } .qz-actions > button { flex: 1; justify-content: center; } }
