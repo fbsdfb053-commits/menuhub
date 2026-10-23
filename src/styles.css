@@ -462,3 +462,93 @@ a { color: inherit; text-decoration: none; }
   .home-footer { padding: 24px 20px; flex-wrap: wrap; }
   .home-footer > span { order: 3; width: 100%; }
 }
+
+
+/* Identidade visual Menuhub — verde-floresta, branco quente e verde suave */
+:root {
+  color: #24352c;
+  background: #f7f8f4;
+  --ink: #24352c;
+  --muted: #66716b;
+  --line: #e1e7e1;
+  --paper: #fffefa;
+  --teal: #183d32;
+  --teal-dark: #102d24;
+  --accent: #6d9b78;
+  --mint: #d9e7d9;
+}
+body { background: #f7f8f4; color: #24352c; }
+.site-header, .admin-topbar { background-color: #fffefa; }
+.brand b, .admin-brand span:not(.brand-mark) { color: #728579; }
+.brand-mark, .restaurant-avatar, .auth-mark, .restaurant-switcher__avatar, .media-thumb {
+  color: #f7f8f4;
+  background-color: #183d32;
+}
+.text-button:hover, .link-button:hover, .back-link:hover,
+.home-header-link:hover, .home-footer a:last-child:hover { color: #6d9b78; }
+.cover-orb--two { background: rgba(24, 61, 50, .42); }
+.cover-chip { background: rgba(24, 61, 50, .34); }
+.identity-meta span:first-child { color: #6d9b78; }
+.status-pill--open { color: #356b49; background: #edf5eb; border-color: #d6e7d4; }
+.category-link--active:after { background: var(--accent, #6d9b78); }
+.add-button { border-color: #d9e7d9; color: #183d32; background: #f2f7f0; }
+.add-button:hover { color: #fffefa; background: #183d32; border-color: #183d32; }
+.floating-cart { background: #183d32; box-shadow: 0 12px 30px rgba(24,61,50,.20); }
+.cart-count { color: #183d32; background: #d9e7d9; }
+.drawer-backdrop { background: rgba(16,45,36,.38); }
+.cart-drawer { box-shadow: -14px 0 30px rgba(24,61,50,.10); }
+.order-form input:focus, .editor-form input:focus, .editor-form textarea:focus,
+.order-form textarea:focus { border-color: #6d9b78; box-shadow: 0 0 0 3px #e5f0e3; }
+.primary-button, .floating-cart { border-color: #183d32; }
+.primary-button:hover { border-color: #2f654d; background: #2f654d; }
+.secondary-button { border-color: #d9e7d9; color: #183d32; }
+.secondary-button:hover { border-color: #b7d0b9; background: #f1f7ef; }
+.empty-cart__icon { color: #183d32; background: #eaf2e7; }
+.auth-shell { background: radial-gradient(circle at 82% 15%, #d9e7d9 0, transparent 30%), #f7f8f4; }
+.auth-card { border-color: #e1e7e1; background: #fffefa; box-shadow: 0 18px 50px rgba(24,61,50,.09); }
+.google-button { border-color: #d9e2d9; color: #24352c; }
+.google-button:hover { border-color: #b7d0b9; background: #f7faf5; }
+.admin-shell { background: #f5f7f2; }
+.admin-sidebar { border-color: #e1e7e1; background: #fffefa; }
+.admin-topbar { border-color: #e1e7e1; }
+.restaurant-switcher { border-color: #d9e7d9; }
+.admin-nav__link:hover { color: #183d32; background: #f1f7ef; }
+.admin-nav__link--active { color: #183d32; background: #e6f0e3; }
+.account-link { border-color: #d9e7d9; color: #183d32; background: #f2f7f0; }
+.account-link:hover { border-color: #b7d0b9; background: #eaf3e7; }
+.stats-grid .stat-card, .admin-panel, .restaurant-admin-card { border-color: #e1e7e1; }
+.stat-icon { color: #477b56; background: #eaf3e7; }
+.admin-create-form, .admin-settings-form, .admin-data-panel { border-color: #e1e7e1; background-color: #fffefa; }
+.admin-product-form { background: #f4f8f2; border-color: #e1e7e1; }
+.admin-check-label input { accent-color: #183d32; }
+.admin-product-placeholder { background: #eaf2e7; color: #365a42; }
+.toggle-availability { background: #6d9b78; }
+.new-restaurant-card { border-color: #c6d9c7; color: #477b56; background: #f5f9f2; }
+.new-restaurant-card:hover { border-color: #6d9b78; background: #eaf3e7; }
+.new-restaurant-card > span { border-color: #d0e2cf; color: #477b56; }
+.home-page { background: #f7f8f4; color: #24352c; }
+.home-header { border-color: rgba(24,61,50,.10); }
+.home-header-link { color: #183d32; }
+.home-hero h1 em { color: #477b56; }
+.home-hero-copy > p { color: #66716b; }
+.home-primary-button { color: #fffefa; background: #183d32; }
+.home-primary-button:hover { background: #2f654d; }
+.home-secondary-button { color: #52645a; }
+.home-secondary-button:hover { color: #477b56; }
+.home-trust { color: #728579; }
+.home-trust svg { color: #6d9b78; }
+.preview-window { border-color: #e1e7e1; background: #fffefa; box-shadow: 0 28px 70px rgba(24,61,50,.10); }
+.preview-top, .preview-menu-row { border-color: #e7ece5; }
+.preview-live { color: #477b56; }
+.preview-live i { background: #6d9b78; }
+.preview-welcome p, .preview-stats span, .preview-stats small { color: #728579; }
+.preview-stats > div, .home-feature-grid article { border-color: #e1e7e1; background: #fffefa; }
+.preview-stats strong { color: #24352c; }
+.preview-menu-row strong { color: #35463b; }
+.preview-menu-icon { color: #183d32; background: #d9e7d9; }
+.home-floating-note { border-color: #e1e7e1; background: #fffefa; }
+.home-floating-note > span { color: #477b56; background: #eaf3e7; }
+.home-features { border-color: #e1e7e1; background: #fffefa; }
+.home-feature-icon { color: #183d32; background: #d9e7d9; }
+.home-footer > span { color: #728579; }
+.home-footer a:last-child { color: #183d32; }
