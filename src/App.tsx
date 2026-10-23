@@ -402,9 +402,9 @@ function AdminView({ onBack }: { onBack: () => void }) {
         const {data:sessionData}=await supabase.auth.getSession();
         const token=sessionData.session?.access_token;
         if(!token)throw new Error('Entre novamente no Menuhub.');
-        const cleanText=(value:string)=>value.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[<>]/g,'');
-        const receipt=['COMANDA #'+o.id,new Date(o.criado_em).toLocaleString('pt-BR'),'--------------------------------','Cliente: '+cleanText(o.cliente_nome),'Tipo: '+cleanText(o.tipo_entrega),'Pagamento: '+cleanText(o.forma_pagamento||'A combinar'),'--------------------------------',...itemLines.flatMap(x=>[String(x.quantidade)+'x '+cleanText(x.nome),'   '+cleanText(x.categoria)+'  '+formatPrice((x.preco??0)*x.quantidade),'']), '--------------------------------','TOTAL: '+formatPrice(Number(o.total)),'','Obrigado pela preferencia!','',''].join('\\n');
-        const response=await fetch('/api/printnode',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({action:'print',restaurantId:selectedId,printerId:activePrintNodeId,content:storeName+'\\n\\n'+receipt,title:'Menuhub - comanda #'+o.id})});
+        const cleanText=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[<>]/g,'');
+        const receipt=['COMANDA #'+o.id,new Date(o.criado_em).toLocaleString('pt-BR'),'--------------------------------','Cliente: '+cleanText(o.cliente_nome),'Tipo: '+cleanText(o.tipo_entrega),'Pagamento: '+cleanText(o.forma_pagamento||'A combinar'),'--------------------------------',...itemLines.flatMap(x=>[String(x.quantidade)+'x '+cleanText(x.nome),'   '+cleanText(x.categoria)+'  '+formatPrice((x.preco??0)*x.quantidade),'']), '--------------------------------','TOTAL: '+formatPrice(Number(o.total)),'','Obrigado pela preferencia!','',''].join('\n');
+        const response=await fetch('/api/printnode',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({action:'print',restaurantId:selectedId,printerId:activePrintNodeId,content:storeName+'\n\n'+receipt,title:'Menuhub - comanda #'+o.id})});
         const result=await response.json();
         if(!response.ok)throw new Error(result.error||'Falha ao enviar para o PrintNode.');
         notify('Comanda #'+o.id+' enviada ao PrintNode.');
