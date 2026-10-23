@@ -1,4 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+type VercelRequest = { method?: string; headers: { authorization?: string }; body?: unknown }
+type VercelResponse = { status(code: number): VercelResponse; json(body: unknown): void }
 import { createClient } from '@supabase/supabase-js'
 
 type Body = {
@@ -27,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
   if (!token) return respond(res, 401, { error: 'Sessão não encontrada. Entre novamente no Menuhub.' })
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false, autoRefreshToken: false } })
   const { data: userData, error: userError } = await supabase.auth.getUser(token)
   if (userError || !userData.user) return respond(res, 401, { error: 'Sessão inválida. Entre novamente no Menuhub.' })
 
