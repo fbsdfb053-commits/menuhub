@@ -1,0 +1,7 @@
+{
+  "routes": [
+    { "path": "/", "title": "FB3d2y Menu" },
+    { "path": "/menu/:id", "title": "Cardápio do restaurante" },
+    { "path": "/admin", "title": "Administração | FB3d2y Menu" }
+  ]
+}
