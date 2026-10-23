@@ -28,10 +28,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
   if (!token) return respond(res, 401, { error: 'Sessão não encontrada. Entre novamente no Menuhub.' })
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false, autoRefreshToken: false } })
-  const { data: userData, error: userError } = await supabase.auth.getUser(token)
-  if (userError || !userData.user) return respond(res, 401, { error: 'Sessão inválida. Entre novamente no Menuhub.' })
+  // Validate the user's access token through Supabase Auth REST API.
+  // This avoids SDK-version differences in auth.getUser typings.
+  const authResponse = await fetch(supabaseUrl.replace(/\/$/, '') + '/auth/v1/user', {
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: 'Bearer ' + token,
+    },
+  })
+  if (!authResponse.ok) return respond(res, 401, { error: 'Sessão inválida. Entre novamente no Menuhub.' })
+  const userData = await authResponse.json() as { id?: string }
+  if (!userData.id) return respond(res, 401, { error: 'Sessão inválida. Entre novamente no Menuhub.' })
 
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false, autoRefreshToken: false } })
   const body = (req.body || {}) as Body
   if (body.action === 'print') {
     if (!Number.isInteger(body.restaurantId) || !Number.isInteger(body.printerId) || typeof body.content !== 'string' || !body.content.trim()) {
@@ -41,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('empresas')
       .select('id')
       .eq('id', body.restaurantId)
-      .eq('dono_id', userData.user.id)
+      .eq('dono_id', userData.id)
       .maybeSingle()
     if (restaurantError || !restaurant) return respond(res, 403, { error: 'Você não tem permissão para imprimir neste restaurante.' })
 
