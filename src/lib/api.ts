@@ -101,3 +101,16 @@ export async function createOrder(slug: string, form: OrderForm, items: OrderIte
   if (error) throw new Error(error.message)
   return Number(data)
 }
+
+
+export async function uploadMenuImage(file: File, restaurantId: number): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
+  if (file.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.')
+  const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user) throw new Error('Entre na sua conta para enviar imagens.')
+  const path = auth.user.id + '/' + restaurantId + '/' + crypto.randomUUID() + '.' + extension
+  const { error } = await supabase.storage.from('menu-images').upload(path, file, { upsert: false, contentType: file.type })
+  if (error) throw new Error(error.message.includes('Bucket not found') ? 'O armazenamento de imagens ainda não foi configurado no Supabase. Execute o arquivo supabase/03_imagens.sql.' : error.message)
+  return supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
+}
