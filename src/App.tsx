@@ -52,10 +52,8 @@ function GoogleAccountButton({ className = 'text-button' }: { className?: string
       setLoading(false)
       return
     }
-    // Use the canonical production URL so OAuth never returns to a Vercel preview or alternate domain.
-    const redirectTo = window.location.hostname === 'localhost'
-      ? `${window.location.origin}/admin`
-      : 'https://menuhub-one.vercel.app/admin'
+    // Return to the same environment where sign-in started (preview or production).
+    const redirectTo = `${window.location.origin}/admin`
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
