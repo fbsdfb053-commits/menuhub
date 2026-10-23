@@ -390,14 +390,21 @@ function HomePage() {
             </div>
             <div className="home-trust"><span><Check size={15}/> Personalize seus produtos</span><span><Check size={15}/> Gerencie seus pedidos</span></div>
           </div>
-          <div className="home-preview" aria-label="Prévia ilustrativa do painel">
-            <div className="preview-window">
-              <div className="preview-top"><span className="preview-dots"><i/><i/><i/></span><span>SEU ESPAÇO DE TRABALHO</span><span className="preview-live"><i/> online</span></div>
-              <div className="preview-content">
-                <div className="preview-welcome"><span className="eyebrow">PAINEL DO SEU NEGÓCIO</span><h2>Bom ter você por aqui.</h2><p>Seu cardápio começa com uma ideia.</p></div>
-                <div className="preview-stats"><div><span>MENUS</span><strong>01</strong><small>seu negócio</small></div><div><span>PRODUTOS</span><strong>12</strong><small>no cardápio</small></div></div>
-                <div className="preview-menu-row"><span className="preview-menu-icon"><Utensils size={18}/></span><div><strong>Meu cardápio</strong><small>Produtos, preços e categorias</small></div><ChevronRight size={17}/></div>
-                <div className="preview-menu-row"><span className="preview-menu-icon preview-menu-icon--gold"><ShoppingBag size={18}/></span><div><strong>Pedidos</strong><small>Acompanhe cada novo pedido</small></div><ChevronRight size={17}/></div>
+          <div className="home-preview home-preview--phone" aria-label="Prévia do cardápio em um celular">
+            <div className="phone-frame">
+              <div className="phone-side-button phone-side-button--one" />
+              <div className="phone-side-button phone-side-button--two" />
+              <div className="phone-screen">
+                <div className="phone-status"><span>9:41</span><span>● ● ▰</span></div>
+                <div className="phone-camera"><span /></div>
+                <div className="phone-menu-header"><span className="phone-brand-mark">F</span><div><strong>Seu Restaurante</strong><small>Cardápio digital</small></div><span className="phone-menu-open">Aberto</span></div>
+                <div className="phone-cover"><span>FEITO COM CARINHO</span><strong>Um sabor<br/>para cada momento.</strong></div>
+                <div className="phone-menu-body">
+                  <div className="phone-menu-title"><div><small>ESCOLHA O SEU FAVORITO</small><strong>Mais pedidos</strong></div><span>Ver todos</span></div>
+                  <div className="phone-product"><div className="phone-food phone-food--one"><span /></div><div><strong>Combo da casa</strong><small>Nosso favorito, feito na hora</small><b>R$ 32,90</b></div><span className="phone-add">+</span></div>
+                  <div className="phone-product"><div className="phone-food phone-food--two"><span /></div><div><strong>Especial do chef</strong><small>Ingredientes frescos</small><b>R$ 26,90</b></div><span className="phone-add">+</span></div>
+                  <div className="phone-cart"><ShoppingBag size={14}/><span>Ver meu pedido</span><b>R$ 32,90</b></div>
+                </div>
               </div>
             </div>
             <div className="home-floating-note"><span><CheckCircle2 size={17}/></span><div><strong>Seu menu, suas regras</strong><small>Edite quando quiser</small></div></div>
