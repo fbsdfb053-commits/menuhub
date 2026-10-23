@@ -956,3 +956,41 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-orders-table td { padding: 12px 10px; }
   .admin-orders-table th:first-child, .admin-orders-table td:first-child { padding-left: 13px; }
 }
+
+
+/* Ajuste fino da tabela de pedidos: tipografia compacta e consistente */
+.admin-orders-panel { border-radius: 10px; }
+.admin-orders-table { min-width: 980px; font-family: 'DM Sans', Arial, sans-serif; font-size: 11px; line-height: 1.35; }
+.admin-orders-table th { padding: 10px 9px; font-size: 10px; letter-spacing: 0; font-weight: 650; }
+.admin-orders-table td { padding: 10px 9px; font-size: 11px; }
+.admin-orders-table th:first-child, .admin-orders-table td:first-child { padding-left: 13px; }
+.admin-order-number { font-size: 10px; }
+.admin-order-customer { font-size: 11px; font-weight: 650; }
+.admin-order-phone { font-size: 9px; }
+.admin-order-date, .admin-order-payment { font-size: 10px; }
+.admin-order-status { padding: 4px 7px; font-size: 9px; }
+.admin-order-origin { font-size: 9px; font-weight: 700; }
+.admin-order-actions { display: flex; align-items: center; gap: 6px; }
+.admin-order-action select { width: 112px; max-width: 112px; padding: 7px 8px; font-size: 10px; border-radius: 7px; }
+.order-print-button { padding: 7px 8px; border: 1px solid #dce5dc; border-radius: 7px; background: #f8faf7; color: #41594a; font: 600 10px 'DM Sans', sans-serif; }
+.order-print-button:hover { background: #edf4ed; }
+.counter-order-form, .printer-settings-form { display: grid; gap: 18px; max-width: 900px; }
+.counter-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.counter-order-form label, .printer-settings-form label { display: grid; gap: 6px; color: #52645a; font-size: 12px; font-weight: 600; }
+.counter-order-form input, .counter-order-form select, .printer-settings-form input:not([type=file]) { min-width: 0; width: 100%; border: 1px solid #dfe6df; border-radius: 8px; padding: 10px 11px; color: #26382e; background: white; font: 12px 'DM Sans', sans-serif; }
+.counter-order-form input[type=file], .printer-settings-form input[type=file] { width: 100%; padding: 10px; border: 1px dashed #cbd9cc; border-radius: 8px; font-size: 11px; }
+.counter-order-form h2 { margin: 4px 0 -7px; font-size: 15px; color: #283a2f; }
+.counter-products { display: grid; gap: 0; border-top: 1px solid #edf0ed; }
+.counter-product { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #edf0ed; }
+.counter-product > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.counter-product strong { font-size: 12px; font-weight: 600; color: #29392f; }
+.counter-product small { font-size: 10px; color: #6c7a70; }
+.counter-quantity { display: flex; align-items: center; gap: 10px; }
+.counter-quantity button { width: 28px; height: 28px; border: 1px solid #dce5dc; border-radius: 7px; background: #f8faf7; color: #345441; font-size: 16px; }
+.counter-quantity span { min-width: 14px; text-align: center; font-size: 12px; font-weight: 700; }
+.counter-total { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-top: 1px dashed #d8e0d8; color: #405247; font-size: 13px; }
+.counter-total strong { color: #20362a; font-size: 19px; }
+.printer-logo-preview { display: flex; align-items: center; gap: 16px; }
+.printer-logo-preview img { width: 74px; height: 74px; object-fit: contain; padding: 7px; border: 1px solid #e1e8e1; border-radius: 8px; filter: grayscale(1) contrast(2); image-rendering: pixelated; }
+.printer-help { max-width: 620px; margin: 0; color: #758279; font-size: 11px; line-height: 1.6; }
+@media (max-width: 680px) { .counter-fields { grid-template-columns: 1fr; } .counter-order-form, .printer-settings-form { padding: 16px; } .admin-orders-table { min-width: 980px; } }
