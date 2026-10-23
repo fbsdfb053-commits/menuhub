@@ -366,10 +366,59 @@ function ProductAdminRow({product,restaurantId,categories,onSave,onDelete}:{prod
   return <article className="admin-product-row">{product.imagem_url?<img className="admin-product-image" src={product.imagem_url} alt=""/>:<span className="admin-product-placeholder"><Utensils size={17}/></span>}<div className="admin-product-row__content">{editing?<><label>Nome<input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})}/></label><label>Descrição<textarea value={form.descricao} onChange={e=>setForm({...form,descricao:e.target.value})}/></label><div className="form-row"><label>Preço<input value={form.preco} onChange={e=>setForm({...form,preco:e.target.value})}/></label><label>Categoria<select value={form.categoria_id} onChange={e=>setForm({...form,categoria_id:e.target.value})}><option value="">Sem categoria</option>{categories.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</select></label></div><label>URL da foto<input value={form.imagem_url} onChange={e=>setForm({...form,imagem_url:e.target.value})}/></label><label>Ou enviar foto (máx. 5 MB)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{const url=await uploadMenuImage(file,restaurantId);setForm(old=>({...old,imagem_url:url}));window.alert('Foto enviada. Clique em Salvar para aplicar.')}catch(err){window.alert(err instanceof Error?err.message:'Erro ao enviar foto.')}finally{e.target.value=''}}}/></label><label className="admin-check-label"><input type="checkbox" checked={form.disponivel} onChange={e=>setForm({...form,disponivel:e.target.checked})}/> Disponível no menu</label><div className="form-row"><button className="primary-button" type="button" onClick={()=>{const price=Number(form.preco.replace(',','.'));if(!form.nome.trim()||!Number.isFinite(price)||price<0){notifyProductError();return}void onSave(product,{nome:form.nome.trim(),descricao:form.descricao.trim()||null,preco:price,categoria_id:form.categoria_id?Number(form.categoria_id):null,imagem_url:form.imagem_url.trim()||null,disponivel:form.disponivel}).then(()=>setEditing(false))}}>Salvar</button><button className="secondary-button" type="button" onClick={()=>setEditing(false)}>Cancelar</button></div></>:<><div className="admin-product-row__heading"><strong>{product.nome}</strong><b>{formatPrice(Number(product.preco))}</b></div><p>{product.descricao||'Sem descrição'}</p><small>{categories.find(c=>c.id===product.categoria_id)?.nome??'Sem categoria'} · {product.disponivel?'Disponível':'Indisponível'}</small><div className="admin-product-actions"><button className="link-button" type="button" onClick={()=>setEditing(true)}>Editar</button><button className="link-button" type="button" onClick={()=>void onDelete(product)}>Excluir</button></div></>}</div></article>
 }
 function notifyProductError(){window.alert('Informe o nome e um preço válido.')} function notifyUploadDone(){window.alert('Imagem enviada. Clique em “Salvar informações” para guardar a alteração.')}
+function HomePage() {
+  useEffect(() => { document.title = 'FB3d2y Menu — Seu cardápio digital' }, [])
+  return (
+    <div className="home-page">
+      <header className="home-header">
+        <a className="brand" href="/" aria-label="FB3d2y Menu - início"><span className="brand-mark">F</span><span>FB3d2y <b>Menu</b></span></a>
+        <a className="home-header-link" href="/admin">Entrar na minha conta <ChevronRight size={16}/></a>
+      </header>
+      <main>
+        <section className="home-hero">
+          <div className="home-hero-copy">
+            <span className="home-kicker"><span className="pulse-dot"/> CARDÁPIO DIGITAL PARA NEGÓCIOS LOCAIS</span>
+            <h1>Seu negócio merece um menu <em>à sua maneira.</em></h1>
+            <p>Crie seu cardápio online, organize seus produtos e acompanhe os pedidos em um só lugar. Simples para você, prático para seus clientes.</p>
+            <div className="home-actions">
+              <a className="home-primary-button" href="/admin">Começar com Google <ChevronRight size={18}/></a>
+              <a className="home-secondary-button" href="/demo">Ver exemplo de cardápio</a>
+            </div>
+            <div className="home-trust"><span><Check size={15}/> Personalize seus produtos</span><span><Check size={15}/> Gerencie seus pedidos</span></div>
+          </div>
+          <div className="home-preview" aria-label="Prévia ilustrativa do painel">
+            <div className="preview-window">
+              <div className="preview-top"><span className="preview-dots"><i/><i/><i/></span><span>SEU ESPAÇO DE TRABALHO</span><span className="preview-live"><i/> online</span></div>
+              <div className="preview-content">
+                <div className="preview-welcome"><span className="eyebrow">PAINEL DO SEU NEGÓCIO</span><h2>Bom ter você por aqui.</h2><p>Seu cardápio começa com uma ideia.</p></div>
+                <div className="preview-stats"><div><span>MENUS</span><strong>01</strong><small>seu negócio</small></div><div><span>PRODUTOS</span><strong>12</strong><small>no cardápio</small></div></div>
+                <div className="preview-menu-row"><span className="preview-menu-icon"><Utensils size={18}/></span><div><strong>Meu cardápio</strong><small>Produtos, preços e categorias</small></div><ChevronRight size={17}/></div>
+                <div className="preview-menu-row"><span className="preview-menu-icon preview-menu-icon--gold"><ShoppingBag size={18}/></span><div><strong>Pedidos</strong><small>Acompanhe cada novo pedido</small></div><ChevronRight size={17}/></div>
+              </div>
+            </div>
+            <div className="home-floating-note"><span><CheckCircle2 size={17}/></span><div><strong>Seu menu, suas regras</strong><small>Edite quando quiser</small></div></div>
+          </div>
+        </section>
+        <section className="home-features">
+          <div className="home-section-heading"><span className="eyebrow">TUDO EM UM SÓ LUGAR</span><h2>Do primeiro produto ao próximo pedido.</h2></div>
+          <div className="home-feature-grid">
+            <article><span className="home-feature-icon"><Store size={20}/></span><h3>Seu espaço</h3><p>Cadastre seu restaurante ou negócio e compartilhe um link próprio.</p></article>
+            <article><span className="home-feature-icon"><Utensils size={20}/></span><h3>Cardápio personalizado</h3><p>Organize categorias, fotos, descrições, preços e disponibilidade.</p></article>
+            <article><span className="home-feature-icon"><ShoppingBag size={20}/></span><h3>Pedidos organizados</h3><p>Veja os pedidos recebidos e atualize o andamento pelo painel.</p></article>
+          </div>
+        </section>
+      </main>
+      <footer className="home-footer"><a className="brand" href="/"><span className="brand-mark">F</span><span>FB3d2y <b>Menu</b></span></a><span>Cardápios próximos, pedidos simples.</span><a href="/demo">Conhecer o exemplo <ArrowLeft size={14}/></a></footer>
+    </div>
+  )
+}
+
 export default function App() {
-  const [admin, setAdmin] = useState(() => window.location.pathname.startsWith('/admin'))
+  const path = window.location.pathname
+  const [admin, setAdmin] = useState(() => path.startsWith('/admin'))
   if (admin) return <AdminView onBack={() => { window.history.pushState({}, '', '/'); setAdmin(false) }} />
-  const slug = menuSlugFromPath(window.location.pathname)
+  const slug = menuSlugFromPath(path)
   if (slug) return <MenuLoader slug={slug} />
-  return <MenuView data={demoMenu} isDemo />
+  if (path === '/demo' || path === '/demo/') return <MenuView data={demoMenu} isDemo />
+  return <HomePage />
 }
