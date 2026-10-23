@@ -16,9 +16,13 @@ Supabase > **Project Settings > API**. Copie a **Project URL** e a chave **anon 
 - Local: `pnpm install` e depois `pnpm dev`. Abra `http://localhost:3000/menu/yamamoto-sushibar`.
 - Publicar: Netlify ou Vercel, comando `pnpm build`, pasta `dist`.
 
-## 4. Google (login do admin) — necessário para a próxima etapa
+## 4. Google (login do administrador)
 Supabase > Authentication > Providers > Google (precisa de um Client ID do Google Cloud).
-Em Authentication > URL Configuration, coloque o endereço do seu site.
+Em Authentication > URL Configuration, configure o endereço do site como Site URL e adicione `https://menuhub-one.vercel.app/**` às Redirect URLs. No Google Cloud, o URI de redirecionamento autorizado deve ser o callback exibido pelo Supabase.
 
 ## Endereço de cada menu
 `seusite.com/menu/NOME-DO-RESTAURANTE` (o nome fica na coluna `slug` da tabela `empresas`).
+
+## Painel administrativo
+
+Acesse `/admin` e entre com Google. Cada usuário autenticado pode criar seus próprios restaurantes; o painel permite editar informações, categorias, produtos, disponibilidade e status dos pedidos. Para imagens, execute o script `supabase/03_imagens.sql`; o envio aceita JPG, PNG, WebP e GIF de até 5 MB. As imagens são públicas para que apareçam no cardápio, mas apenas o usuário dono do arquivo pode enviar, alterar ou excluir.
