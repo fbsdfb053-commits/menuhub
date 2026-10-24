@@ -1720,3 +1720,40 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-content { padding-left: 10px !important; padding-right: 10px !important; }
   .admin-heading h1 { overflow-wrap: anywhere; }
 }
+
+
+/* Correção de camada: no celular, o painel lateral precisa ficar acima do fundo escuro. */
+@media (max-width: 760px) {
+  .admin-shell .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    z-index: 1200 !important;
+    width: min( min(88vw, 320px), 320px) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    visibility: visible;
+    background: #fdfbf7 !important;
+    box-shadow: 14px 0 34px rgba(17, 35, 25, .16);
+  }
+  .admin-shell.admin-shell--collapsed .admin-sidebar {
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translateX(-105%) !important;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .mobile-sidebar-backdrop {
+    z-index: 1199 !important;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
+  }
+  .admin-shell .admin-sidebar > .admin-nav {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+  }
+}
