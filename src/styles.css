@@ -1757,3 +1757,95 @@ body { background: #f7f8f4; color: #24352c; }
     overscroll-behavior-y: contain !important;
   }
 }
+
+
+/* Ajustes finais para celular: tipografia legível, pedidos compactos e menu lateral acessível */
+@media (max-width: 760px) {
+  .admin-sidebar {
+    position: fixed !important;
+    z-index: 1200;
+    inset: 0 auto 0 0 !important;
+    display: flex !important;
+    flex-direction: column;
+    width: min(86vw, 310px) !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding: 20px 15px 18px !important;
+    box-shadow: 12px 0 36px rgba(20, 38, 29, .18);
+    transform: translateX(0);
+    transition: transform .22s ease;
+    scrollbar-width: thin;
+    scrollbar-color: #b7c8bb transparent;
+  }
+  .admin-shell--collapsed .admin-sidebar {
+    transform: translateX(-105%);
+    pointer-events: none;
+  }
+  .admin-sidebar .admin-brand { flex: 0 0 auto; padding-bottom: 18px; }
+  .admin-sidebar .sidebar-toggle { flex: 0 0 auto; }
+  .admin-sidebar .workspace-label { display: block !important; flex: 0 0 auto; margin-top: 18px; }
+  .admin-sidebar .restaurant-switcher { display: flex !important; flex: 0 0 auto; }
+  .admin-sidebar .admin-nav {
+    display: grid !important;
+    flex: 0 0 auto;
+    gap: 3px;
+    margin-top: 16px;
+    padding-bottom: 18px;
+  }
+  .admin-sidebar .admin-nav__link { min-height: 43px; padding: 11px 12px; font-size: 14px; white-space: nowrap; }
+  .admin-sidebar .sidebar-bottom { display: block !important; flex: 0 0 auto; margin-top: auto; padding-top: 12px; }
+  .admin-sidebar .profile-chip strong { font-size: 12px; overflow-wrap: anywhere; }
+  .admin-sidebar .profile-chip small { font-size: 10px; }
+  .mobile-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1190;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgba(18, 29, 22, .42);
+  }
+  .admin-shell--collapsed .mobile-sidebar-backdrop { display: none; }
+  .admin-main { width: 100%; min-width: 0; margin-left: 0 !important; }
+  .admin-topbar { gap: 10px; padding: 0 12px !important; }
+  .mobile-sidebar-toggle { display: inline-flex !important; align-items: center; justify-content: center; gap: 5px; flex: 0 0 auto; min-height: 38px; padding: 7px 9px; border: 1px solid #d8e5d9; border-radius: 9px; color: #145b5b; background: #fff; font-size: 13px; }
+  .admin-topbar > .back-link { min-width: 0; font-size: 13px; white-space: nowrap; }
+  .admin-topbar__right { min-width: 0; }
+  .admin-content { padding: 24px 12px 44px !important; }
+  .admin-heading h1 { font-size: 28px; }
+  .admin-heading p, .admin-content p { font-size: 14px; line-height: 1.4; }
+  .admin-nav__link, .account-link, .primary-button, .secondary-button { font-size: 14px; }
+  .admin-create-form label, .admin-settings-form label, .admin-product-form label, .admin-product-row label, .admin-order-card label, .restaurant-select-label { font-size: 14px; }
+  .admin-create-form input, .admin-create-form textarea, .admin-settings-form input, .admin-settings-form textarea, .admin-product-form input, .admin-product-form textarea, .admin-product-form select, .admin-product-row input, .admin-product-row textarea, .admin-product-row select, .admin-order-card select, .restaurant-select-label select { font-size: 16px; }
+  .admin-orders-panel { overflow: hidden; }
+  .admin-orders-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+  .admin-orders-table { width: max-content; min-width: 980px; font-size: 13px; }
+  .admin-orders-table th { padding: 10px 8px; font-size: 12px; white-space: nowrap; }
+  .admin-orders-table td { padding: 10px 8px; font-size: 13px; white-space: nowrap; line-height: 1.25; }
+  .admin-order-customer { max-width: 155px; font-size: 14px; white-space: nowrap; }
+  .admin-order-phone, .admin-order-note { font-size: 12px; white-space: nowrap; }
+  .admin-order-number { font-size: 13px; }
+  .admin-order-payment, .admin-order-status, .admin-order-origin { font-size: 12px; white-space: nowrap; }
+  .admin-order-actions { gap: 5px; }
+  .admin-data-panel, .admin-settings-form, .admin-create-form { padding: 16px; }
+}
+@media (min-width: 761px) {
+  .mobile-sidebar-toggle { display: none; }
+  .mobile-sidebar-backdrop { display: none; }
+}
+/* Aumenta textos pequenos do cardápio público em telas estreitas sem quebrar palavras */
+@media (max-width: 680px) {
+  .text-button { font-size: 12px; }
+  .identity-title-row h1 { font-size: 23px; }
+  .identity-meta { font-size: 11px; }
+  .restaurant-description { font-size: 13px; line-height: 1.45; }
+  .restaurant-hours { font-size: 10px; }
+  .product-card p { min-height: 0; font-size: 12px; line-height: 1.35; }
+  .product-card strong { font-size: 13px; }
+  .product-card h3 { font-size: 16px; line-height: 1.25; overflow-wrap: normal; word-break: normal; }
+}
