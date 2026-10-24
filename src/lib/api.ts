@@ -12,7 +12,7 @@ export type OrderForm = {
   phone: string
   deliveryType: 'Retirada' | 'Entrega'
   address: string
-  paymentMethod: 'Pix' | 'Dinheiro' | 'Cartão de débito' | 'Cartão de crédito' | 'A combinar'
+  paymentMethod: 'Pix' | 'Dinheiro' | 'Cartão de débito' | 'Cartão de crédito'
 }
 
 export type OrderItem = { productId: number; quantity: number }
