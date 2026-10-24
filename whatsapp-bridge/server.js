@@ -7,6 +7,24 @@ import { createClient } from '@supabase/supabase-js'
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
 
 const app = express()
+
+// Allow the Menuhub Vercel frontend to call this bridge from the browser.
+// Authorization and JSON requests trigger a CORS preflight (OPTIONS).
+const allowedOrigins = new Set([
+  'https://menuhub-git-teste-menuhub-fb3d2y.vercel.app',
+  'https://menuhub-one.vercel.app'
+])
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (origin && (allowedOrigins.has(origin) || /^https:\/\/menuhub-[a-z0-9-]+-fb3d2y\.vercel\.app$/.test(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
+})
 app.use(express.json({ limit: '32kb' }))
 const PORT = Number(process.env.PORT || 3001)
 const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || '/data/whatsapp-sessions'
