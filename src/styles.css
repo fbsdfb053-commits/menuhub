@@ -1012,3 +1012,16 @@ body { background: #f7f8f4; color: #24352c; }
 .qz-actions { display: flex; gap: 9px; flex-wrap: wrap; }
 .qz-panel select { width: 100%; border: 1px solid #dfe6df; border-radius: 8px; padding: 10px 11px; color: #26382e; background: white; font: 12px 'DM Sans', sans-serif; }
 @media (max-width: 760px) { .work-mode-button { font-size: 0; padding: 8px; } .work-mode-button svg { flex: none; } .admin-topbar__right { gap: 7px; } .qz-actions > button { flex: 1; justify-content: center; } }
+
+
+/* Edição de pedidos no painel administrativo */
+.order-edit-button{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid var(--line,#d8e2df);border-radius:9px;background:#fff;color:#145b5b;cursor:pointer}
+.order-edit-button:hover{background:#eaf5f2;border-color:#91c9bd}
+.order-edit-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(13,29,31,.58);overflow-y:auto}
+.order-edit-modal{width:min(100%,540px);max-height:calc(100vh - 36px);overflow-y:auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.24)}
+.order-edit-modal form{display:grid;gap:13px;margin-top:16px}
+.order-edit-modal form>label{display:grid;gap:6px;font-size:13px;font-weight:600;color:#243b3a}
+.order-edit-modal input:not([type=checkbox]),.order-edit-modal select,.order-edit-modal textarea{width:100%;min-width:0;border:1px solid #d7e1de;border-radius:9px;padding:10px 12px;background:#fff;color:#1d3331;font:inherit;font-weight:400}
+.order-edit-modal .form-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.order-edit-modal .form-row>*{flex:1}
+@media(max-width:600px){.order-edit-modal{padding:18px;border-radius:14px}.order-edit-backdrop{padding:10px}}
