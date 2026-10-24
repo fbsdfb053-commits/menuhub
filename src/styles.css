@@ -1524,3 +1524,90 @@ body { background: #f7f8f4; color: #24352c; }
     overflow-y: auto;
   }
 }
+
+
+/* Painel administrativo: navegação rolável e layout mobile */
+.admin-sidebar {
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+.admin-sidebar > .admin-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #c7d3ca transparent;
+  padding: 4px 2px 14px;
+}
+.admin-sidebar > .admin-nav::-webkit-scrollbar { width: 5px; }
+.admin-sidebar > .admin-nav::-webkit-scrollbar-thumb { border-radius: 8px; background: #c7d3ca; }
+.admin-sidebar > .sidebar-bottom { flex: 0 0 auto; margin-top: auto; }
+.mobile-sidebar-backdrop { display: none; }
+.tabs-manager-list { display: grid; gap: 14px; }
+.tab-manager-card { padding: 18px; border: 1px solid #eadfd5; border-radius: 13px; background: #fff; }
+.tab-manager-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.tab-manager-heading h3 { margin: 5px 0; color: var(--ink); font-size: 19px; }
+.tab-manager-heading p { margin: 0; color:#87938d; font-size:11px; }
+.tab-manager-items { display:grid; gap:8px; margin-top:16px; padding:14px 0; border-top:1px solid #eee6dd; border-bottom:1px solid #eee6dd; }
+.tab-manager-items > div, .tab-manager-total { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.tab-manager-items span { color:#596a61; font-size:12px; }
+.tab-manager-items strong { color:var(--ink); font-size:12px; }
+.tab-manager-total { padding-top:13px; }
+.tab-manager-total span { color:#71827c; font-size:12px; }
+.tab-manager-total strong { color:var(--teal); font-size:18px; font-weight:800; }
+.tab-manager-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.tab-add-item { margin-top:14px; padding-top:14px; border-top:1px solid #eee6dd; }
+.status-pill--open { color:#26734a; background:#e7f5e9; }
+@media (max-width: 760px) {
+  .admin-sidebar {
+    z-index: 1002;
+    inset: 0 auto 0 0;
+    width: min(88vw, 320px);
+    max-width: 320px;
+    padding: 18px 16px max(14px, env(safe-area-inset-bottom));
+    overflow: hidden;
+    box-shadow: 12px 0 35px rgba(22, 48, 37, .14);
+    transform: translateX(0);
+    transition: transform .22s ease;
+  }
+  .admin-shell--collapsed .admin-sidebar {
+    width: min(88vw, 320px);
+    padding: 18px 16px max(14px, env(safe-area-inset-bottom));
+    transform: translateX(-105%);
+    overflow: hidden;
+  }
+  .admin-shell--collapsed .admin-sidebar .admin-brand > div,
+  .admin-shell--collapsed .admin-sidebar .workspace-label,
+  .admin-shell--collapsed .admin-sidebar .restaurant-switcher,
+  .admin-shell--collapsed .admin-sidebar .sidebar-toggle span,
+  .admin-shell--collapsed .admin-sidebar .profile-chip div { display: initial; }
+  .admin-shell--collapsed .admin-sidebar .admin-brand { justify-content:flex-start; padding:0 12px 30px; }
+  .admin-shell--collapsed .admin-sidebar .sidebar-toggle { margin-top:-20px; padding:7px 10px; font-size:11px; }
+  .admin-shell--collapsed .admin-sidebar .admin-nav__link,
+  .admin-shell--collapsed .admin-sidebar .sidebar-bottom .admin-nav__link { justify-content:flex-start; gap:11px; padding:11px 12px; font-size:11px; }
+  .admin-shell--collapsed .admin-sidebar .profile-chip { justify-content:flex-start; padding-left:8px; padding-right:8px; }
+  .admin-shell--collapsed .admin-main { margin-left:0; }
+  .admin-main { min-width:0; margin-left:0; width:100%; }
+  .mobile-sidebar-backdrop { position:fixed; inset:0; z-index:1001; display:block; border:0; background:rgba(19,31,25,.42); }
+  .admin-topbar { position:sticky; top:0; z-index:20; height:auto; min-height:62px; padding:12px 14px; gap:10px; flex-wrap:wrap; }
+  .admin-topbar > .back-link { font-size:11px; }
+  .admin-topbar__right { gap:8px; margin-left:auto; }
+  .admin-topbar__right .private-tag,
+  .admin-topbar__right .account-link,
+  .admin-topbar__right > .back-link { display:none; }
+  .work-mode-button { padding:8px; font-size:0; }
+  .work-mode-button svg { margin:0; }
+  .admin-content { padding:24px 14px 44px; }
+  .admin-heading { align-items:flex-start; flex-direction:column; gap:14px; margin-bottom:20px; }
+  .admin-heading h1 { font-size:26px; }
+  .stats-grid { grid-template-columns:1fr; gap:10px; }
+  .admin-panels { grid-template-columns:1fr; }
+  .counter-fields { grid-template-columns:1fr; }
+  .tab-manager-card { padding:14px; }
+  .tab-manager-actions > button { flex:1 1 130px; }
+}
