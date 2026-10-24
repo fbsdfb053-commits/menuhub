@@ -19,7 +19,7 @@ Restrict access to this service to HTTPS. The bridge validates each request's Su
 
 ## Connect the frontend
 
-Set `VITE_WHATSAPP_BRIDGE_URL` in the Menuhub **test/preview** environment to the public HTTPS base URL of this service, without a trailing slash, then redeploy the test branch. The QR appears inside Admin > Bot do WhatsApp. Scan it on the phone in WhatsApp > Linked devices > Link a device.
+Set `VITE_WHATSAPP_BRIDGE_URL` in the Menuhub **test/preview** environment to the public HTTPS base URL of this service, without a trailing slash, then redeploy the test branch. After changing this variable in Vercel, a new Preview deployment is required for Vite to include it in the frontend build. The QR appears inside Admin > Bot do WhatsApp. Scan it on the phone in WhatsApp > Linked devices > Link a device.
 
 ## Important
 
