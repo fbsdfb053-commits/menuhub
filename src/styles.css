@@ -1087,3 +1087,13 @@ body { background: #f7f8f4; color: #24352c; }
   .whatsapp-status-editor textarea,.whatsapp-status-editor small { grid-column:1; }
   .whatsapp-state { white-space:normal; }
 }
+
+
+/* WhatsApp Web QR connection */
+.whatsapp-qr-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;padding:18px;margin:8px 0;background:#f8faf8;border:1px solid #dce5dc;border-radius:14px;color:#243329;text-align:center}
+.whatsapp-qr-wrap img{display:block;width:min(280px,100%);height:auto;aspect-ratio:1;image-rendering:pixelated;background:#fff;border-radius:8px}
+.whatsapp-qr-wrap p{margin:0;max-width:420px;font-size:.85rem}
+.whatsapp-connect-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;margin:6px 0}
+.whatsapp-status-dot--connected{background:#22a06b!important;box-shadow:0 0 0 3px #22a06b22}
+.whatsapp-connect-panel .whatsapp-notice{width:100%;margin:10px 0}
+@media(max-width:600px){.whatsapp-connect-actions>*{flex:1 1 100%}.whatsapp-qr-wrap{padding:12px}}
