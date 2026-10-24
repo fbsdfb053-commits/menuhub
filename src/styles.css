@@ -104,8 +104,8 @@ a { color: inherit; text-decoration: none; }
 .quantity-control b { font: 11px 'DM Mono', monospace; }
 .order-form { display: grid; gap: 14px; padding: 25px 0 18px; }
 .order-form label, .editor-form label { display: grid; gap: 7px; color: #63716e; font-size: 11px; font-weight: 600; }
-.order-form input, .editor-form input, .editor-form textarea { width: 100%; padding: 12px 13px; border: 1px solid #e0e5df; border-radius: 10px; outline: none; color: var(--ink); background: white; font-size: 12px; }
-.order-form input:focus, .editor-form input:focus, .editor-form textarea:focus { border-color: #8bb5a3; box-shadow: 0 0 0 3px #e6f3e8; }
+.order-form input, .order-form select, .editor-form input, .editor-form textarea { width: 100%; padding: 12px 13px; border: 1px solid #e0e5df; border-radius: 10px; outline: none; color: var(--ink); background: white; font-size: 12px; }
+.order-form input:focus, .order-form select:focus, .editor-form input:focus, .editor-form textarea:focus { border-color: #8bb5a3; box-shadow: 0 0 0 3px #e6f3e8; }
 .drawer-total { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-top: 1px solid var(--line); color: #798581; font-size: 12px; }
 .drawer-total strong { color: var(--teal); font-size: 21px; }
 .primary-button, .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 39px; padding: 0 15px; border: 1px solid var(--teal); border-radius: 10px; color: white; background: var(--teal); font-size: 11px; font-weight: 600; transition: .15s ease; }
@@ -309,6 +309,7 @@ a { color: inherit; text-decoration: none; }
 .delivery-choice { display: flex; gap: 8px; }
 .delivery-option { flex: 1; padding: 10px 8px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); font-size: 12px; font-weight: 600; }
 .delivery-option--active { border-color: var(--accent); color: #fff; background: var(--accent); }
+.order-form select { width: 100%; padding: 12px 13px; border: 1px solid #e0e5df; border-radius: 10px; outline: none; color: var(--ink); background: white; font-size: 12px; }
 .order-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); resize: vertical; }
 .form-error { margin: 0 0 10px; padding: 9px 11px; border: 1px solid #e4b9b0; border-radius: 10px; color: #8a3a2c; background: #fdeeea; font-size: 12px; line-height: 1.4; }
 
@@ -939,7 +940,11 @@ body { background: #f7f8f4; color: #24352c; }
 .admin-order-customer { display: block; max-width: 180px; overflow: hidden; color: #26372d; font-size: 12px; text-overflow: ellipsis; }
 .admin-order-phone { display: block; margin-top: 3px; color: #8a958d; font-size: 10px; }
 .admin-order-date { color: #637168 !important; font-variant-numeric: tabular-nums; }
-.admin-order-payment { color: #65756a; }
+.admin-order-payment { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 9px; font-size: 10px; font-weight: 700; white-space: nowrap; color: #b42332; background: #fff0f1; border: 1px solid #ffd5d9; }
+.admin-order-payment--pix { color: #b42332; background: #fff0f1; border-color: #ffd5d9; }
+.admin-order-payment--dinheiro { color: #a52835; background: #fff0f1; border-color: #ffd5d9; }
+.admin-order-payment--debito, .admin-order-payment--credito { color: #b42332; background: #fff0f1; border-color: #ffd5d9; }
+.admin-order-payment--combinar { color: #a52835; background: #fff0f1; border-color: #ffd5d9; }
 .admin-order-status { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; }
 .admin-order-status--finished { color: #2d7147; background: #e8f5eb; }
 .admin-order-status--cancelled { color: #a34242; background: #fbecec; }
