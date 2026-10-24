@@ -1145,8 +1145,9 @@ body { background: #f7f8f4; color: #24352c; }
 .admin-shell--collapsed .sidebar-bottom .admin-nav__link { font-size: 0; }
 .admin-shell--collapsed .profile-chip { justify-content: center; padding-left: 0; padding-right: 0; }
 @media (max-width: 760px) {
-  .admin-sidebar { height: auto; max-height: none; overflow: visible; }
-  .sidebar-toggle { display: none; }
-  .admin-shell--collapsed .admin-sidebar { width: 100%; padding: 17px 15px; }
-  .admin-shell--collapsed .admin-main { margin-left: 0; }
+  .admin-sidebar { height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; overflow-y: auto; overflow-x: hidden; }
+  .sidebar-toggle { display: flex; margin-top: -27px; }
+  .admin-shell--collapsed .admin-sidebar { width: 78px; padding: 17px 10px; }
+  .admin-shell--collapsed .admin-main { margin-left: 78px; }
+  .admin-shell--collapsed .admin-brand { padding-bottom: 42px; }
 }
