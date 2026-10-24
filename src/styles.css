@@ -1945,3 +1945,25 @@ body { background: #f7f8f4; color: #24352c; }
     font-weight: 700;
   }
 }
+
+
+/* Ajustes finais: menu móvel acessível e aviso sonoro sempre ativo */
+.order-sound-status{display:inline-flex;align-items:center;gap:7px;color:#26734c;font-size:11px;font-weight:700;white-space:nowrap}
+.order-sound-status svg{flex:none}
+.admin-sidebar{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c7d3c8 transparent}
+.admin-sidebar::-webkit-scrollbar{width:6px}
+.admin-sidebar::-webkit-scrollbar-thumb{border-radius:999px;background:#c7d3c8}
+.admin-sidebar::-webkit-scrollbar-track{background:transparent}
+@media(max-width:760px){
+  .admin-sidebar{z-index:1002!important;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:max(22px,env(safe-area-inset-bottom))!important}
+  .admin-shell--collapsed .admin-sidebar{transform:translateX(-110%)!important;pointer-events:none!important}
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar{transform:translateX(0)!important;pointer-events:auto!important}
+  .admin-shell--collapsed .admin-main,.admin-shell .admin-main{width:100%!important;margin-left:0!important;min-width:0}
+  .admin-shell--collapsed .admin-sidebar .admin-nav__link{display:flex!important;justify-content:flex-start!important;gap:11px!important;padding:11px 12px!important;font-size:11px!important}
+  .admin-shell--collapsed .admin-sidebar .sidebar-bottom .admin-nav__link{font-size:11px!important}
+  .admin-shell--collapsed .admin-sidebar .admin-brand>div,.admin-shell--collapsed .admin-sidebar .workspace-label,.admin-shell--collapsed .admin-sidebar .restaurant-switcher>div,.admin-shell--collapsed .admin-sidebar .profile-chip div,.admin-shell--collapsed .admin-sidebar .sidebar-toggle span{display:initial!important}
+  .mobile-sidebar-toggle{display:inline-flex!important;align-items:center;gap:7px;position:relative;z-index:1105;flex:none}
+  .mobile-sidebar-backdrop{z-index:1001!important}
+  .order-sound-status{font-size:0;padding:7px}
+  .order-sound-status svg{width:18px;height:18px}
+}
