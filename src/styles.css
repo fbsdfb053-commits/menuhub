@@ -2038,3 +2038,39 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-shell:not(.admin-shell--collapsed) .admin-main { margin-left: 0 !important; width: 100% !important; min-width: 0; }
   .sidebar-bottom { margin-top: auto; padding-top: 12px; }
 }
+
+
+/* Correção definitiva: navegação administrativa visível e rolável no celular */
+@media (max-width: 760px) {
+  .admin-shell { display: block !important; min-height: 100dvh; }
+  .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(300px, 88vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    z-index: 1200 !important;
+    padding: 20px 15px max(24px, env(safe-area-inset-bottom)) !important;
+    background: #fdfbf7;
+  }
+  .admin-shell--collapsed .admin-sidebar { transform: translateX(-110%) !important; pointer-events: none !important; }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar { transform: translateX(0) !important; pointer-events: auto !important; }
+  .admin-sidebar .admin-nav { display: grid !important; gap: 5px; margin-top: 18px; }
+  .admin-sidebar .admin-nav__link { display: flex !important; align-items: center; justify-content: flex-start !important; gap: 11px !important; min-height: 44px; padding: 11px 12px !important; font-size: 12px !important; white-space: normal; text-align: left; }
+  .admin-sidebar .admin-nav__link svg { flex: 0 0 17px !important; }
+  .admin-sidebar .workspace-label, .admin-sidebar .restaurant-switcher, .admin-sidebar .sidebar-bottom { display: block !important; }
+  .admin-sidebar .restaurant-switcher { display: flex !important; }
+  .admin-sidebar .admin-brand > div, .admin-sidebar .profile-chip div, .admin-sidebar .sidebar-toggle span { display: initial !important; }
+  .admin-sidebar .sidebar-bottom { margin-top: 20px; }
+  .admin-sidebar .sidebar-bottom .admin-nav__link { font-size: 12px !important; }
+  .mobile-sidebar-backdrop { position: fixed !important; inset: 0 !important; z-index: 1190 !important; display: block !important; background: rgba(18,28,23,.48) !important; }
+  .admin-shell--collapsed .mobile-sidebar-backdrop { display: none !important; }
+  .admin-main { width: 100% !important; min-width: 0; margin-left: 0 !important; }
+  .mobile-sidebar-toggle { display: inline-flex !important; }
+}
