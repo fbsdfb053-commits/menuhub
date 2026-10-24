@@ -462,3 +462,118 @@ a { color: inherit; text-decoration: none; }
   .home-footer { padding: 24px 20px; flex-wrap: wrap; }
   .home-footer > span { order: 3; width: 100%; }
 }
+
+
+/* Navegação responsiva do painel administrativo */
+.admin-sidebar {
+  z-index: 80;
+  height: 100vh;
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c8d5cc transparent;
+}
+.admin-sidebar::-webkit-scrollbar { width: 6px; }
+.admin-sidebar::-webkit-scrollbar-thumb { border-radius: 8px; background: #c8d5cc; }
+.admin-brand { position: relative; align-items: center; }
+.sidebar-collapse-toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border: 1px solid #e1e8e1;
+  border-radius: 8px;
+  color: var(--teal);
+  background: #fff;
+  cursor: pointer;
+}
+.sidebar-collapse-toggle:hover { background: #f3e7dc; }
+.admin-shell--collapsed .admin-sidebar { width: 78px; padding-right: 12px; padding-left: 12px; }
+.admin-shell--collapsed .admin-main { margin-left: 78px; }
+.admin-shell--collapsed .admin-brand { justify-content: center; padding-right: 0; padding-left: 0; }
+.admin-shell--collapsed .admin-brand > div,
+.admin-shell--collapsed .workspace-label,
+.admin-shell--collapsed .restaurant-switcher > div,
+.admin-shell--collapsed .admin-nav__link:not(.admin-nav__link--active)::after,
+.admin-shell--collapsed .admin-nav__link { font-size: 0; }
+.admin-shell--collapsed .restaurant-switcher { justify-content: center; padding: 8px 4px; }
+.admin-shell--collapsed .restaurant-switcher__avatar { flex: 0 0 30px; }
+.admin-shell--collapsed .admin-nav__link { justify-content: center; gap: 0; padding: 13px 8px; }
+.admin-shell--collapsed .admin-nav__link svg { flex: 0 0 18px; }
+.admin-shell--collapsed .profile-chip { justify-content: center; padding-right: 0; padding-left: 0; }
+.admin-shell--collapsed .profile-chip > div,
+.admin-shell--collapsed .sidebar-bottom .admin-nav__link { display: none; }
+.admin-shell--collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
+.sidebar-mobile-toggle { display: none; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; border: 1px solid #e4e9e4; border-radius: 10px; color: var(--teal); background: white; }
+.sidebar-mobile-backdrop { display: none; }
+
+@media (max-width: 680px) {
+  .admin-shell, .admin-shell--collapsed { display: block; min-height: 100vh; }
+  .admin-sidebar, .admin-shell--collapsed .admin-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    width: min(300px, 86vw);
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    padding: 22px 16px 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: 16px 0 40px rgb(25 40 32 / 14%);
+    transform: translateX(-110%);
+    visibility: hidden;
+    transition: transform .22s ease, visibility .22s ease;
+  }
+  .admin-shell--mobile-open .admin-sidebar {
+    transform: translateX(0);
+    visibility: visible;
+  }
+  .admin-shell--collapsed .admin-main, .admin-main { margin-left: 0; }
+  .admin-brand, .admin-shell--collapsed .admin-brand { justify-content: flex-start; padding: 0 8px 22px; }
+  .admin-shell--collapsed .admin-brand > div { display: grid; font-size: 14px; }
+  .workspace-label, .restaurant-switcher, .admin-nav, .sidebar-bottom,
+  .admin-shell--collapsed .workspace-label, .admin-shell--collapsed .restaurant-switcher,
+  .admin-shell--collapsed .admin-nav, .admin-shell--collapsed .sidebar-bottom { display: flex; }
+  .workspace-label { display: block; }
+  .restaurant-switcher { justify-content: flex-start; padding: 11px 10px; }
+  .admin-shell--collapsed .restaurant-switcher > div { display: block; }
+  .admin-nav { display: grid; margin-top: 24px; }
+  .admin-shell--collapsed .admin-nav__link { justify-content: flex-start; gap: 11px; padding: 11px 12px; font-size: 11px; }
+  .admin-shell--collapsed .admin-nav__link svg { flex: 0 0 17px; }
+  .sidebar-bottom { display: block; margin-top: auto; padding-top: 18px; }
+  .admin-shell--collapsed .profile-chip { justify-content: flex-start; padding: 12px 8px 0; }
+  .admin-shell--collapsed .profile-chip > div,
+  .admin-shell--collapsed .sidebar-bottom .admin-nav__link { display: flex; }
+  .admin-shell--collapsed .profile-chip > div { flex-direction: column; align-items: flex-start; }
+  .sidebar-collapse-toggle { margin-left: auto; }
+  .sidebar-mobile-toggle { display: grid; }
+  .sidebar-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: block;
+    border: 0;
+    background: rgb(20 28 23 / 48%);
+  }
+  .admin-topbar { justify-content: flex-start; gap: 10px; padding: 0 14px; }
+  .admin-topbar .back-link { min-width: 0; font-size: 11px; }
+  .admin-topbar__right { margin-left: auto; }
+  .admin-content { padding: 26px 15px 48px; }
+  .admin-heading h1 { font-size: 27px; }
+  .admin-create-form, .admin-settings-form { padding: 17px; }
+  .admin-product-row { grid-template-columns: 1fr; }
+  .admin-panels, .editor-layout { grid-template-columns: minmax(0, 1fr); }
+  .restaurant-grid { grid-template-columns: minmax(0, 1fr); }
+  .stats-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar { transition: none; }
+}
