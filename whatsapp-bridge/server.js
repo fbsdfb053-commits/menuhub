@@ -21,7 +21,75 @@ fs.mkdirSync(AUTH_DIR, { recursive: true })
 const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 const sessions = new Map()
+const processedMessages = new Map()
+const senderReplyTimes = new Map()
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
+
+function messageText(message) {
+  let content = message
+  for (let i = 0; i < 4 && content; i++) {
+    if (content.ephemeralMessage?.message) content = content.ephemeralMessage.message
+    else if (content.viewOnceMessage?.message) content = content.viewOnceMessage.message
+    else if (content.viewOnceMessageV2?.message) content = content.viewOnceMessageV2.message
+    else break
+  }
+  return String(
+    content?.conversation ||
+    content?.extendedTextMessage?.text ||
+    content?.imageMessage?.caption ||
+    content?.videoMessage?.caption ||
+    content?.documentMessage?.caption ||
+    content?.buttonsResponseMessage?.selectedDisplayText ||
+    content?.listResponseMessage?.title ||
+    content?.templateButtonReplyMessage?.selectedDisplayText ||
+    ''
+  ).trim()
+}
+
+function chooseReply(text, config) {
+  const normalized = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase()
+  if (/\\b(cardapio|menu|comida|pratos|opcoes|opcoes do menu)\\b/.test(normalized)) return config.faqMenu
+  if (/\\b(horario|horarios|abre|aberto|fecha|fechado|funciona|funcionamento)\\b/.test(normalized)) return config.faqHours
+  if (/\\b(pagamento|pagar|pix|cartao|dinheiro|credito|debito)\\b/.test(normalized)) return config.faqPayment
+  return config.welcomeMessage
+}
+
+async function handleIncomingMessage(restaurantId, sock, message) {
+  const key = message?.key
+  const remoteJid = key?.remoteJid
+  const messageId = key?.id
+  if (!remoteJid || !messageId || key.fromMe || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast' || remoteJid.endsWith('@broadcast')) return
+
+  const text = messageText(message.message)
+  if (!text) return
+
+  const now = Date.now()
+  for (const [id, timestamp] of processedMessages) if (now - timestamp > 10 * 60 * 1000) processedMessages.delete(id)
+  if (processedMessages.has(messageId)) return
+  processedMessages.set(messageId, now)
+
+  const senderKey = restaurantId + ':' + remoteJid
+  if (now - (senderReplyTimes.get(senderKey) || 0) < 1500) return
+
+  try {
+    const { data, error } = await admin
+      .from('whatsapp_bot_config')
+      .select('config')
+      .eq('empresa_id', Number(restaurantId))
+      .maybeSingle()
+    if (error) throw error
+    const config = data?.config
+    if (!config || config.enabled !== true) return
+
+    const reply = chooseReply(text, config)
+    if (typeof reply !== 'string' || !reply.trim()) return
+    senderReplyTimes.set(senderKey, now)
+    await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
+    log.info({ restaurantId, messageId, topic: reply === config.faqMenu ? 'menu' : reply === config.faqHours ? 'hours' : reply === config.faqPayment ? 'payment' : 'welcome' }, 'Automatic WhatsApp reply sent')
+  } catch (err) {
+    log.error({ err, restaurantId, messageId }, 'Automatic WhatsApp reply failed')
+  }
+}
 
 function safeId(value) {
   const id = Number(value)
@@ -66,6 +134,12 @@ async function startSession(id) {
     })
     state.socket = sock
     sock.ev.on('creds.update', saveCreds)
+    sock.ev.on('messages.upsert', async event => {
+      if (event.type !== 'notify') return
+      for (const message of event.messages || []) {
+        await handleIncomingMessage(id, sock, message)
+      }
+    })
     sock.ev.on('connection.update', async update => {
       if (update.qr) {
         state.qr = update.qr
