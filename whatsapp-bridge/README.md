@@ -9,13 +9,12 @@ The root `render.yaml` is currently configured for Render's free web service so 
 Do not deploy this process as a Vercel Function. Use one running instance initially.
 
 Required environment variables on the bridge host:
-- `SUPABASE_URL`: the same Supabase project URL used by the Menuhub test environment.
-- `SUPABASE_ANON_KEY`: the Supabase anon/publishable key.
-- `SUPABASE_SERVICE_ROLE_KEY`: service role key, server-side only. Never expose it in the frontend.
+- `SUPABASE_URL`: the exact Supabase project URL used by the Menuhub **test/preview** frontend.
+- `SUPABASE_SERVICE_ROLE_KEY`: service role key from that same project, server-side only. Never expose it in the frontend. The bridge uses this key to validate the Menuhub session and verify restaurant ownership; if either value points to another project, authorization will fail.
 - `WHATSAPP_AUTH_DIR=/tmp/whatsapp-sessions` for temporary free testing; a persistent host should use a directory on its persistent disk, e.g. `/data/whatsapp-sessions`.
 - `PORT`: set by the host, usually automatically.
 
-Restrict access to this service to HTTPS. The bridge validates each request's Supabase bearer token and checks that the authenticated user owns the selected restaurant.
+Restrict access to this service to HTTPS. The bridge validates each request's Supabase bearer token and checks that the authenticated user owns the selected restaurant. It now returns distinct errors for expired/mismatched sessions, missing restaurants, and ownership mismatches instead of hiding them behind one generic message.
 
 ## Connect the frontend
 
