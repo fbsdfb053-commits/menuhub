@@ -1232,3 +1232,37 @@ body { background: #f7f8f4; color: #24352c; }
   .stats-grid { grid-template-columns: 1fr; }
   .product-grid { grid-template-columns: 1fr 1fr; }
 }
+
+
+/* Ajustes finais: menu lateral utilizável em telas pequenas */
+.sidebar-toggle { flex: 0 0 auto; align-self: flex-end; margin: -27px 0 18px; padding: 5px 8px; border: 1px solid #e2e8e1; border-radius: 7px; color: var(--teal); background: #fff; font-size: 10px; cursor: pointer; }
+.admin-sidebar { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #cbd8ce transparent; }
+.admin-sidebar::-webkit-scrollbar { width: 6px; }
+.admin-sidebar::-webkit-scrollbar-thumb { border-radius: 8px; background: #cbd8ce; }
+.mobile-sidebar-toggle { display: none; }
+@media (max-width: 760px) {
+  .admin-shell { min-height: 100dvh; }
+  .admin-sidebar { z-index: 1002; width: min(285px, 84vw); padding: 20px 15px max(20px, env(safe-area-inset-bottom)); box-shadow: 12px 0 32px #17271f20; transition: transform .22s ease; }
+  .admin-shell--collapsed .admin-sidebar { width: min(285px, 84vw); transform: translateX(-110%); pointer-events: none; }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar { transform: translateX(0); }
+  .admin-shell--collapsed .admin-sidebar .admin-brand > div,
+  .admin-shell--collapsed .workspace-label,
+  .admin-shell--collapsed .restaurant-switcher > div,
+  .admin-shell--collapsed .profile-chip div,
+  .admin-shell--collapsed .sidebar-toggle span { display: initial; }
+  .admin-shell--collapsed .admin-nav__link { display: flex; }
+  .admin-shell--collapsed .admin-main, .admin-main { width: 100%; margin-left: 0; min-width: 0; }
+  .admin-topbar { min-height: 64px; height: auto; padding: 10px 14px; gap: 10px; flex-wrap: wrap; }
+  .mobile-sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 10px; border: 1px solid #d8e5d9; border-radius: 9px; color: var(--teal); background: #fff; font-size: 12px; font-weight: 600; }
+  .admin-topbar > .back-link { min-height: 40px; }
+  .admin-topbar__right { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+  .admin-topbar__right .private-tag { display: none; }
+  .admin-topbar__right .account-link { max-width: 100%; overflow-wrap: anywhere; }
+  .admin-content { padding: 25px 15px 45px; }
+  .admin-heading { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .admin-heading h1 { font-size: 26px; }
+}
+@media (max-width: 380px) {
+  .admin-topbar { padding-left: 9px; padding-right: 9px; }
+  .admin-topbar__right .work-mode-button { max-width: 100%; }
+}
