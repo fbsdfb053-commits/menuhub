@@ -29,7 +29,6 @@ import {
   orderExamples,
   products,
   type Category,
-  type ComplementGroup,
   type ComplementOption,
   type Product,
   type Restaurant,
