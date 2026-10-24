@@ -2074,3 +2074,89 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-main { width: 100% !important; min-width: 0; margin-left: 0 !important; }
   .mobile-sidebar-toggle { display: inline-flex !important; }
 }
+
+
+/* Correção definitiva: menu administrativo utilizável no celular */
+@media (max-width: 760px) {
+  .admin-shell { display: block !important; min-height: 100dvh; overflow-x: clip; }
+  .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(290px, 86vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 20px 15px max(20px, env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    background: #fdfbf7;
+    z-index: 1202 !important;
+    box-shadow: 12px 0 32px rgba(18,45,35,.18);
+    transform: translateX(0);
+    transition: transform .22s ease;
+  }
+  .admin-shell--collapsed .admin-sidebar {
+    transform: translateX(-110%) !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+  .admin-sidebar .admin-brand > div,
+  .admin-sidebar .workspace-label,
+  .admin-sidebar .restaurant-switcher,
+  .admin-sidebar .admin-nav,
+  .admin-sidebar .sidebar-bottom,
+  .admin-sidebar .sidebar-toggle { display: flex !important; }
+  .admin-sidebar .workspace-label { display: block !important; }
+  .admin-sidebar .restaurant-switcher { display: flex !important; }
+  .admin-sidebar .admin-nav { display: grid !important; flex: 0 0 auto !important; gap: 5px; min-height: min-content; padding-bottom: 16px; margin-top: 22px; }
+  .admin-sidebar .admin-nav__link,
+  .admin-shell--collapsed .admin-sidebar .admin-nav__link {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start !important;
+    gap: 11px !important;
+    width: 100%;
+    min-height: 44px;
+    padding: 12px !important;
+    font-size: 13px !important;
+    line-height: 1.35;
+    white-space: normal;
+    text-align: left;
+  }
+  .admin-sidebar .admin-nav__link svg { flex: 0 0 18px !important; }
+  .admin-sidebar .sidebar-toggle { margin: 0 0 18px !important; min-height: 42px; flex: 0 0 auto; }
+  .admin-sidebar .sidebar-toggle span { display: inline !important; }
+  .admin-shell--collapsed .admin-main,
+  .admin-shell:not(.admin-shell--collapsed) .admin-main,
+  .admin-main { width: 100% !important; min-width: 0; margin-left: 0 !important; }
+  .mobile-sidebar-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    z-index: 1201 !important;
+    background: rgba(18,28,23,.42);
+  }
+  .mobile-sidebar-toggle { display: inline-flex !important; min-height: 42px; }
+  .admin-topbar { min-height: 64px; height: auto; padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .admin-topbar > * { min-width: 0; }
+  .admin-topbar__right { width: 100%; display: flex; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+  .admin-content { width: 100%; max-width: 100%; padding: 22px 12px 40px; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .admin-panels, .editor-layout, .whatsapp-connect-panel { grid-template-columns: minmax(0, 1fr); }
+  .admin-orders-panel, .sales-table-panel { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+@media (max-width: 380px) {
+  .admin-topbar { padding-left: 8px; padding-right: 8px; }
+  .admin-content { padding-left: 9px; padding-right: 9px; }
+}
