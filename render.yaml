@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: menuhub-whatsapp-bridge
+    runtime: docker
+    plan: free
+    rootDir: whatsapp-bridge
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: WHATSAPP_AUTH_DIR
+        value: /tmp/whatsapp-sessions

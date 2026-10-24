@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Category, Product, Restaurant } from '../data'
+import type { Category, ComplementGroup, Product, Restaurant } from '../data'
 
 export type MenuData = {
   restaurant: Restaurant
@@ -12,9 +12,13 @@ export type OrderForm = {
   phone: string
   deliveryType: 'Retirada' | 'Entrega'
   address: string
+  paymentMethod: 'Pix' | 'Dinheiro' | 'Cartão de débito' | 'Cartão de crédito'
+  observations: string
+  needsChange: boolean
+  changeFor: number | null
 }
 
-export type OrderItem = { productId: number; quantity: number }
+export type OrderItem = { productId: number; quantity: number; complementIds?: number[] }
 
 const DEFAULT_ACCENT = '#0e4f59'
 
@@ -84,6 +88,7 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     accent,
     available: true,
     imageUrl: safeImageUrl(p.imagem_url),
+    complements: ((p.complementos ?? []) as any[]).map((g): ComplementGroup => ({ id:Number(g.id), name:String(g.nome), description:g.descricao ?? undefined, options:((g.opcoes ?? []) as any[]).map(o=>({id:Number(o.id),name:String(o.nome),price:Number(o.preco_adicional ?? 0)})) })),
   }))
 
   return { restaurant, categories: categories.filter((c) => c.count > 0), products }
@@ -96,7 +101,11 @@ export async function createOrder(slug: string, form: OrderForm, items: OrderIte
     p_whatsapp: form.phone,
     p_tipo_entrega: form.deliveryType,
     p_endereco: form.deliveryType === 'Entrega' ? form.address : '',
-    p_itens: items.map((i) => ({ produto_id: i.productId, quantidade: i.quantity })),
+    p_forma_pagamento: form.paymentMethod,
+    p_observacoes: form.observations,
+    p_precisa_troco: form.needsChange,
+    p_troco_para: form.changeFor,
+    p_itens: items.map((i) => ({ produto_id: i.productId, quantidade: i.quantity, complementos: (i.complementIds ?? []).map(id => ({ id })) })),
   })
   if (error) throw new Error(error.message)
   return Number(data)

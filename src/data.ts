@@ -1,3 +1,6 @@
+export type ComplementOption = { id: number; name: string; price: number }
+export type ComplementGroup = { id: number; name: string; description?: string; options: ComplementOption[] }
+
 export type Product = {
   id: number
   name: string
@@ -8,6 +11,7 @@ export type Product = {
   accent: string
   available: boolean
   imageUrl?: string
+  complements?: ComplementGroup[]
 }
 
 export type Category = {
