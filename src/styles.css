@@ -1413,3 +1413,62 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-main { min-width: 0 !important; width: 100% !important; margin-left: 0 !important; }
   .admin-content { min-width: 0; }
 }
+
+
+/* Correção definitiva do painel no celular: a gaveta não pode virar bloco estático */
+@media (max-width: 760px) {
+  .admin-shell { display: flex !important; min-height: 100dvh; }
+  .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(285px, 84vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    z-index: 1200 !important;
+    padding: 18px 14px max(20px, env(safe-area-inset-bottom)) !important;
+    background: #fdfbf7;
+    transform: translateX(0);
+    box-shadow: 12px 0 32px rgba(18,45,35,.16);
+  }
+  .admin-shell--collapsed .admin-sidebar {
+    width: min(285px, 84vw) !important;
+    transform: translateX(-110%) !important;
+    pointer-events: none;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    pointer-events: auto;
+  }
+  .admin-shell--collapsed .admin-sidebar .admin-brand > div,
+  .admin-shell--collapsed .admin-sidebar .workspace-label,
+  .admin-shell--collapsed .admin-sidebar .restaurant-switcher > div,
+  .admin-shell--collapsed .admin-sidebar .profile-chip div,
+  .admin-shell--collapsed .admin-sidebar .sidebar-toggle span { display: initial !important; }
+  .admin-shell--collapsed .admin-sidebar .restaurant-switcher { display: flex !important; }
+  .admin-shell--collapsed .admin-sidebar .admin-nav { display: grid !important; }
+  .admin-shell--collapsed .admin-sidebar .admin-nav__link {
+    display: flex !important;
+    justify-content: flex-start !important;
+    gap: 11px !important;
+    padding: 11px 12px !important;
+    font-size: 11px !important;
+    min-height: 42px;
+  }
+  .admin-shell--collapsed .admin-sidebar .sidebar-bottom .admin-nav__link { font-size: 11px !important; }
+  .admin-shell--collapsed .admin-sidebar .profile-chip { justify-content: flex-start !important; }
+  .admin-shell--collapsed .admin-sidebar .admin-brand { justify-content: flex-start !important; padding-bottom: 42px !important; }
+  .admin-shell--collapsed .admin-main,
+  .admin-main { width: 100% !important; min-width: 0; margin-left: 0 !important; }
+  .admin-topbar { padding-left: 12px; padding-right: 12px; }
+  .admin-content { min-width: 0; }
+  .admin-panels, .editor-layout, .stats-grid { grid-template-columns: minmax(0, 1fr); }
+  .admin-panel { min-width: 0; overflow-x: auto; }
+  .admin-panel table { min-width: 620px; }
+  .counter-fields { grid-template-columns: minmax(0, 1fr); }
+}
