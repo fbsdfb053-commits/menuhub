@@ -1325,3 +1325,91 @@ body { background: #f7f8f4; color: #24352c; }
     padding-top: 16px;
   }
 }
+
+
+/* Menu lateral mobile: gaveta visível, rolável e com rótulos sempre legíveis */
+@media (max-width: 760px) {
+  .admin-shell .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    z-index: 1200 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(290px, 86vw) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    background: #fdfbf7 !important;
+    padding: max(16px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom)) !important;
+    scrollbar-width: thin;
+    visibility: visible;
+    opacity: 1;
+    transition: transform .22s ease;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
+  }
+  .admin-shell.admin-shell--collapsed .admin-sidebar {
+    transform: translateX(-105%) !important;
+    pointer-events: none !important;
+  }
+  .admin-shell .admin-sidebar .admin-nav {
+    display: grid !important;
+    flex: 0 0 auto;
+    gap: 5px !important;
+    margin: 18px 0 24px !important;
+  }
+  .admin-shell .admin-sidebar .admin-nav__link,
+  .admin-shell .admin-sidebar .sidebar-bottom .admin-nav__link {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start !important;
+    gap: 11px !important;
+    width: 100%;
+    min-height: 44px;
+    padding: 11px 12px !important;
+    font-size: 12px !important;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .admin-shell .admin-sidebar .admin-nav__link svg {
+    display: block !important;
+    flex: 0 0 18px !important;
+  }
+  .admin-shell .admin-sidebar .admin-brand > div,
+  .admin-shell .admin-sidebar .workspace-label,
+  .admin-shell .admin-sidebar .restaurant-switcher,
+  .admin-shell .admin-sidebar .restaurant-switcher > div,
+  .admin-shell .admin-sidebar .sidebar-toggle span,
+  .admin-shell .admin-sidebar .profile-chip div {
+    display: initial !important;
+  }
+  .admin-shell .admin-sidebar .restaurant-switcher,
+  .admin-shell .admin-sidebar .profile-chip {
+    display: flex !important;
+  }
+  .admin-shell .admin-sidebar .sidebar-toggle {
+    display: flex !important;
+    flex: 0 0 auto;
+    margin: 0 0 12px !important;
+  }
+  .mobile-sidebar-toggle {
+    display: inline-flex !important;
+    position: relative;
+    z-index: 1201;
+    min-width: 78px;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  .admin-main { min-width: 0 !important; width: 100% !important; margin-left: 0 !important; }
+  .admin-content { min-width: 0; }
+}
