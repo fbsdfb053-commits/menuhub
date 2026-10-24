@@ -1097,3 +1097,56 @@ body { background: #f7f8f4; color: #24352c; }
 .whatsapp-status-dot--connected{background:#22a06b!important;box-shadow:0 0 0 3px #22a06b22}
 .whatsapp-connect-panel .whatsapp-notice{width:100%;margin:10px 0}
 @media(max-width:600px){.whatsapp-connect-actions>*{flex:1 1 100%}.whatsapp-qr-wrap{padding:12px}}
+
+
+/* Menu lateral: rolagem própria e opção de recolher/expandir */
+.admin-sidebar {
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c7d3c8 transparent;
+}
+.admin-sidebar::-webkit-scrollbar { width: 6px; }
+.admin-sidebar::-webkit-scrollbar-thumb { border-radius: 999px; background: #c7d3c8; }
+.admin-sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  margin: -27px 0 18px;
+  padding: 7px 10px;
+  border: 1px solid #e1e7e1;
+  border-radius: 9px;
+  color: #62766a;
+  background: #f7faf5;
+  cursor: pointer;
+  font: 600 11px 'DM Sans', sans-serif;
+}
+.sidebar-toggle:hover { color: #183d32; background: #eaf3e7; }
+.admin-shell--collapsed .admin-sidebar { width: 78px; padding-left: 10px; padding-right: 10px; }
+.admin-shell--collapsed .admin-main { margin-left: 78px; }
+.admin-shell--collapsed .admin-brand { justify-content: center; padding-left: 0; padding-right: 0; padding-bottom: 42px; }
+.admin-shell--collapsed .admin-brand > div,
+.admin-shell--collapsed .workspace-label,
+.admin-shell--collapsed .restaurant-switcher,
+.admin-shell--collapsed .sidebar-toggle span,
+.admin-shell--collapsed .profile-chip div { display: none; }
+.admin-shell--collapsed .sidebar-toggle { margin-top: -27px; padding: 7px 4px; font-size: 17px; }
+.admin-shell--collapsed .admin-nav { gap: 7px; }
+.admin-shell--collapsed .admin-nav__link { justify-content: center; gap: 0; padding: 12px 4px; font-size: 0; }
+.admin-shell--collapsed .admin-nav__link svg { flex: 0 0 auto; }
+.admin-shell--collapsed .notification-dot { position: absolute; top: 7px; right: 7px; }
+.admin-shell--collapsed .sidebar-bottom .admin-nav__link { font-size: 0; }
+.admin-shell--collapsed .profile-chip { justify-content: center; padding-left: 0; padding-right: 0; }
+@media (max-width: 760px) {
+  .admin-sidebar { height: auto; max-height: none; overflow: visible; }
+  .sidebar-toggle { display: none; }
+  .admin-shell--collapsed .admin-sidebar { width: 100%; padding: 17px 15px; }
+  .admin-shell--collapsed .admin-main { margin-left: 0; }
+}
