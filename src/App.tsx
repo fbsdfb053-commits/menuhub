@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   MapPin,
   Monitor,
+  MessageCircle,
   Minus,
   MoreHorizontal,
   Plus,
@@ -476,10 +477,11 @@ function AdminView({ onBack }: { onBack: () => void }) {
   const addComplementGroup=async(e:React.FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!selected||!newGroupName.trim())return;const lines=newGroupOptions.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{const [name,price='0']=line.split('|');return {nome:name.trim(),preco_adicional:Number(price.trim().replace(',','.'))}});if(!lines.length||lines.some(x=>!x.nome||!Number.isFinite(x.preco_adicional)||x.preco_adicional<0)){notify('Informe as opções uma por linha. Use Nome|Preço opcional, por exemplo Calabresa|3,00.',true);return}setBusy(true);const {data,error}=await supabase.from('grupos_complementos').insert({empresa_id:selected.id,nome:newGroupName.trim(),ordem:complementGroups.length+1,ativo:true}).select('id,empresa_id,nome,descricao,ordem,ativo').single();if(error){setBusy(false);notify('Erro ao criar grupo. Execute supabase/07_complementos.sql no Supabase de teste. '+error.message,true);return}const opt=await supabase.from('opcoes_complementos').insert(lines.map((x,i)=>({grupo_id:data.id,nome:x.nome,preco_adicional:x.preco_adicional,ordem:i+1,ativo:true}))).select('id,nome,preco_adicional,ativo,ordem');setBusy(false);if(opt.error){notify('Grupo criado, mas houve erro ao salvar opções: '+opt.error.message,true);return}setComplementGroups(old=>[...old,{...(data as any),opcoes_complementos:(opt.data??[]) as AdminComplementOption[]}]);setNewGroupName('');setNewGroupOptions('');notify('Grupo de complementos criado.')}
   const deleteComplementGroup=async(g:AdminComplementGroup)=>{if(!window.confirm('Excluir o grupo '+g.nome+'? Ele será desvinculado dos produtos.'))return;const {error}=await supabase.from('grupos_complementos').delete().eq('id',g.id);if(error){notify('Não foi possível excluir: '+error.message,true);return}setComplementGroups(old=>old.filter(x=>x.id!==g.id));setProductGroupLinks(old=>Object.fromEntries(Object.entries(old).map(([id,groups])=>[id,groups.filter(x=>x!==g.id)])));notify('Grupo removido.')}
   return <div className="admin-shell">
-    <aside className="admin-sidebar"><div className="admin-brand"><span className="brand-mark">F</span><div><b>FB3d2y</b><span>Menu</span></div></div><div className="workspace-label">meus menus</div><div className="restaurant-switcher"><span className="restaurant-switcher__avatar">{selected?.nome.charAt(0)??'+'}</span><div><strong>{selected?.nome??'Nenhum restaurante'}</strong><span>{selected?.slug??'Crie seu menu'}</span></div></div><nav className="admin-nav">{nav('dashboard','Visão geral',<LayoutDashboard size={17}/>)}{nav('menu','Meu cardápio',<Utensils size={17}/>)}{nav('restaurants','Restaurantes',<Store size={17}/>)}{nav('orders','Pedidos',<ShoppingBag size={17}/>)}{nav('counter','Pedidos balcão',<Plus size={17}/>)}{nav('sales','Relatório de vendas',<BarChart3 size={17}/>)}{nav('printer','Config. impressora',<Store size={17}/>)}</nav><div className="sidebar-bottom"><div className="profile-chip"><span>{(session.user.email??'U').charAt(0).toUpperCase()}</span><div><strong>{session.user.user_metadata?.full_name??session.user.email}</strong><small>conta conectada</small></div></div><button className="admin-nav__link" type="button" onClick={()=>void supabase.auth.signOut()}><ArrowLeft size={17}/> Sair da conta</button></div></aside>
+    <aside className="admin-sidebar"><div className="admin-brand"><span className="brand-mark">F</span><div><b>FB3d2y</b><span>Menu</span></div></div><div className="workspace-label">meus menus</div><div className="restaurant-switcher"><span className="restaurant-switcher__avatar">{selected?.nome.charAt(0)??'+'}</span><div><strong>{selected?.nome??'Nenhum restaurante'}</strong><span>{selected?.slug??'Crie seu menu'}</span></div></div><nav className="admin-nav">{nav('whatsapp','Bot do WhatsApp',<MessageCircle size={17}/>)}{nav('dashboard','Visão geral',<LayoutDashboard size={17}/>)}{nav('menu','Meu cardápio',<Utensils size={17}/>)}{nav('restaurants','Restaurantes',<Store size={17}/>)}{nav('orders','Pedidos',<ShoppingBag size={17}/>)}{nav('counter','Pedidos balcão',<Plus size={17}/>)}{nav('sales','Relatório de vendas',<BarChart3 size={17}/>)}{nav('printer','Config. impressora',<Store size={17}/>)}</nav><div className="sidebar-bottom"><div className="profile-chip"><span>{(session.user.email??'U').charAt(0).toUpperCase()}</span><div><strong>{session.user.user_metadata?.full_name??session.user.email}</strong><small>conta conectada</small></div></div><button className="admin-nav__link" type="button" onClick={()=>void supabase.auth.signOut()}><ArrowLeft size={17}/> Sair da conta</button></div></aside>
     <main className="admin-main"><header className="admin-topbar"><button className="back-link" type="button" onClick={onBack}><ArrowLeft size={17}/> Ver menu público</button><div className="admin-topbar__right"><button className={keepScreenOn?'work-mode-button work-mode-button--active':'work-mode-button'} type="button" onClick={()=>setKeepScreenOn(v=>!v)}><Monitor size={15}/>{keepScreenOn?(wakeLock?'Tela ativa':'Modo expediente ligado'):'Manter tela ativa'}</button><span className="private-tag"><span/> espaço privado</span><span className="account-link">{session.user.email}</span></div></header>
     {notice&&<div className="admin-content"><p className={noticeError?'form-error':'green-text'}>{notice}</p></div>}{busy&&<div className="admin-content"><small>Atualizando dados…</small></div>}
     {activeTab==='dashboard'&&<div className="admin-content"><div className="admin-heading"><div><span className="eyebrow">painel de controle</span><h1>Seus menus, em um só lugar.</h1><p>Gerencie restaurantes, produtos e pedidos.</p></div><button className="primary-button" type="button" onClick={()=>{setShowCreate(true);setActiveTab('restaurants')}}><Plus size={17}/> Novo restaurante</button></div><div className="stats-grid"><StatCard value={String(restaurants.length)} label="restaurantes" icon={<Store size={17}/>} /><StatCard value={String(items.length)} label="produtos neste menu" icon={<Utensils size={17}/>} /><StatCard value={String(orders.filter(o=>!['Concluído','Cancelado'].includes(o.status)).length)} label="pedidos em andamento" icon={<ShoppingBag size={17}/>} /></div><div className="admin-panels"><section className="admin-panel orders-panel"><div className="panel-heading"><div><span className="eyebrow">atividade</span><h2>Pedidos recentes</h2></div><button className="link-button" type="button" onClick={()=>setActiveTab('orders')}>Ver todos <ChevronRight size={15}/></button></div>{orders.length===0?<p>Ainda não há pedidos neste restaurante.</p>:orders.slice(0,5).map(o=><div className="admin-order" key={o.id}><div className="order-status"><span/></div><div className="admin-order__main"><strong>#{o.id} · {o.cliente_nome}</strong><span>{o.tipo_entrega} · {new Date(o.criado_em).toLocaleString('pt-BR')}</span></div><div className="admin-order__right"><strong>{formatPrice(Number(o.total))}</strong><span>{o.status}</span></div></div>)}</section><section className="admin-panel menu-panel"><div className="panel-heading"><div><span className="eyebrow">menu selecionado</span><h2>{selected?.nome??'Comece por aqui'}</h2></div></div>{selected?<><p>Link do cardápio:</p><a className="green-text" href={'/menu/'+selected.slug} target="_blank" rel="noreferrer">{window.location.origin+'/menu/'+selected.slug}</a><button className="secondary-button secondary-button--full" type="button" onClick={()=>setActiveTab('menu')}>Editar cardápio <ChevronRight size={16}/></button></>:<button className="primary-button" type="button" onClick={()=>{setShowCreate(true);setActiveTab('restaurants')}}>Criar primeiro restaurante</button>}</section></div></div>}
+    {activeTab==='whatsapp'&&<WhatsAppBotPanel restaurantId={selectedId} restaurantName={selected?.nome??''} notify={notify}/>}
     {activeTab==='restaurants'&&<div className="admin-content"><div className="admin-heading"><div><span className="eyebrow">seus negócios</span><h1>Restaurantes</h1><p>Crie e gerencie os cardápios dos seus negócios.</p></div><button className="primary-button" type="button" onClick={()=>setShowCreate(v=>!v)}><Plus size={17}/> Criar restaurante</button></div>{showCreate&&<form className="admin-panel admin-create-form" onSubmit={e=>void createRestaurant(e)}><h2>Novo restaurante</h2><label>Nome<input required minLength={2} maxLength={255} value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Ex.: Cantinho da Pizza"/></label><label>Descrição<textarea value={newDesc} onChange={e=>setNewDesc(e.target.value)} maxLength={1000}/></label><label>Localização<input value={newLocation} onChange={e=>setNewLocation(e.target.value)} maxLength={255} placeholder="Bairro, cidade"/></label><div className="form-row"><button className="primary-button" type="submit" disabled={busy}>Criar menu</button><button className="secondary-button" type="button" onClick={()=>setShowCreate(false)}>Cancelar</button></div></form>}{restaurants.length===0?<section className="admin-panel"><p>Você ainda não criou um restaurante. Clique em “Criar restaurante” para começar.</p></section>:<div className="restaurant-grid">{restaurants.map(r=><article className={r.id===selectedId?'restaurant-admin-card restaurant-admin-card--active':'restaurant-admin-card'} key={r.id}><div className="restaurant-admin-card__cover" style={{background:r.capa_url?'url('+r.capa_url+') center/cover':(r.cor_destaque??'#0e4f59')}}><span>{r.nome.charAt(0).toUpperCase()}</span><b>{r.ativo?'ativo':'inativo'}</b></div><div className="restaurant-admin-card__body"><div><strong>{r.nome}</strong><span>{r.localizacao||'Localização não informada'}</span><small>/menu/{r.slug}</small></div><div className="restaurant-admin-card__footer"><button className="link-button" type="button" onClick={()=>{setSelectedId(r.id);setActiveTab('menu')}}>Gerenciar <ChevronRight size={14}/></button><a className="link-button" href={'/menu/'+r.slug} target="_blank" rel="noreferrer">Ver menu</a></div></div></article>)}</div>}</div>}
     {activeTab==='menu'&&<div className="admin-content"><div className="admin-heading"><div><span className="eyebrow">personalização</span><h1>Meu cardápio</h1><p>Edite as informações e os produtos do menu.</p></div>{selected&&<a className="secondary-button" href={'/menu/'+selected.slug} target="_blank" rel="noreferrer">Ver menu público</a>}</div>{restaurants.length>1&&<label className="restaurant-select-label">Restaurante<select value={selectedId??''} onChange={e=>setSelectedId(Number(e.target.value))}>{restaurants.map(r=><option key={r.id} value={r.id}>{r.nome}</option>)}</select></label>}{!selected?<section className="admin-panel"><p>Crie um restaurante na aba Restaurantes para começar.</p><button className="primary-button" type="button" onClick={()=>{setShowCreate(true);setActiveTab('restaurants')}}>Criar restaurante</button></section>:<><RestaurantSettings key={selected.id} restaurant={selected} saving={busy} onSave={saveRestaurant}/><section className="admin-panel admin-data-panel"><div className="panel-heading"><div><span className="eyebrow">organização</span><h2>Categorias</h2></div></div><form className="inline-create-form" onSubmit={e=>void addCategory(e)}><input value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="Nome da categoria" maxLength={100} required/><button className="primary-button" type="submit"><Plus size={16}/> Adicionar</button></form>{cats.map(c=><div className="category-admin-row" key={c.id}><span>{c.nome}</span><button className="link-button" type="button" onClick={async()=>{const name=window.prompt('Novo nome da categoria:',c.nome);if(!name?.trim())return;const {error}=await supabase.from('categorias').update({nome:name.trim()}).eq('id',c.id);if(error)notify(error.message,true);else{setCats(old=>old.map(x=>x.id===c.id?{...x,nome:name.trim()}:x));notify('Categoria renomeada.')}}}>Renomear</button><button className="link-button" type="button" onClick={async()=>{if(!window.confirm('Excluir a categoria '+c.nome+'?'))return;const {error}=await supabase.from('categorias').delete().eq('id',c.id);if(error)notify(error.message,true);else{setCats(old=>old.filter(x=>x.id!==c.id));setItems(old=>old.map(p=>p.categoria_id===c.id?{...p,categoria_id:null}:p));notify('Categoria excluída.')}}}>Excluir</button></div>)}</section><section className="admin-panel admin-data-panel"><div className="panel-heading"><div><span className="eyebrow">opções reutilizáveis</span><h2>Complementos e sabores</h2></div><span>{complementGroups.length} grupos</span></div><p className="complement-admin-help">Cadastre grupos como “Sabores” ou “Adicionais”. Uma opção por linha; para cobrar adicional, use Nome|Preço (ex.: Catupiry|4,00). Depois, escolha os grupos dentro de cada produto.</p><form className="complement-admin-create" onSubmit={e=>void addComplementGroup(e)}><label>Nome do item<input value={newGroupName} onChange={e=>setNewGroupName(e.target.value)} placeholder="Ex.: Sabores" required maxLength={120}/></label><label>Opções do item<textarea value={newGroupOptions} onChange={e=>setNewGroupOptions(e.target.value)} placeholder={'Calabresa\nFrango com catupiry|4,00\nPortuguesa|2,50'} rows={4} required/></label><button className="primary-button" type="submit" disabled={busy}><Plus size={16}/> Criar item</button></form>{complementGroups.length===0?<p>Nenhum grupo criado ainda.</p>:<div className="complement-admin-list">{complementGroups.map(g=><article className="complement-admin-group" key={g.id}><div><strong>{g.nome}</strong><small>{g.opcoes_complementos.filter(o=>o.ativo).map(o=>o.nome+(Number(o.preco_adicional)>0?' (+'+formatPrice(Number(o.preco_adicional))+')':'')).join(' · ')}</small></div><button className="link-button" type="button" onClick={()=>void deleteComplementGroup(g)}>Excluir</button></article>)}</div>}</section><section className="admin-panel admin-data-panel"><div className="panel-heading"><div><span className="eyebrow">itens do menu</span><h2>Produtos e preços</h2></div><span>{items.length} produtos</span></div><form className="admin-product-form" onSubmit={e=>void addProduct(e)}><h3>Adicionar produto</h3><label>Nome<input required maxLength={255} value={newItem.nome} onChange={e=>setNewItem({...newItem,nome:e.target.value})} placeholder="Ex.: Pizza calabresa"/></label><label>Descrição<textarea maxLength={1000} value={newItem.descricao} onChange={e=>setNewItem({...newItem,descricao:e.target.value})}/></label><div className="form-row"><label>Preço (R$)<input required inputMode="decimal" value={newItem.preco} onChange={e=>setNewItem({...newItem,preco:e.target.value})} placeholder="29,90"/></label><label>Categoria<select value={newItem.categoria_id} onChange={e=>setNewItem({...newItem,categoria_id:e.target.value})}><option value="">Sem categoria</option>{cats.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</select></label></div><label>URL da foto (opcional)<input type="url" value={newItem.imagem_url} onChange={e=>setNewItem({...newItem,imagem_url:e.target.value})} placeholder="https://..."/></label>{complementGroups.length>0&&<fieldset className="product-complement-link"><legend>Complementos deste produto (opcional)</legend>{complementGroups.filter(g=>g.ativo).map(g=><label key={g.id}><input type="checkbox" checked={newProductGroupIds.includes(g.id)} onChange={e=>setNewProductGroupIds(old=>e.target.checked?[...old,g.id]:old.filter(id=>id!==g.id))}/><span>{g.nome}</span><small>{g.opcoes_complementos.filter(o=>o.ativo).length} opções</small></label>)}</fieldset>}<label>Ou enviar foto do computador (máx. 5 MB)<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async e=>{const file=e.target.files?.[0];if(!file||!selected)return;try{setBusy(true);const url=await uploadMenuImage(file,selected.id);setNewItem(old=>({...old,imagem_url:url}));notify('Foto enviada. Salve o produto para aplicar.')}catch(err){notify(err instanceof Error?err.message:'Erro ao enviar foto.',true)}finally{setBusy(false);e.target.value=''}}}/></label><button className="primary-button" type="submit" disabled={busy}><Plus size={16}/> Cadastrar produto</button></form>{items.length===0?<p>Nenhum produto cadastrado ainda.</p>:items.map(p=><ProductAdminRow key={p.id} product={p} restaurantId={selected.id} categories={cats} complementGroups={complementGroups} linkedGroupIds={productGroupLinks[p.id]??[]} onSave={updateProduct} onDelete={deleteProduct}/>)}</section></>}</div>}
     {activeTab==='sales'&&<SalesReport orders={orders} onRefresh={()=>{if(selectedId!==null)void loadDetails(selectedId)}}/>}
@@ -489,6 +491,120 @@ function AdminView({ onBack }: { onBack: () => void }) {
     </main></div>
 }
 type SalesPeriod = 7 | 30 | 90
+
+
+type WhatsAppBotConfig = {
+  enabled: boolean
+  welcomeMessage: string
+  faqMenu: string
+  faqHours: string
+  faqPayment: string
+  statusNew: boolean
+  statusPreparing: boolean
+  statusReady: boolean
+  statusDelivered: boolean
+  messageNew: string
+  messagePreparing: string
+  messageReady: string
+  messageDelivered: string
+}
+const defaultWhatsAppBotConfig: WhatsAppBotConfig = {
+  enabled: false,
+  welcomeMessage: 'Olá! 👋 Seja bem-vindo(a)! Como podemos ajudar?',
+  faqMenu: 'Você pode consultar nosso cardápio e fazer seu pedido pelo link do nosso menu.',
+  faqHours: 'Nosso horário de funcionamento está informado no cardápio. Se precisar, fale com nossa equipe.',
+  faqPayment: 'As formas de pagamento disponíveis aparecem na finalização do pedido.',
+  statusNew: true,
+  statusPreparing: true,
+  statusReady: true,
+  statusDelivered: true,
+  messageNew: 'Olá, {nome}! Recebemos seu pedido #{pedido}. Obrigado pela preferência!',
+  messagePreparing: 'Olá, {nome}! Seu pedido #{pedido} já está sendo preparado. 🍳',
+  messageReady: 'Boa notícia, {nome}! Seu pedido #{pedido} está pronto!',
+  messageDelivered: 'Olá, {nome}! Seu pedido #{pedido} foi concluído. Obrigado pela preferência!',
+}
+function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:number|null;restaurantName:string;notify:(message:string,error?:boolean)=>void}) {
+  const [config,setConfig]=useState<WhatsAppBotConfig>(defaultWhatsAppBotConfig)
+  const [loading,setLoading]=useState(false)
+  const [saving,setSaving]=useState(false)
+  const [tableMissing,setTableMissing]=useState(false)
+  const [metaPhoneId,setMetaPhoneId]=useState('')
+  const [connectionNote,setConnectionNote]=useState('')
+  useEffect(()=>{
+    let active=true
+    setConfig(defaultWhatsAppBotConfig)
+    setMetaPhoneId('')
+    setConnectionNote('')
+    setTableMissing(false)
+    if(!restaurantId)return
+    setLoading(true)
+    void supabase.from('whatsapp_bot_config').select('config,meta_phone_number_id,connection_note').eq('empresa_id',restaurantId).maybeSingle().then(({data,error})=>{
+      if(!active)return
+      setLoading(false)
+      if(error){setTableMissing(true);return}
+      if(data){
+        setConfig({...defaultWhatsAppBotConfig,...(data.config as Partial<WhatsAppBotConfig>??{})})
+        setMetaPhoneId(data.meta_phone_number_id??'')
+        setConnectionNote(data.connection_note??'')
+      }
+    })
+    return()=>{active=false}
+  },[restaurantId])
+  const save=async()=>{
+    if(!restaurantId){notify('Crie ou selecione um restaurante antes de configurar o bot.',true);return}
+    setSaving(true)
+    const {data:auth}=await supabase.auth.getSession()
+    const {error}=await supabase.from('whatsapp_bot_config').upsert({
+      empresa_id:restaurantId,
+      config,
+      meta_phone_number_id:metaPhoneId.trim()||null,
+      connection_note:connectionNote.trim()||null,
+      atualizado_em:new Date().toISOString(),
+      atualizado_por:auth.session?.user.id??null
+    },{onConflict:'empresa_id'})
+    setSaving(false)
+    if(error){notify('Não foi possível salvar. Execute o arquivo supabase/08_whatsapp_bot.sql no Supabase de teste. '+error.message,true);return}
+    notify('Configurações do Bot do WhatsApp salvas.')
+  }
+  const update=(patch:Partial<WhatsAppBotConfig>)=>setConfig(old=>({...old,...patch}))
+  return <div className="admin-content whatsapp-bot-page">
+    <div className="admin-heading"><div><span className="eyebrow">atendimento automatizado</span><h1>Bot do WhatsApp</h1><p>Configure respostas e avisos automáticos para {restaurantName||'seu restaurante'}.</p></div><span className={config.enabled?'whatsapp-state whatsapp-state--on':'whatsapp-state'}><span/>{config.enabled?'Bot ativado nas configurações':'Configuração inicial'}</span></div>
+    {!restaurantId?<section className="admin-panel"><h2>Primeiro, crie um restaurante</h2><p>O bot e suas mensagens são configurados separadamente para cada estabelecimento.</p></section>:<>
+      {tableMissing&&<section className="whatsapp-notice"><strong>Falta preparar o banco de dados</strong><p>As configurações precisam da tabela nova. Execute <code>supabase/08_whatsapp_bot.sql</code> no SQL Editor do projeto Supabase de teste; depois volte aqui e atualize a página.</p></section>}
+      <section className="admin-panel whatsapp-connect-panel">
+        <div className="whatsapp-connect-icon"><MessageCircle size={25}/></div><div className="whatsapp-connect-copy"><span className="eyebrow">etapa 1 · conexão</span><h2>Conectar o WhatsApp da empresa</h2><p>A conexão real depende de autorizar a conta empresarial na Meta. O QR Code e a opção de manter o WhatsApp Business no celular dependem da elegibilidade do número.</p><div className="whatsapp-connection-status"><span className="whatsapp-status-dot"/><span>WhatsApp ainda não conectado</span></div></div>
+        <a className="secondary-button" href="https://developers.facebook.com/docs/whatsapp/embedded-signup/" target="_blank" rel="noreferrer">Ver configuração oficial <ChevronRight size={15}/></a>
+        <label>ID do número do WhatsApp (Meta)<input value={metaPhoneId} onChange={e=>setMetaPhoneId(e.target.value)} placeholder="Será preenchido após configurar a integração"/></label>
+        <label>Observação da conexão<input value={connectionNote} onChange={e=>setConnectionNote(e.target.value)} placeholder="Ex.: aguardando autorização da Meta"/></label>
+        <p className="printer-help">Não cole tokens ou senhas aqui. A credencial de acesso ficará em variável segura do servidor, não no navegador.</p>
+      </section>
+      <section className="admin-panel whatsapp-config-panel">
+        <div className="panel-heading"><div><span className="eyebrow">etapa 2 · comportamento</span><h2>Respostas automáticas</h2></div><label className="whatsapp-toggle"><input type="checkbox" checked={config.enabled} onChange={e=>update({enabled:e.target.checked})}/><span>{config.enabled?'Ativado':'Desativado'}</span></label></div>
+        <p>Edite os textos que o bot usará. As mensagens ficam salvas por restaurante; a automação só começará a enviar mensagens depois que a conexão oficial for concluída.</p>
+        <label>Mensagem de boas-vindas<textarea rows={2} maxLength={1000} value={config.welcomeMessage} onChange={e=>update({welcomeMessage:e.target.value})}/></label>
+        <div className="whatsapp-faq-grid">
+          <label>Resposta sobre cardápio<textarea rows={3} maxLength={1000} value={config.faqMenu} onChange={e=>update({faqMenu:e.target.value})}/></label>
+          <label>Resposta sobre horário<textarea rows={3} maxLength={1000} value={config.faqHours} onChange={e=>update({faqHours:e.target.value})}/></label>
+          <label>Resposta sobre pagamento<textarea rows={3} maxLength={1000} value={config.faqPayment} onChange={e=>update({faqPayment:e.target.value})}/></label>
+        </div>
+      </section>
+      <section className="admin-panel whatsapp-config-panel">
+        <div className="panel-heading"><div><span className="eyebrow">etapa 3 · acompanhamento</span><h2>Avisos de status do pedido</h2></div></div>
+        <p>Marque quais mudanças de status devem gerar uma mensagem. Use <code>{'{nome}'}</code> para o primeiro nome do cliente e <code>{'{pedido}'}</code> para o número do pedido.</p>
+        {([
+          ['Novo','Pedido recebido','statusNew','messageNew'],
+          ['Preparando','Em preparo','statusPreparing','messagePreparing'],
+          ['Pronto','Pedido pronto','statusReady','messageReady'],
+          ['Concluído','Pedido concluído/entregue','statusDelivered','messageDelivered'],
+        ] as const).map(([status,label,flag,message])=><div className="whatsapp-status-editor" key={status}><label className="whatsapp-toggle"><input type="checkbox" checked={config[flag]} onChange={e=>update({[flag]:e.target.checked})}/><span>{label}</span></label><textarea aria-label={'Mensagem para '+label} rows={2} maxLength={1000} value={config[message]} onChange={e=>update({[message]:e.target.value})}/><small>Status no Menuhub: {status}</small></div>)}
+        <div className="whatsapp-template-note"><strong>Importante sobre envios</strong><p>Para iniciar mensagens fora da janela de atendimento do WhatsApp, a Meta normalmente exige modelos aprovados. A integração final precisa mapear cada status para um modelo permitido e respeitar as regras de consentimento e envio.</p></div>
+        <button className="primary-button" type="button" onClick={()=>void save()} disabled={saving||loading}>{saving?'Salvando…':'Salvar configurações do bot'}</button>
+        {loading&&<small>Carregando configurações…</small>}
+      </section>
+    </>}
+  </div>
+}
+
 
 function SalesReport({orders,onRefresh}:{orders:AdminOrder[];onRefresh:()=>void}) {
   const [period,setPeriod]=useState<SalesPeriod>(30)
