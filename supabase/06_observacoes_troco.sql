@@ -98,7 +98,7 @@ end;
 $$;
 
 revoke all on function public.criar_pedido(text, text, text, text, text, jsonb, text, text, boolean, numeric) from public;
-grant execute on function public.criar_pedido(text, text, text, text, text, jsonb, text) to anon, authenticated;
+grant execute on function public.criar_pedido(text, text, text, text, text, jsonb, text, text, boolean, numeric) to anon, authenticated;
 
 -- Atualiza o cache de funções usado pelo Supabase/PostgREST após criar a assinatura nova.
 notify pgrst, 'reload schema';
