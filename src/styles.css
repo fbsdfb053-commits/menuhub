@@ -1266,3 +1266,62 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-topbar { padding-left: 9px; padding-right: 9px; }
   .admin-topbar__right .work-mode-button { max-width: 100%; }
 }
+
+
+/* Correção final mobile: menu abre como gaveta e mantém todos os rótulos visíveis */
+@media (max-width: 760px) {
+  .admin-shell--collapsed .admin-sidebar .admin-nav__link {
+    font-size: 11px !important;
+    justify-content: flex-start;
+    gap: 11px;
+    padding: 11px 12px;
+    white-space: normal;
+    min-height: 42px;
+  }
+  .admin-shell--collapsed .admin-sidebar .admin-nav__link svg {
+    flex: 0 0 17px;
+  }
+  .admin-shell--collapsed .admin-sidebar .admin-brand > div,
+  .admin-shell--collapsed .admin-sidebar .workspace-label,
+  .admin-shell--collapsed .admin-sidebar .restaurant-switcher,
+  .admin-shell--collapsed .admin-sidebar .sidebar-toggle span,
+  .admin-shell--collapsed .admin-sidebar .profile-chip div {
+    display: initial;
+  }
+  .admin-shell--collapsed .admin-sidebar .restaurant-switcher {
+    display: flex;
+  }
+  .admin-shell--collapsed .admin-sidebar .sidebar-bottom .admin-nav__link {
+    font-size: 11px !important;
+  }
+  .admin-sidebar {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  .admin-topbar {
+    align-items: center;
+    min-height: 56px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .admin-topbar > .back-link {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .admin-topbar__right {
+    width: auto;
+    margin-left: auto;
+    flex: 1 1 100%;
+    gap: 6px;
+  }
+  .admin-topbar__right .account-link,
+  .admin-topbar__right > .back-link {
+    display: none;
+  }
+  .admin-content {
+    padding-top: 16px;
+  }
+}
