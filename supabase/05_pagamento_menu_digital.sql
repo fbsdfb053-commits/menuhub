@@ -1,5 +1,5 @@
--- Execute no SQL Editor do Supabase do projeto de TESTE para habilitar pagamento escolhido no menu.
--- Mantém a função antiga por compatibilidade e cria a versão com p_forma_pagamento.
+-- Execute este arquivo no SQL Editor do Supabase do projeto de TESTE.
+-- Cria a versão da função com forma de pagamento obrigatória e recarrega o cache do PostgREST.
 create or replace function public.criar_pedido(
   p_slug text,
   p_nome text,
@@ -22,7 +22,7 @@ declare
   v_fone text := regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g');
   v_total numeric(10,2) := 0;
   v_pedido_id int;
-  v_pagamento text := coalesce(nullif(trim(p_forma_pagamento), ''), 'A combinar');
+  v_pagamento text := trim(coalesce(p_forma_pagamento, ''));
 begin
   select * into v_emp from public.empresas where slug = p_slug and ativo;
   if not found then raise exception 'Restaurante não encontrado.'; end if;
@@ -41,7 +41,7 @@ begin
     raise exception 'Informe o endereço de entrega.';
   end if;
   if length(coalesce(p_endereco, '')) > 300 then raise exception 'Endereço muito longo.'; end if;
-  if v_pagamento not in ('Pix', 'Dinheiro', 'Cartão de débito', 'Cartão de crédito', 'A combinar') then
+  if v_pagamento not in ('Pix', 'Dinheiro', 'Cartão de débito', 'Cartão de crédito') then
     raise exception 'Escolha uma forma de pagamento válida.';
   end if;
   if p_itens is null or jsonb_typeof(p_itens) <> 'array'
@@ -81,3 +81,6 @@ $$;
 
 revoke all on function public.criar_pedido(text, text, text, text, text, jsonb, text) from public;
 grant execute on function public.criar_pedido(text, text, text, text, text, jsonb, text) to anon, authenticated;
+
+-- Atualiza o cache de funções usado pelo Supabase/PostgREST após criar a assinatura nova.
+notify pgrst, 'reload schema';
