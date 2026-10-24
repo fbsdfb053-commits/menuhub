@@ -34,6 +34,13 @@ drop policy if exists dono_opcoes_complementos_all on public.opcoes_complementos
 create policy dono_opcoes_complementos_all on public.opcoes_complementos for all to authenticated
 using (exists(select 1 from public.grupos_complementos g join public.empresas e on e.id=g.empresa_id where g.id=grupo_id and e.dono_id=auth.uid()))
 with check (exists(select 1 from public.grupos_complementos g join public.empresas e on e.id=g.empresa_id where g.id=grupo_id and e.dono_id=auth.uid()));
+drop policy if exists dono_itens_insert on public.itens_pedido;
+create policy dono_itens_insert on public.itens_pedido for insert to authenticated
+with check (exists(select 1 from public.pedidos pe join public.empresas e on e.id=pe.empresa_id where pe.id=pedido_id and e.dono_id=auth.uid()));
+drop policy if exists dono_itens_delete on public.itens_pedido;
+create policy dono_itens_delete on public.itens_pedido for delete to authenticated
+using (exists(select 1 from public.pedidos pe join public.empresas e on e.id=pe.empresa_id where pe.id=pedido_id and e.dono_id=auth.uid()));
+
 drop policy if exists dono_produto_grupos_complementos_all on public.produto_grupos_complementos;
 create policy dono_produto_grupos_complementos_all on public.produto_grupos_complementos for all to authenticated
 using (exists(select 1 from public.produtos p join public.empresas e on e.id=p.empresa_id where p.id=produto_id and e.dono_id=auth.uid()))
