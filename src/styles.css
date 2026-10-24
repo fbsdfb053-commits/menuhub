@@ -1025,3 +1025,26 @@ body { background: #f7f8f4; color: #24352c; }
 .order-edit-modal .form-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 .order-edit-modal .form-row>*{flex:1}
 @media(max-width:600px){.order-edit-modal{padding:18px;border-radius:14px}.order-edit-backdrop{padding:10px}}
+
+/* Complementos reutilizáveis e seleção no cardápio */
+.complement-admin-help{font-size:13px;color:#647572;line-height:1.5}
+.complement-admin-create{display:grid;gap:12px;margin:14px 0 18px}
+.complement-admin-create label{display:grid;gap:6px;font-size:13px;font-weight:600}
+.complement-admin-create input,.complement-admin-create textarea{width:100%;border:1px solid #d7e1de;border-radius:9px;padding:10px 12px;font:inherit}
+.complement-admin-list{display:grid;gap:8px}
+.complement-admin-group{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e1e9e6;border-radius:10px}
+.complement-admin-group div{display:grid;gap:4px;min-width:0}.complement-admin-group small{color:#647572;line-height:1.4}
+.product-complement-link{border:1px solid #dce7e3;border-radius:10px;padding:12px;display:grid;gap:9px;margin:8px 0}
+.product-complement-link legend{font-size:13px;font-weight:700;padding:0 5px}
+.product-complement-link label{display:flex!important;align-items:center;gap:8px;font-weight:500!important}
+.product-complement-link label input{width:auto!important}
+.product-complement-link label small{margin-left:auto;color:#70817e}
+.complement-picker-backdrop{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,25,25,.58)}
+.complement-picker{width:min(100%,520px);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-shadow:0 22px 70px rgba(0,0,0,.25)}
+.complement-choice-group{border-top:1px solid #e4ece8;padding:14px 0}
+.complement-choice-group h3{margin:0 0 8px;font-size:16px}.complement-choice-group p{margin:0 0 8px;color:#657571;font-size:13px}
+.complement-choice{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edf1ef;cursor:pointer}
+.complement-choice input{width:17px;height:17px;accent-color:var(--accent,#0e4f59)}
+.complement-choice span{flex:1}.complement-choice strong{font-size:13px}
+.cart-line-complements{display:block;color:#657571;font-size:12px;margin-top:3px}
+@media(max-width:600px){.complement-picker{padding:17px;border-radius:14px}.complement-admin-group{align-items:flex-start}}
