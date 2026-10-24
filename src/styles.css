@@ -1472,3 +1472,13 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-panel table { min-width: 620px; }
   .counter-fields { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* Navegação móvel: fechar a gaveta após escolher uma seção e permitir fechar tocando fora */
+.mobile-sidebar-backdrop { display: none; }
+@media (max-width: 760px) {
+  .mobile-sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 1199; border: 0; border-radius: 0; background: rgba(12, 25, 20, .42); padding: 0; }
+  .admin-sidebar { z-index: 1200 !important; }
+  .mobile-sidebar-toggle { z-index: 1201 !important; }
+  .admin-shell .admin-sidebar .admin-nav { padding-bottom: 8px; }
+}
