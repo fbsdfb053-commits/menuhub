@@ -29,6 +29,8 @@ import {
   orderExamples,
   products,
   type Category,
+  type ComplementGroup,
+  type ComplementOption,
   type Product,
   type Restaurant,
 } from './data'
@@ -64,6 +66,8 @@ async function printerLogoData(url: string): Promise<string | null> {
 type CartLine = {
   product: Product
   quantity: number
+  complements: ComplementOption[]
+  lineId: string
 }
 
 function formatPrice(value: number) {
@@ -186,7 +190,7 @@ function ProductCard({ product, categoryLabel, canOrder, onAdd }: { product: Pro
   )
 }
 
-function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartLine[]; isDemo: boolean; onClose: () => void; onAdjust: (productId: number, amount: number) => void; onSubmit: (form: OrderForm) => Promise<void> }) {
+function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartLine[]; isDemo: boolean; onClose: () => void; onAdjust: (lineId: string, amount: number) => void; onSubmit: (form: OrderForm) => Promise<void> }) {
   const [savedCustomer] = useState(() => { try { return JSON.parse(window.localStorage.getItem('menuhub-customer-data') || '{}') as {name?:string;phone?:string;deliveryType?:OrderForm['deliveryType'];address?:string;paymentMethod?:OrderForm['paymentMethod']} } catch { return {} } })
   const [name, setName] = useState(savedCustomer.name ?? '')
   const [phone, setPhone] = useState(savedCustomer.phone ?? '')
@@ -198,7 +202,7 @@ function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartL
   const [changeFor, setChangeFor] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const total = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0)
+  const total = cart.reduce((sum, line) => sum + (line.product.price + line.complements.reduce((n,o)=>n+o.price,0)) * line.quantity, 0)
   const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0)
   useEffect(() => { try { window.localStorage.setItem('menuhub-customer-data', JSON.stringify({name,phone,deliveryType,address,paymentMethod})) } catch { /* armazenamento do navegador indisponível */ } }, [name,phone,deliveryType,address,paymentMethod])
   const phoneDigits = phone.replace(/\D/g, '')
@@ -221,10 +225,10 @@ function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartL
         <div className="drawer-header"><div><span className="eyebrow">seu pedido</span><h2>{itemCount} {itemCount === 1 ? 'item' : 'itens'}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Fechar carrinho"><X size={20} /></button></div>
         <div className="cart-lines">
           {cart.map((line) => (
-            <div className="cart-line" key={line.product.id}>
+            <div className="cart-line" key={line.lineId}>
               <ProductArtwork product={line.product} compact />
-              <div className="cart-line__copy"><strong>{line.product.name}</strong><span>{formatPrice(line.product.price)}</span><div className="quantity-control"><button type="button" onClick={() => onAdjust(line.product.id, -1)} aria-label="Diminuir quantidade"><Minus size={14} /></button><b>{line.quantity}</b><button type="button" onClick={() => onAdjust(line.product.id, 1)} aria-label="Aumentar quantidade"><Plus size={14} /></button></div></div>
-              <strong className="cart-line__total">{formatPrice(line.product.price * line.quantity)}</strong>
+              <div className="cart-line__copy"><strong>{line.product.name}</strong><span>{formatPrice(line.product.price + line.complements.reduce((n,o)=>n+o.price,0))}</span>{line.complements.length>0&&<small className="cart-line-complements">{line.complements.map(o=>o.name).join(', ')}</small>}<div className="quantity-control"><button type="button" onClick={() => onAdjust(line.lineId, -1)} aria-label="Diminuir quantidade"><Minus size={14} /></button><b>{line.quantity}</b><button type="button" onClick={() => onAdjust(line.lineId, 1)} aria-label="Aumentar quantidade"><Plus size={14} /></button></div></div>
+              <strong className="cart-line__total">{formatPrice((line.product.price + line.complements.reduce((n,o)=>n+o.price,0)) * line.quantity)}</strong>
             </div>
           ))}
         </div>
@@ -257,6 +261,11 @@ function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartL
   )
 }
 
+function ComplementPicker({product,selectedIds,onToggle,onClose,onAdd}:{product:Product;selectedIds:number[];onToggle:(id:number)=>void;onClose:()=>void;onAdd:()=>void}) {
+  const extras=(product.complements??[]).flatMap(g=>g.options.filter(o=>selectedIds.includes(o.id))).reduce((sum,o)=>sum+o.price,0)
+  return <div className="complement-picker-backdrop" onClick={onClose}><section className="complement-picker" role="dialog" aria-modal="true" aria-label={"Complementos de "+product.name} onClick={e=>e.stopPropagation()}><div className="drawer-header"><div><span className="eyebrow">personalize seu pedido</span><h2>{product.name}</h2><p>{formatPrice(product.price)} base</p></div><button className="icon-button" type="button" onClick={onClose} aria-label="Fechar"><X size={20}/></button></div>{(product.complements??[]).map(group=><section className="complement-choice-group" key={group.id}><h3>{group.name}</h3>{group.description&&<p>{group.description}</p>}{group.options.map(option=><label key={option.id} className="complement-choice"><input type="checkbox" checked={selectedIds.includes(option.id)} onChange={()=>onToggle(option.id)}/><span>{option.name}</span><strong>{option.price>0?'+'+formatPrice(option.price):'Grátis'}</strong></label>)}</section>)}<div className="drawer-total"><span>Total por unidade</span><strong>{formatPrice(product.price+extras)}</strong></div><button className="primary-button primary-button--full" type="button" onClick={onAdd}>Adicionar ao pedido</button></section></div>
+}
+
 function EmptyCart({ onClose }: { onClose: () => void }) {
   return <div className="empty-cart"><div className="empty-cart__icon"><ShoppingBag size={24} /></div><h3>Seu carrinho está vazio</h3><p>Escolha algo gostoso no menu e ele aparece aqui.</p><button type="button" className="secondary-button" onClick={onClose}>Voltar para o menu</button></div>
 }
@@ -273,8 +282,10 @@ function MenuView({ data, isDemo, onPlaceOrder }: MenuViewProps) {
   const [cart, setCart] = useState<CartLine[]>([])
   const [isCartOpen, setCartOpen] = useState(false)
   const [confirmation, setConfirmation] = useState<string | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedComplementIds, setSelectedComplementIds] = useState<number[]>([])
   const filteredProducts = useMemo(() => selectedCategory === 'all' ? menuProducts : menuProducts.filter((product) => product.category === selectedCategory), [selectedCategory, menuProducts])
-  const total = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0)
+  const total = cart.reduce((sum, line) => sum + (line.product.price + line.complements.reduce((n,o)=>n+o.price,0)) * line.quantity, 0)
   const count = cart.reduce((sum, line) => sum + line.quantity, 0)
 
   useEffect(() => {
@@ -283,15 +294,28 @@ function MenuView({ data, isDemo, onPlaceOrder }: MenuViewProps) {
 
   const addProduct = (product: Product) => {
     setConfirmation(null)
-    setCart((current) => {
-      const found = current.find((line) => line.product.id === product.id)
-      return found ? current.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line) : [...current, { product, quantity: 1 }]
-    })
+    if ((product.complements ?? []).some(group => group.options.length > 0)) {
+      setSelectedProduct(product)
+      setSelectedComplementIds([])
+      return
+    }
+    addLineToCart(product, [])
   }
-  const adjust = (productId: number, amount: number) => setCart((current) => current.flatMap((line) => line.product.id !== productId ? [line] : line.quantity + amount > 0 ? [{ ...line, quantity: line.quantity + amount }] : []))
+  const addLineToCart = (product: Product, complements: ComplementOption[]) => {
+    const ids = complements.map(o=>o.id).sort((a,b)=>a-b)
+    const lineId = String(product.id)+':'+ids.join(',')
+    setCart(current => {
+      const found = current.find(line=>line.lineId===lineId)
+      return found ? current.map(line=>line.lineId===lineId?{...line,quantity:line.quantity+1}:line) : [...current,{product,quantity:1,complements,lineId}]
+    })
+    setSelectedProduct(null)
+    setSelectedComplementIds([])
+  }
+  const adjust = (lineId: string, amount: number) => setCart(current => current.flatMap(line=>line.lineId!==lineId?[line]:line.quantity+amount>0?[{...line,quantity:line.quantity+amount}]:[]))
+
 
   const submitOrder = async (form: OrderForm) => {
-    const items = cart.map((line) => ({ productId: line.product.id, quantity: line.quantity }))
+    const items = cart.map((line) => ({ productId: line.product.id, quantity: line.quantity, complementIds: line.complements.map(o=>o.id) }))
     const orderNumber = onPlaceOrder ? await onPlaceOrder(form, items) : null
     const firstName = form.name.split(' ')[0]
     setCartOpen(false)
@@ -315,6 +339,7 @@ function MenuView({ data, isDemo, onPlaceOrder }: MenuViewProps) {
       <footer className="site-footer"><div><span className="brand brand--footer"><span className="brand-mark">F</span><span>FB3d2y <b>Menu</b></span></span><p>Cardápios próximos, pedidos simples.</p></div><span className="footer-note">feito para negócios locais · beta</span></footer>
       {confirmation && <div className="toast"><CheckCircle2 size={18} /><span>{confirmation}</span><button type="button" onClick={() => setConfirmation(null)} aria-label="Fechar aviso"><X size={15} /></button></div>}
       {count > 0 && !isCartOpen && <button className="floating-cart" type="button" onClick={() => setCartOpen(true)}><span><ShoppingBag size={18} /> Seu pedido</span><b>{formatPrice(total)} <span className="cart-count">{count}</span></b></button>}
+      {selectedProduct&&<ComplementPicker product={selectedProduct} selectedIds={selectedComplementIds} onToggle={id=>setSelectedComplementIds(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id])} onClose={()=>setSelectedProduct(null)} onAdd={()=>addLineToCart(selectedProduct,(selectedProduct.complements??[]).flatMap(g=>g.options.filter(o=>selectedComplementIds.includes(o.id))))} />}
       {isCartOpen && (cart.length > 0 ? <CartDrawer cart={cart} isDemo={isDemo} onClose={() => setCartOpen(false)} onAdjust={adjust} onSubmit={submitOrder} /> : <div className="drawer-backdrop" onClick={() => setCartOpen(false)}><aside className="cart-drawer" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><span className="eyebrow">seu pedido</span><h2>0 itens</h2></div><button className="icon-button" type="button" onClick={() => setCartOpen(false)} aria-label="Fechar carrinho"><X size={20} /></button></div><EmptyCart onClose={() => setCartOpen(false)} /></aside></div>)}
     </div>
   )
