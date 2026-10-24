@@ -1482,3 +1482,45 @@ body { background: #f7f8f4; color: #24352c; }
   .mobile-sidebar-toggle { z-index: 1201 !important; }
   .admin-shell .admin-sidebar .admin-nav { padding-bottom: 8px; }
 }
+
+
+/* Correção final da navegação lateral em telas móveis: lista rolável e controles sempre acessíveis */
+@media (max-width: 760px) {
+  .admin-sidebar {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .admin-sidebar > .admin-nav {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding: 4px 2px 12px;
+    margin-bottom: 10px;
+  }
+  .admin-sidebar > .sidebar-bottom {
+    flex: 0 0 auto;
+    margin-top: auto;
+    padding-top: 8px;
+    background: #fdfbf7;
+  }
+  .admin-sidebar .sidebar-toggle {
+    flex: 0 0 auto;
+  }
+  .admin-shell--collapsed .admin-sidebar {
+    overflow: hidden;
+  }
+  .admin-shell--collapsed .admin-sidebar .admin-nav {
+    overflow-y: auto;
+  }
+}
