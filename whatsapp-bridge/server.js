@@ -29,15 +29,15 @@ app.use(express.json({ limit: '32kb' }))
 const PORT = Number(process.env.PORT || 3001)
 const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || '/data/whatsapp-sessions'
 const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('Configure SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY.')
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for the same Supabase project used by Menuhub Preview.')
   process.exit(1)
 }
 fs.mkdirSync(AUTH_DIR, { recursive: true })
-const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+// Use the same server-side Supabase client for token validation and database access.
+// This avoids a second, potentially mismatched anon key causing false session failures.
+const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
 const sessions = new Map()
 const processedMessages = new Map()
 const senderReplyTimes = new Map()
@@ -116,13 +116,33 @@ function safeId(value) {
 }
 async function ownerFor(req, restaurantId) {
   const header = req.headers.authorization || ''
-  const token = header.startsWith('Bearer ') ? header.slice(7) : ''
-  if (!token) return null
-  const { data: userData, error: userError } = await authClient.auth.getUser(token)
-  if (userError || !userData.user) return null
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
+  if (!token) return { ok: false, status: 401, error: 'Sua sessão do Menuhub não foi enviada. Saia da conta e entre novamente.' }
+
+  let userData
+  try {
+    const result = await admin.auth.getUser(token)
+    if (result.error || !result.data?.user) {
+      log.warn({ authError: result.error?.message || 'user_not_found' }, 'Menuhub bearer token rejected')
+      return { ok: false, status: 401, error: 'A sessão do Menuhub expirou ou não corresponde ao projeto Supabase configurado no servidor. Entre novamente; se persistir, confira SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no Render.' }
+    }
+    userData = result.data.user
+  } catch (err) {
+    log.error({ err }, 'Menuhub token validation failed')
+    return { ok: false, status: 503, error: 'Não foi possível validar sua sessão no Supabase. Confira a configuração do servidor.' }
+  }
+
   const { data: restaurant, error } = await admin.from('empresas').select('id,dono_id').eq('id', Number(restaurantId)).maybeSingle()
-  if (error || !restaurant || restaurant.dono_id !== userData.user.id) return null
-  return userData.user
+  if (error) {
+    log.error({ error: error.message, restaurantId }, 'Restaurant ownership lookup failed')
+    return { ok: false, status: 503, error: 'O servidor não conseguiu consultar o restaurante no Supabase. Confirme se as credenciais do Render pertencem ao banco de teste correto.' }
+  }
+  if (!restaurant) return { ok: false, status: 404, error: 'Restaurante não encontrado no projeto Supabase configurado no servidor.' }
+  if (String(restaurant.dono_id) !== String(userData.id)) {
+    log.warn({ restaurantId, userId: userData.id, ownerId: restaurant.dono_id }, 'Restaurant ownership check failed')
+    return { ok: false, status: 403, error: 'Este restaurante não pertence à conta conectada. Selecione o restaurante correto no Menuhub.' }
+  }
+  return { ok: true, user: userData }
 }
 function sessionPath(id) { return path.join(AUTH_DIR, id) }
 function stateFor(id) {
@@ -197,10 +217,15 @@ app.get('/health', (_req, res) => res.json({ ok: true, service: 'menuhub-whatsap
 app.use('/api/whatsapp/:restaurantId', async (req, res, next) => {
   const id = safeId(req.params.restaurantId)
   if (!id) return res.status(400).json({ error: 'Restaurante inválido.' })
-  const user = await ownerFor(req, id)
-  if (!user) return res.status(401).json({ error: 'Sessão inválida ou sem permissão para este restaurante.' })
-  req.restaurantId = id
-  next()
+  try {
+    const authorization = await ownerFor(req, id)
+    if (!authorization.ok) return res.status(authorization.status).json({ error: authorization.error })
+    req.restaurantId = id
+    next()
+  } catch (err) {
+    log.error({ err, restaurantId: id }, 'Unexpected WhatsApp authorization error')
+    return res.status(500).json({ error: 'Erro inesperado ao validar o acesso. Consulte os logs do serviço no Render.' })
+  }
 })
 app.post('/api/whatsapp/:restaurantId/connect', async (req, res) => {
   const id = req.restaurantId
