@@ -1,0 +1,141 @@
+import express from 'express'
+import fs from 'node:fs'
+import path from 'node:path'
+import pino from 'pino'
+import QRCode from 'qrcode'
+import { createClient } from '@supabase/supabase-js'
+import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
+
+const app = express()
+app.use(express.json({ limit: '32kb' }))
+const PORT = Number(process.env.PORT || 3001)
+const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || '/data/whatsapp-sessions'
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Configure SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY.')
+  process.exit(1)
+}
+fs.mkdirSync(AUTH_DIR, { recursive: true })
+const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+const sessions = new Map()
+const log = pino({ level: process.env.LOG_LEVEL || 'info' })
+
+function safeId(value) {
+  const id = Number(value)
+  if (!Number.isSafeInteger(id) || id < 1) return null
+  return String(id)
+}
+async function ownerFor(req, restaurantId) {
+  const header = req.headers.authorization || ''
+  const token = header.startsWith('Bearer ') ? header.slice(7) : ''
+  if (!token) return null
+  const { data: userData, error: userError } = await authClient.auth.getUser(token)
+  if (userError || !userData.user) return null
+  const { data: restaurant, error } = await admin.from('empresas').select('id,dono_id').eq('id', Number(restaurantId)).maybeSingle()
+  if (error || !restaurant || restaurant.dono_id !== userData.user.id) return null
+  return userData.user
+}
+function sessionPath(id) { return path.join(AUTH_DIR, id) }
+function stateFor(id) {
+  if (!sessions.has(id)) sessions.set(id, { status: 'disconnected', qr: null, qrDataUrl: null, phone: null, socket: null, starting: false, lastError: null })
+  return sessions.get(id)
+}
+async function startSession(id) {
+  const state = stateFor(id)
+  if (state.starting || state.status === 'connected') return state
+  state.starting = true
+  state.status = 'connecting'
+  state.qr = null
+  state.qrDataUrl = null
+  state.lastError = null
+  try {
+    const { state: authState, saveCreds } = await useMultiFileAuthState(sessionPath(id))
+    let version
+    try { ({ version } = await fetchLatestBaileysVersion()) } catch { version = undefined }
+    const sock = makeWASocket({
+      ...(version ? { version } : {}),
+      auth: authState,
+      logger: log.child({ restaurantId: id }),
+      printQRInTerminal: false,
+      browser: ['Menuhub', 'Chrome', '1.0.0'],
+      syncFullHistory: false,
+      markOnlineOnConnect: false
+    })
+    state.socket = sock
+    sock.ev.on('creds.update', saveCreds)
+    sock.ev.on('connection.update', async update => {
+      if (update.qr) {
+        state.qr = update.qr
+        try { state.qrDataUrl = await QRCode.toDataURL(update.qr, { width: 280, margin: 2 }) } catch { state.qrDataUrl = null }
+        state.status = 'qr'
+      }
+      if (update.connection === 'open') {
+        state.status = 'connected'
+        state.phone = sock.user?.id?.split(':')[0] || null
+        state.qr = null
+        state.qrDataUrl = null
+        state.starting = false
+        state.lastError = null
+      }
+      if (update.connection === 'close') {
+        state.starting = false
+        state.socket = null
+        const code = update.lastDisconnect?.error?.output?.statusCode
+        state.status = code === DisconnectReason.loggedOut ? 'logged_out' : 'disconnected'
+        state.qr = null
+        state.qrDataUrl = null
+        if (code !== DisconnectReason.loggedOut) {
+          setTimeout(() => { if (state.status === 'disconnected') void startSession(id).catch(err => log.error({ err }, 'Reconnect failed')) }, 3000)
+        }
+      }
+    })
+    state.starting = false
+  } catch (err) {
+    state.starting = false
+    state.status = 'error'
+    state.lastError = 'Não foi possível iniciar a sessão.'
+    log.error({ err, restaurantId: id }, 'WhatsApp session start failed')
+  }
+  return state
+}
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'menuhub-whatsapp-bridge' }))
+app.use('/api/whatsapp/:restaurantId', async (req, res, next) => {
+  const id = safeId(req.params.restaurantId)
+  if (!id) return res.status(400).json({ error: 'Restaurante inválido.' })
+  const user = await ownerFor(req, id)
+  if (!user) return res.status(401).json({ error: 'Sessão inválida ou sem permissão para este restaurante.' })
+  req.restaurantId = id
+  next()
+})
+app.post('/api/whatsapp/:restaurantId/connect', async (req, res) => {
+  const id = req.restaurantId
+  const state = stateFor(id)
+  if (state.status === 'logged_out') {
+    fs.rmSync(sessionPath(id), { recursive: true, force: true })
+    sessions.set(id, { status: 'disconnected', qr: null, qrDataUrl: null, phone: null, socket: null, starting: false, lastError: null })
+  }
+  const nextState = await startSession(id)
+  res.status(202).json({ status: nextState.status })
+})
+app.get('/api/whatsapp/:restaurantId/status', async (req, res) => {
+  const id = req.restaurantId
+  let state = stateFor(id)
+  if (!state.socket && state.status === 'disconnected' && fs.existsSync(path.join(sessionPath(id), 'creds.json'))) {
+    void startSession(id)
+    state = stateFor(id)
+  }
+  res.json({ status: state.status, phone: state.phone, qrDataUrl: state.qrDataUrl, error: state.lastError })
+})
+app.post('/api/whatsapp/:restaurantId/logout', async (req, res) => {
+  const id = req.restaurantId
+  const state = stateFor(id)
+  try { await state.socket?.logout() } catch (err) { log.warn({ err }, 'WhatsApp logout failed') }
+  try { state.socket?.end(undefined) } catch {}
+  fs.rmSync(sessionPath(id), { recursive: true, force: true })
+  sessions.set(id, { status: 'disconnected', qr: null, qrDataUrl: null, phone: null, socket: null, starting: false, lastError: null })
+  res.json({ status: 'disconnected' })
+})
+app.listen(PORT, '0.0.0.0', () => log.info({ port: PORT }, 'Menuhub WhatsApp bridge listening'))
