@@ -546,17 +546,27 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
     if(!response.ok)throw new Error(body.error||'Não foi possível acessar o serviço de WhatsApp.')
     return body as {status?:typeof bridgeStatus;phone?:string|null;qrDataUrl?:string|null;error?:string|null}
   }
-  const refreshBridge=async()=>{
-    if(!bridgeUrl||!restaurantId)return
+  const refreshBridge=async(showFeedback=false)=>{
+    if(!bridgeUrl||!restaurantId){
+      if(showFeedback)notify(!bridgeUrl?'A URL do servidor de QR não está configurada nesta versão.':'Selecione um restaurante primeiro.',true)
+      return
+    }
+    if(showFeedback)setBridgeBusy(true)
     try{
       const result=await bridgeRequest('status')
       setBridgeStatus(result.status??'disconnected')
+      setBridgeError('')
       setQrDataUrl(result.qrDataUrl??'')
       setLinkedPhone(result.phone??'')
+      if(showFeedback)notify(result.status==='qr'?'QR Code disponível para leitura.':result.status==='connected'?'WhatsApp conectado.':'Servidor respondeu; situação atual: '+(result.status??'desconectado')+'.')
     }catch(err){
+      const message=err instanceof Error ? err.message : 'Falha desconhecida ao consultar o servidor.'
       setBridgeStatus('error')
-      setBridgeError(err instanceof Error ? err.message : 'Falha desconhecida ao consultar o servidor.')
+      setBridgeError(message)
       setQrDataUrl('')
+      if(showFeedback)notify('Falha ao atualizar conexão: '+message,true)
+    }finally{
+      if(showFeedback)setBridgeBusy(false)
     }
   }
   useEffect(()=>{
@@ -633,7 +643,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
         {bridgeStatus==='qr'&&qrDataUrl&&<div className="whatsapp-qr-wrap"><img src={qrDataUrl} alt="QR Code temporário para vincular WhatsApp" /><p>O QR Code expira rapidamente. Se não funcionar, clique em atualizar conexão.</p></div>}
         {bridgeStatus==='unconfigured'&&<div className="whatsapp-notice"><strong>Falta publicar o servidor persistente</strong><p>O painel já está preparado para mostrar o QR, mas o serviço precisa ser hospedado com armazenamento persistente. Siga <code>whatsapp-bridge/README.md</code> e configure <code>VITE_WHATSAPP_BRIDGE_URL</code> no ambiente de teste da Vercel.</p></div>}
         {bridgeStatus==='error'&&<div className="whatsapp-notice"><strong>Falha na conexão com o servidor de QR</strong><p>{bridgeError||'Não foi possível acessar o servidor. Clique em atualizar conexão para tentar novamente.'}</p><small>Essa mensagem ajuda a identificar se o problema é de rede, autorização ou configuração.</small></div>}
-        <div className="whatsapp-connect-actions"><button className="primary-button" type="button" onClick={()=>void connectWhatsApp()} disabled={bridgeBusy||bridgeStatus==='connected'}>{bridgeBusy?'Aguarde…':bridgeStatus==='qr'?'Gerar novo QR Code':'Gerar QR Code de login'}</button>{bridgeStatus!=='unconfigured'&&<button className="secondary-button" type="button" onClick={()=>void refreshBridge()} disabled={bridgeBusy}>Atualizar conexão</button>}{['connected','qr','connecting','logged_out'].includes(bridgeStatus)&&<button className="secondary-button" type="button" onClick={()=>void disconnectWhatsApp()} disabled={bridgeBusy}>Desconectar</button>}</div>
+        <div className="whatsapp-connect-actions"><button className="primary-button" type="button" onClick={()=>void connectWhatsApp()} disabled={bridgeBusy||bridgeStatus==='connected'}>{bridgeBusy?'Aguarde…':bridgeStatus==='qr'?'Gerar novo QR Code':'Gerar QR Code de login'}</button>{bridgeStatus!=='unconfigured'&&<button className="secondary-button" type="button" onClick={()=>void refreshBridge(true)} disabled={bridgeBusy}>{bridgeBusy?'Consultando…':'Atualizar conexão'}</button>}{['connected','qr','connecting','logged_out'].includes(bridgeStatus)&&<button className="secondary-button" type="button" onClick={()=>void disconnectWhatsApp()} disabled={bridgeBusy}>Desconectar</button>}</div>
         <p className="printer-help">A sessão fica armazenada no servidor. Use um número de teste: a biblioteca é não oficial e pode causar desconexões ou restrições. Este QR conecta a conta, mas ainda não ativa envios automáticos de pedidos.</p>
         <label>ID do número do WhatsApp (Meta, opcional)<input value={metaPhoneId} onChange={e=>setMetaPhoneId(e.target.value)} placeholder="Usado apenas na futura integração oficial"/></label>
         <label>Observação da conexão<input value={connectionNote} onChange={e=>setConnectionNote(e.target.value)} placeholder="Ex.: número de teste vinculado"/></label>
