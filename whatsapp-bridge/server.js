@@ -47,10 +47,10 @@ function messageText(message) {
 }
 
 function chooseReply(text, config) {
-  const normalized = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase()
-  if (/\\b(cardapio|menu|comida|pratos|opcoes|opcoes do menu)\\b/.test(normalized)) return config.faqMenu
-  if (/\\b(horario|horarios|abre|aberto|fecha|fechado|funciona|funcionamento)\\b/.test(normalized)) return config.faqHours
-  if (/\\b(pagamento|pagar|pix|cartao|dinheiro|credito|debito)\\b/.test(normalized)) return config.faqPayment
+  const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (/\b(cardapio|menu|comida|pratos|opcoes|opcoes do menu)\b/.test(normalized)) return config.faqMenu
+  if (/\b(horario|horarios|abre|aberto|fecha|fechado|funciona|funcionamento)\b/.test(normalized)) return config.faqHours
+  if (/\b(pagamento|pagar|pix|cartao|dinheiro|credito|debito)\b/.test(normalized)) return config.faqPayment
   return config.welcomeMessage
 }
 
