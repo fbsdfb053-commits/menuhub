@@ -12,6 +12,7 @@ export type OrderForm = {
   phone: string
   deliveryType: 'Retirada' | 'Entrega'
   address: string
+  paymentMethod: 'Pix' | 'Dinheiro' | 'Cartão de débito' | 'Cartão de crédito' | 'A combinar'
 }
 
 export type OrderItem = { productId: number; quantity: number }
@@ -96,6 +97,7 @@ export async function createOrder(slug: string, form: OrderForm, items: OrderIte
     p_whatsapp: form.phone,
     p_tipo_entrega: form.deliveryType,
     p_endereco: form.deliveryType === 'Entrega' ? form.address : '',
+    p_forma_pagamento: form.paymentMethod,
     p_itens: items.map((i) => ({ produto_id: i.productId, quantidade: i.quantity })),
   })
   if (error) throw new Error(error.message)
