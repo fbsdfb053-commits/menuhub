@@ -536,6 +536,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
   const [bridgeBusy,setBridgeBusy]=useState(false)
   const bridgeUrl=(import.meta.env.VITE_WHATSAPP_BRIDGE_URL as string|undefined)?.replace(/\/$/,'')
   const bridgeRequest=async(path:string,method='GET')=>{
+    if(!bridgeUrl)throw new Error('O servidor de QR ainda não foi configurado.')
     const {data}=await supabase.auth.getSession()
     const token=data.session?.access_token
     if(!token)throw new Error('Sua sessão expirou. Entre novamente no Menuhub.')
