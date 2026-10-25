@@ -117,6 +117,7 @@ function RestaurantHero({ restaurant }: { restaurant: Restaurant }) {
     ? { background: `url("${restaurant.coverUrl}") center / cover no-repeat, ${restaurant.coverTone}` }
     : { background: restaurant.coverTone }
   const instagramHandle = restaurant.instagram.replace('@', '')
+  const whatsappDigits = restaurant.whatsapp?.replace(/\D/g, '') ?? ''
   const share = () => {
     const url = window.location.href
     if (navigator.share) void navigator.share({ title: restaurant.name, url }).catch(() => undefined)
@@ -135,6 +136,7 @@ function RestaurantHero({ restaurant }: { restaurant: Restaurant }) {
           <div className="identity-meta">
             {restaurant.location && <span><MapPin size={14} /> {restaurant.location}</span>}
             {instagramHandle && <a href={`https://instagram.com/${instagramHandle}`} target="_blank" rel="noopener noreferrer"><Instagram size={14} /> {restaurant.instagram}</a>}
+            {whatsappDigits && <a href={`https://wa.me/${whatsappDigits.startsWith('55') ? whatsappDigits : '55' + whatsappDigits}`} target="_blank" rel="noopener noreferrer"><MessageCircle size={14} /> WhatsApp</a>}
           </div>
         </div>
         <span className={`status-pill ${restaurant.isOpen ? 'status-pill--open' : ''}`}><span /> {restaurant.isOpen ? 'Aberto agora' : 'Fechado'}</span>
