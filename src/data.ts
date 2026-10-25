@@ -31,6 +31,7 @@ export type Restaurant = {
   manualOpen?: boolean | null
   nextOpening?: string
   instagram: string
+  whatsapp?: string
   rating?: number
   reviewCount?: number
   isOpen: boolean
