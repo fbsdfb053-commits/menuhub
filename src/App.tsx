@@ -63,7 +63,7 @@ function GoogleAccountButton({ className = 'text-button' }: { className?: string
       return
     }
     // Return to the same environment where sign-in started (preview or production).
-    const redirectTo = 'https://menuhub-git-teste-menuhub-fb3d2y.vercel.app/admin'
+    const redirectTo = `${window.location.origin}/admin`
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
