@@ -2055,3 +2055,64 @@ input::placeholder, textarea::placeholder { color: #A58B7F !important; }
   .profile-menu-trigger > span { display: none; }
   .profile-menu-panel { right: 0; }
 }
+
+
+/* Contraste e legibilidade reforçados em todo o site */
+.home-header-link {
+  color: #7D2D17 !important;
+  background: #FFF0E7;
+  border: 1px solid #F0C6B1;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.home-header-link:hover {
+  color: #69220F !important;
+  background: #FFE2D3;
+  border-color: #EBAF91;
+}
+.home-hero-copy > p,
+.home-feature-grid p,
+.admin-heading p,
+.admin-panel p,
+.panel-heading p,
+.restaurant-description,
+.product-card p,
+.site-footer p,
+.home-footer > span,
+.preview-welcome p,
+.preview-menu-row small,
+.preview-stats span,
+.preview-stats small,
+.identity-meta,
+.restaurant-hours,
+.local-badge,
+.private-tag,
+.workspace-label,
+.profile-menu-heading small,
+.profile-menu-action small,
+.profile-menu-section-title,
+.result-count,
+.product-category,
+.admin-product-row p,
+.admin-product-row small,
+.auth-card p,
+.auth-card--loading p {
+  color: #6D554A !important;
+}
+.eyebrow,
+.home-kicker {
+  color: #76513F !important;
+}
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #D95D32;
+  outline-offset: 3px;
+}
+@media (max-width: 560px) {
+  .home-header-link {
+    padding: 9px 10px;
+    font-size: 11px;
+  }
+}
