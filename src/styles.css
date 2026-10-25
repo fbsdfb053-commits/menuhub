@@ -2160,3 +2160,83 @@ body { background: #f7f8f4; color: #24352c; }
   .admin-topbar { padding-left: 8px; padding-right: 8px; }
   .admin-content { padding-left: 9px; padding-right: 9px; }
 }
+
+
+/* Correção definitiva do menu administrativo no celular */
+@media (max-width: 760px) {
+  .admin-shell .admin-sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    z-index: 1200 !important;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+  .admin-shell.admin-shell--collapsed .admin-sidebar {
+    transform: translateX(-110%) !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .admin-sidebar .admin-brand,
+  .admin-sidebar .workspace-label,
+  .admin-sidebar .restaurant-switcher,
+  .admin-sidebar .admin-nav,
+  .admin-sidebar .sidebar-bottom {
+    flex-shrink: 0 !important;
+  }
+  .admin-sidebar .admin-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 5px !important;
+    width: 100%;
+    height: auto !important;
+    min-height: max-content !important;
+    overflow: visible !important;
+    margin: 18px 0 20px !important;
+    padding: 0 0 12px !important;
+  }
+  .admin-sidebar .admin-nav__link {
+    display: flex !important;
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 44px;
+    white-space: normal;
+    text-align: left;
+    font-size: 13px;
+  }
+  .admin-sidebar .sidebar-bottom {
+    margin-top: 0 !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  .admin-shell .mobile-sidebar-backdrop {
+    z-index: 1190 !important;
+  }
+  .admin-topbar .mobile-sidebar-toggle {
+    position: relative;
+    z-index: 1;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(20, 60, 45, .08);
+  }
+  .admin-main,
+  .admin-shell:not(.admin-shell--collapsed) .admin-main,
+  .admin-shell.admin-shell--collapsed .admin-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
