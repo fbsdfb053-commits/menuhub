@@ -33,7 +33,7 @@ export default async function handler(req:Req,res:Res){
   method:'POST',
   headers:{Authorization:'Bearer '+mp,'Content-Type':'application/json','X-Idempotency-Key':idempotencyKey},
   body:JSON.stringify({
-   transaction_amount:20,
+   transaction_amount:50,
    description:'Menuhub — assinatura por 30 dias',
    payment_method_id:'pix',
    payer:{email:user.email||'cliente@menuhub.com.br'},
@@ -44,7 +44,7 @@ export default async function handler(req:Req,res:Res){
  })
  const payment=await paymentResponse.json() as {id?:number;status?:string;message?:string;point_of_interaction?:{transaction_data?:{qr_code?:string;qr_code_base64?:string;ticket_url?:string}}}
  if(!paymentResponse.ok||!payment.id)return json(res,502,{error:payment.message||'O Mercado Pago não conseguiu gerar o Pix.'})
- const saved=await db.from('pagamentos_assinatura').insert({payment_id:String(payment.id),user_id:user.id,status:payment.status||'pending',valor:20})
+ const saved=await db.from('pagamentos_assinatura').insert({payment_id:String(payment.id),user_id:user.id,status:payment.status||'pending',valor:50})
  if(saved.error)return json(res,500,{error:'O Pix foi criado, mas não foi possível registrar a cobrança. Entre em contato com o suporte.'})
  return json(res,200,{paymentId:payment.id,qrCode:payment.point_of_interaction?.transaction_data?.qr_code||'',qrCodeBase64:payment.point_of_interaction?.transaction_data?.qr_code_base64||'',ticketUrl:payment.point_of_interaction?.transaction_data?.ticket_url||''})
 }
