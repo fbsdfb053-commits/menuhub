@@ -2286,3 +2286,102 @@ body { background: #f7f8f4; color: #24352c; }
   }
   .mobile-sidebar-backdrop { z-index: 1001 !important; }
 }
+
+
+/* Menu administrativo responsivo em celulares, tablets e webviews do app */
+@media (max-width: 1024px) {
+  .admin-shell { min-height: 100dvh; }
+  .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    z-index: 1200 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(300px, 88vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 20px 15px max(24px, env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    background: #fdfbf7;
+    box-shadow: 12px 0 32px rgba(18, 45, 35, .18);
+    transition: transform .22s ease;
+  }
+  .admin-shell--collapsed .admin-sidebar {
+    transform: translateX(-110%) !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+  .admin-sidebar .admin-brand > div,
+  .admin-sidebar .workspace-label,
+  .admin-sidebar .restaurant-switcher,
+  .admin-sidebar .sidebar-toggle span,
+  .admin-sidebar .profile-chip div,
+  .admin-sidebar .admin-nav,
+  .admin-sidebar .sidebar-bottom { display: initial !important; }
+  .admin-sidebar .admin-nav {
+    display: grid !important;
+    flex: 0 0 auto;
+    gap: 5px !important;
+    margin: 18px 0 22px !important;
+    padding-bottom: 12px;
+  }
+  .admin-sidebar .admin-nav__link,
+  .admin-sidebar .sidebar-bottom .admin-nav__link {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start !important;
+    gap: 11px !important;
+    width: 100%;
+    min-height: 44px;
+    padding: 12px !important;
+    font-size: 13px !important;
+    text-align: left;
+    white-space: normal;
+  }
+  .admin-sidebar .admin-nav__link svg { flex: 0 0 18px; }
+  .admin-sidebar .sidebar-toggle {
+    display: flex !important;
+    margin: 0 0 18px !important;
+    flex-shrink: 0;
+  }
+  .admin-sidebar .sidebar-bottom { margin-top: 12px !important; }
+  .admin-shell .admin-main,
+  .admin-shell--collapsed .admin-main,
+  .admin-shell:not(.admin-shell--collapsed) .admin-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+  .mobile-sidebar-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid #d8e5d9;
+    border-radius: 9px;
+    color: var(--teal);
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .mobile-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1190 !important;
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgba(18, 28, 23, .42);
+  }
+}
