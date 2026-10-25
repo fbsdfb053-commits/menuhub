@@ -2385,3 +2385,65 @@ body { background: #f7f8f4; color: #24352c; }
     background: rgba(18, 28, 23, .42);
   }
 }
+
+
+/* Correção final: menu lateral legível e rolável em telas móveis/WebView */
+@media (max-width: 1024px) {
+  .admin-shell .admin-sidebar {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    padding-bottom: max(28px, env(safe-area-inset-bottom)) !important;
+  }
+  .admin-shell .admin-sidebar::-webkit-scrollbar { width: 5px; }
+  .admin-shell .admin-sidebar::-webkit-scrollbar-thumb { background: #b8c9bd; border-radius: 8px; }
+  .admin-shell .admin-sidebar .admin-nav {
+    display: grid !important;
+    flex: 0 0 auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .admin-shell .admin-sidebar .admin-nav__link,
+  .admin-shell .admin-sidebar .sidebar-bottom .admin-nav__link {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    min-height: 44px !important;
+    justify-content: flex-start !important;
+    white-space: normal !important;
+  }
+  .admin-shell .admin-sidebar .admin-nav__link svg { display: block !important; flex: 0 0 18px !important; }
+  .admin-shell .admin-sidebar .sidebar-bottom { display: block !important; flex: 0 0 auto !important; margin-top: 16px !important; }
+  .admin-shell .admin-sidebar .admin-brand > div,
+  .admin-shell .admin-sidebar .workspace-label,
+  .admin-shell .admin-sidebar .restaurant-switcher,
+  .admin-shell .admin-sidebar .sidebar-toggle span,
+  .admin-shell .admin-sidebar .profile-chip div { display: initial !important; }
+  .admin-shell .admin-sidebar .restaurant-switcher { display: flex !important; }
+  .admin-shell .admin-sidebar .restaurant-switcher > div { display: block !important; min-width: 0; }
+  .admin-shell .mobile-sidebar-backdrop { z-index: 1190 !important; }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+  .admin-shell.admin-shell--collapsed .admin-sidebar {
+    transform: translateX(-110%) !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .admin-shell .mobile-sidebar-toggle { position: relative; z-index: 2; }
+}
+@media (min-width: 761px) and (max-width: 1024px) {
+  .admin-shell .admin-main { width: 100% !important; margin-left: 0 !important; }
+  .admin-shell .admin-topbar { padding-left: 18px; padding-right: 18px; }
+}
