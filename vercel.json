@@ -16,6 +16,28 @@
       ],
       "destination": "https://fb3d2ymenu.com.br/:path*",
       "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "menuhub-fb3d2y.vercel.app"
+        }
+      ],
+      "destination": "https://fb3d2ymenu.com.br/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "menuhub-git-main-fb3d2y.vercel.app"
+        }
+      ],
+      "destination": "https://fb3d2ymenu.com.br/:path*",
+      "permanent": true
     }
   ]
 }
