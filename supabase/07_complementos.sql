@@ -8,8 +8,10 @@ create table if not exists public.grupos_complementos (
   descricao text,
   ordem int not null default 0,
   ativo boolean not null default true,
+  max_escolhas integer not null default 0 check (max_escolhas >= 0),
   criado_em timestamptz not null default now()
 );
+alter table public.grupos_complementos add column if not exists max_escolhas integer not null default 0 check (max_escolhas >= 0);
 create table if not exists public.opcoes_complementos (
   id serial primary key,
   grupo_id int not null references public.grupos_complementos(id) on delete cascade,
@@ -99,6 +101,15 @@ begin
   if not found then raise exception 'Um dos produtos não está mais disponível. Atualize a página.'; end if;
   v_extra:=0; v_names:='';
   if jsonb_typeof(coalesce(v_item->'complementos','[]'::jsonb))<>'array' then raise exception 'Complementos inválidos.'; end if;
+  if exists (
+    select 1 from jsonb_array_elements(coalesce(v_item->'complementos','[]'::jsonb)) chosen(value)
+    join public.opcoes_complementos o on o.id=(chosen.value->>'id')::int
+    join public.grupos_complementos g on g.id=o.grupo_id
+    join public.produto_grupos_complementos pg on pg.grupo_id=g.id and pg.produto_id=v_prod.id
+    where o.ativo and g.ativo and g.max_escolhas>0
+    group by g.id,g.max_escolhas
+    having count(*)>g.max_escolhas
+  ) then raise exception 'Você selecionou mais opções do que o permitido em um dos grupos.'; end if;
   for v_opt in select * from jsonb_array_elements(coalesce(v_item->'complementos','[]'::jsonb)) loop
    select o.* into v_option from public.opcoes_complementos o
     join public.grupos_complementos g on g.id=o.grupo_id
