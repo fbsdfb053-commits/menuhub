@@ -2526,38 +2526,3 @@ img, video, canvas, svg { max-width: 100%; }
   .profile-menu-panel { right: 10px !important; width: calc(100vw - 20px) !important; max-width: calc(100vw - 20px) !important; }
   .admin-content { padding-left: 10px !important; padding-right: 10px !important; }
 }
-
-
-/* Correção definitiva do recuo horizontal do painel no computador */
-@media (min-width: 761px) {
-  .admin-shell {
-    width: 100%;
-    overflow-x: clip;
-  }
-  .admin-shell .admin-main {
-    box-sizing: border-box !important;
-    flex: 0 0 calc(100% - 235px) !important;
-    width: calc(100% - 235px) !important;
-    max-width: calc(100% - 235px) !important;
-    min-width: 0 !important;
-    margin-left: 235px !important;
-  }
-  .admin-shell.admin-shell--collapsed .admin-main {
-    flex-basis: calc(100% - 78px) !important;
-    width: calc(100% - 78px) !important;
-    max-width: calc(100% - 78px) !important;
-    margin-left: 78px !important;
-  }
-  .admin-shell .admin-content {
-    box-sizing: border-box !important;
-    display: block;
-    width: 100% !important;
-    max-width: none !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-  .admin-shell .admin-topbar {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-}
