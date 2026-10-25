@@ -759,7 +759,7 @@ function RestaurantSettings({restaurant,saving,onSave}:{restaurant:AdminRestaura
     estado:restaurant.estado??'', localizacao:restaurant.localizacao??'',
     telefone_contato:restaurant.telefone_contato??'', whatsapp_contato:restaurant.whatsapp_contato??'',
     email_contato:restaurant.email_contato??'', horario:restaurant.horario??'',
-    instagram:restaurant.instagram??'', cor_destaque:restaurant.cor_destaque??'#0e4f59',
+    instagram:restaurant.instagram??'',
     logo_url:restaurant.logo_url??'', capa_url:restaurant.capa_url??'',
     aceita_pedidos:restaurant.aceita_pedidos, ativo:restaurant.ativo
   })},[restaurant])
