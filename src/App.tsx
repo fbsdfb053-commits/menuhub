@@ -158,7 +158,6 @@ function RestaurantHero({ restaurant }: { restaurant: Restaurant }) {
         <div className="identity-copy">
           <div className="identity-title-row"><h1>{restaurant.name}</h1></div>
           <div className="identity-meta">
-            {restaurant.rating !== undefined && <span><Star size={14} fill="currentColor" /> {restaurant.rating.toFixed(1)} {restaurant.reviewCount !== undefined && <small>({restaurant.reviewCount})</small>}</span>}
             {restaurant.location && <span><MapPin size={14} /> {restaurant.location}</span>}
             {instagramHandle && <a href={`https://instagram.com/${instagramHandle}`} target="_blank" rel="noopener noreferrer"><Instagram size={14} /> {restaurant.instagram}</a>}
           </div>
@@ -293,7 +292,7 @@ function MenuView({ data, isDemo, onPlaceOrder }: MenuViewProps) {
   const [confirmation, setConfirmation] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedComplementIds, setSelectedComplementIds] = useState<number[]>([])
-  const filteredProducts = useMemo(() => selectedCategory === 'all' ? menuProducts : menuProducts.filter((product) => product.category === selectedCategory), [selectedCategory, menuProducts])
+  const filteredProducts = useMemo(() => selectedCategory === 'all' ? [...menuCategories.flatMap(category => menuProducts.filter(product => product.category === category.id)), ...menuProducts.filter(product => !menuCategories.some(category => category.id === product.category))] : menuProducts.filter((product) => product.category === selectedCategory), [selectedCategory, menuCategories, menuProducts])
   const total = cart.reduce((sum, line) => sum + (line.product.price + line.complements.reduce((n,o)=>n+o.price,0)) * line.quantity, 0)
   const count = cart.reduce((sum, line) => sum + line.quantity, 0)
 
