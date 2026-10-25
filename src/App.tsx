@@ -134,16 +134,18 @@ function RestaurantHero({ restaurant }: { restaurant: Restaurant }) {
         <div className="identity-copy">
           <div className="identity-title-row"><h1>{restaurant.name}</h1></div>
           <div className="identity-meta">
-            {restaurant.location && <span><MapPin size={14} /> {restaurant.location}</span>}
+            <div className="identity-location">
+              {restaurant.location && <span className="identity-address"><MapPin size={14} /> {restaurant.location}</span>}
+              {restaurant.schedule && <span className="restaurant-hours"><Clock3 size={12} /> {restaurant.schedule}</span>}
+            </div>
             {instagramHandle && <a href={`https://instagram.com/${instagramHandle}`} target="_blank" rel="noopener noreferrer"><Instagram size={14} /> {restaurant.instagram}</a>}
             {whatsappDigits && <a href={`https://wa.me/${whatsappDigits.startsWith('55') ? whatsappDigits : '55' + whatsappDigits}`} target="_blank" rel="noopener noreferrer"><MessageCircle size={14} /> WhatsApp</a>}
           </div>
         </div>
         <span className={`status-pill ${restaurant.isOpen ? 'status-pill--open' : ''}`}><span /> {restaurant.isOpen ? 'Aberto agora' : 'Fechado'}</span>
       </div>
-      {restaurant.description && <p className="restaurant-description">{restaurant.description}</p>}
+      {restaurant.description && <p className="restaurant-description">"{restaurant.description}"</p>}
       {!restaurant.isOpen && <div className="restaurant-closed-notice"><strong><Clock3 size={17}/> Loja fechada</strong><span>{restaurant.nextOpening || 'Não estamos aceitando pedidos neste momento.'}</span></div>}
-      {restaurant.schedule && <div className="restaurant-hours"><Clock3 size={15} /> {restaurant.schedule}<span className="hours-separator" /> pedidos pelo menu</div>}
     </section>
   )
 }
