@@ -373,6 +373,45 @@ function AdminLoginScreen({ onBack }: { onBack: () => void }) {
   return <div className="auth-shell"><div className="auth-card auth-card--login"><a className="auth-brand" href="/" aria-label="FB3d2y Menu início"><span className="auth-mark">F</span><span>FB3d2y <b>Menu</b></span></a><span className="eyebrow">área de gerenciamento</span><h1>Seu negócio, do seu jeito.</h1><p>Entre para criar seu cardápio, personalizar produtos e acompanhar pedidos em um só lugar.</p><GoogleAccountButton className="google-button" /><button className="back-link auth-back" type="button" onClick={onBack}><ArrowLeft size={16} /> voltar ao menu</button></div></div>
 }
 
+type SubscriptionStatus = {active:boolean;free:boolean;expiresAt:string|null;status:string}
+type PixSubscription = {paymentId:number;qrCode:string;qrCodeBase64:string;ticketUrl:string}
+function SubscriptionGate({session,onActivated}:{session:Session;onActivated:(value:SubscriptionStatus)=>void}) {
+  const [loading,setLoading]=useState(false)
+  const [error,setError]=useState('')
+  const [pix,setPix]=useState<PixSubscription|null>(null)
+  const createPix=async()=>{
+    setLoading(true);setError('')
+    try {
+      const response=await fetch('/api/assinatura',{method:'POST',headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({})})
+      const data=await response.json()
+      if(!response.ok)throw new Error(data.error||'Não foi possível gerar o Pix.')
+      setPix(data)
+    } catch(e) { setError(e instanceof Error?e.message:'Não foi possível gerar o Pix.') }
+    finally { setLoading(false) }
+  }
+  const checkPayment=async()=>{
+    setLoading(true);setError('')
+    try {
+      const response=await fetch('/api/assinatura',{headers:{Authorization:'Bearer '+session.access_token}})
+      const data=await response.json()
+      if(!response.ok)throw new Error(data.error||'Não foi possível consultar a assinatura.')
+      if(data.active)onActivated(data as SubscriptionStatus)
+      else setError('Pagamento ainda não confirmado. Aguarde a confirmação do Mercado Pago e tente novamente.')
+    } catch(e) { setError(e instanceof Error?e.message:'Não foi possível consultar a assinatura.') }
+    finally { setLoading(false) }
+  }
+  return <div className="auth-shell"><div className="auth-card">
+    <a className="auth-brand" href="/" aria-label="FB3d2y Menu início"><span className="auth-mark">F</span><span>FB3d2y <b>Menu</b></span></a>
+    <span className="eyebrow">acesso ao MenuHub</span><h1>Assinatura necessária</h1>
+    <p>Para criar menus e usar o painel, ative sua assinatura. Contas previamente autorizadas têm acesso gratuito.</p>
+    <section className="admin-panel"><div className="panel-heading"><div><span className="eyebrow">plano de acesso</span><h2>MenuHub completo</h2></div><strong>R$ 50,00</strong></div>
+    <p>Pagamento por Pix para liberar 30 dias de acesso.</p>
+    {!pix?<button className="primary-button" type="button" disabled={loading} onClick={()=>void createPix()}>{loading?'Gerando Pix…':'Pagar R$ 50,00 com Pix'}</button>:<div className="subscription-pix"><h3>Pix para pagamento #{pix.paymentId}</h3>{pix.qrCodeBase64&&<img alt="QR Code Pix" style={{display:'block',width:220,maxWidth:'100%',height:'auto',margin:'16px auto'}} src={'data:image/png;base64,'+pix.qrCodeBase64}/ >}{pix.qrCode&&<><label>Pix copia e cola<textarea readOnly value={pix.qrCode} rows={4}/></label><button className="primary-button" type="button" onClick={()=>{void navigator.clipboard.writeText(pix.qrCode);setError('Código Pix copiado.')}}>Copiar código Pix</button></>}{pix.ticketUrl&&<p><a href={pix.ticketUrl} target="_blank" rel="noreferrer">Abrir cobrança no Mercado Pago</a></p>}<button className="secondary-button" type="button" disabled={loading} onClick={()=>void checkPayment()}>{loading?'Consultando…':'Já paguei — verificar acesso'}</button></div>}
+    {error&&<p className="form-error" role="alert">{error}</p>}
+    </section>
+  </div></div>
+}
+
 type AdminRestaurant = { id:number; nome:string; slug:string; descricao:string|null; localizacao:string|null; endereco:string|null; cep:string|null; cidade:string|null; estado:string|null; cnpj:string|null; email_contato:string|null; telefone_contato:string|null; whatsapp_contato:string|null; horario:string|null; horario_funcionamento?:Record<string,{closed:boolean;open:string;close:string}>|null; status_loja_manual?:boolean|null; instagram:string|null; cor_destaque:string|null; logo_url:string|null; capa_url:string|null; ativo:boolean; aceita_pedidos:boolean }
 type AdminCategory = { id:number; nome:string; ordem:number }
 type AdminProduct = { id:number; nome:string; descricao:string|null; preco:number; categoria_id:number|null; imagem_url:string|null; disponivel:boolean; ordem:number }
@@ -476,6 +515,8 @@ function AdminView({ onBack }: { onBack: () => void }) {
   if(authLoading)return <div className="auth-shell"><div className="auth-card auth-card--loading"><div className="auth-mark">F</div><p>Verificando sua conta…</p></div></div>
   if(!hasSupabaseConfig)return <StatusScreen message="Configure SUPABASE_URL e SUPABASE_ANON_KEY nas variáveis da Vercel."/>
   if(!session)return <AdminLoginScreen onBack={onBack}/>
+  if(subscription===null)return <div className="auth-shell"><div className="auth-card"><span className="auth-mark">F</span><h1>Verificando acesso</h1>{subscriptionError?<><p className="form-error">{subscriptionError}</p><button className="primary-button" type="button" onClick={async()=>{setSubscriptionError('');try{const response=await fetch('/api/assinatura',{headers:{Authorization:'Bearer '+session.access_token}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Não foi possível consultar a assinatura.');setSubscription(data)}catch(error){setSubscriptionError(error instanceof Error?error.message:'Não foi possível consultar a assinatura.')}}}>Tentar novamente</button></>:<p>Confirmando se esta conta tem acesso gratuito ou assinatura ativa…</p>}</div></div>
+  if(!subscription.active)return <SubscriptionGate session={session} onActivated={setSubscription}/>
   const addWaiter=async(e:React.FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!selected||!waiterName.trim())return;const {data,error}=await supabase.from('garcons').insert({empresa_id:selected.id,nome:waiterName.trim(),telefone:waiterPhone.trim()||null,ativo:true}).select('id,nome,telefone,ativo').single();if(error){notify('Não foi possível cadastrar o garçom. O SQL 09 ainda não foi aplicado no projeto Supabase de teste. Execute supabase/09_comandas_garcons.sql no SQL Editor e recarregue o painel. '+error.message,true);return}setWaiters(old=>[...old,data as any].sort((a,b)=>a.nome.localeCompare(b.nome)));setWaiterName('');setWaiterPhone('');notify('Garçom cadastrado.')}
   const toggleWaiter=async(w:{id:number;ativo:boolean})=>{const {error}=await supabase.from('garcons').update({ativo:!w.ativo}).eq('id',w.id);if(error){notify('Não foi possível atualizar o garçom: '+error.message,true);return}setWaiters(old=>old.map(x=>x.id===w.id?{...x,ativo:!w.ativo}:x));notify(w.ativo?'Garçom desativado.':'Garçom reativado.')}
   const openTab=async(e:React.FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!selected||!tabTable.trim())return;const {data,error}=await supabase.from('comandas').insert({empresa_id:selected.id,mesa:tabTable.trim(),garcom_id:tabWaiter?Number(tabWaiter):null,status:'aberta'}).select('id,mesa,garcom_id,status,observacoes,created_at,closed_at').single();if(error){notify('Não foi possível abrir a comanda: '+error.message,true);return}setTabs(old=>[{...(data as any),garcons:waiters.find(w=>w.id===Number(tabWaiter))?{nome:waiters.find(w=>w.id===Number(tabWaiter))!.nome}:null,itens_comanda:[]},...old]);setActiveTabId(data.id);setTabTable('');notify('Comanda aberta.')}
