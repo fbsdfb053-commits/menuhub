@@ -27,6 +27,9 @@ export type Restaurant = {
   description: string
   location: string
   schedule: string
+  scheduleConfig?: Record<string, { closed: boolean; open: string; close: string }>
+  manualOpen?: boolean | null
+  nextOpening?: string
   instagram: string
   rating?: number
   reviewCount?: number
