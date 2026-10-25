@@ -2264,3 +2264,10 @@ input::placeholder, textarea::placeholder { color: #6D5A51 !important; opacity: 
   .sidebar-collapse-edge { right: -8px; width: 18px; height: 30px; }
   .selected-menu-actions > button { flex: 1 1 100%; justify-content: center; }
 }
+
+
+.all-categories-list { display: flex; flex-direction: column; gap: 30px; }
+.all-category-section { min-width: 0; }
+.all-category-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line, #eadfd8); }
+.all-category-heading h3 { margin: 0; font-size: 20px; font-weight: 800; color: var(--ink, #2c2926); }
+.all-category-heading span { font-size: 12px; color: var(--muted, #80756e); white-space: nowrap; }
