@@ -784,7 +784,7 @@ function HomePage() {
             <p>Crie seu cardápio online, organize seus produtos e acompanhe os pedidos em um só lugar. Simples para você, prático para seus clientes.</p>
             <div className="home-actions">
               <a className="home-primary-button" href="/admin">Começar com Google <ChevronRight size={18}/></a>
-              <a className="home-secondary-button" href="/menu/yamamoto-sushibar">Ver meu SushiBar</a>
+              <a className="home-example-button" href="/menu/yamamoto-sushibar">Veja um exemplo de menu <ChevronRight size={17}/></a>
             </div>
             <div className="home-trust"><span><Check size={15}/> Personalize seus produtos</span><span><Check size={15}/> Gerencie seus pedidos</span></div>
           </div>
