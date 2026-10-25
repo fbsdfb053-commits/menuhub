@@ -88,13 +88,13 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     manualOpen,
     nextOpening: storeStatus.nextOpening,
     instagram: instagram ? `@${instagram}` : '',
+    whatsapp: typeof e.whatsapp_contato === 'string' ? e.whatsapp_contato : '',
     isOpen: storeStatus.isOpen,
     logoLetter: String(e.nome ?? '?').trim().charAt(0).toUpperCase() || '?',
     logoUrl: safeImageUrl(e.logo_url),
     coverUrl: safeImageUrl(e.capa_url),
     coverTone: `linear-gradient(120deg, color-mix(in srgb, ${accent} 40%, #000) 0%, ${accent} 100%)`,
     accent,
-    rating: e.slug === 'yamamoto-sushibar' ? 4.7 : undefined,
   }
 
   const rawProducts: any[] = raw.produtos ?? []
