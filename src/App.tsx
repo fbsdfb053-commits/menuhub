@@ -413,7 +413,7 @@ type AdminRestaurant = { id:number; nome:string; slug:string; descricao:string|n
 type AdminCategory = { id:number; nome:string; ordem:number }
 type AdminProduct = { id:number; nome:string; descricao:string|null; preco:number; categoria_id:number|null; imagem_url:string|null; disponivel:boolean; ordem:number }
 type AdminComplementOption = {id:number;nome:string;preco_adicional:number;ativo:boolean;ordem:number}
-type AdminComplementGroup = {id:number;empresa_id:number;nome:string;descricao:string|null;ordem:number;ativo:boolean;opcoes_complementos:AdminComplementOption[]}
+type AdminComplementGroup = {id:number;empresa_id:number;nome:string;descricao:string|null;ordem:number;ativo:boolean;max_escolhas:number;opcoes_complementos:AdminComplementOption[]}
 type AdminOrder = { id:number; cliente_nome:string; cliente_whatsapp:string; total:number; status:string; tipo_entrega:string; endereco_entrega:string|null; criado_em:string; origem?:string|null; forma_pagamento?:string|null; observacoes?:string|null; precisa_troco?:boolean|null; troco_para?:number|null }
 function makeSlug(value:string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,55) }
 function AdminView({ onBack }: { onBack: () => void }) {
