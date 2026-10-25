@@ -1757,3 +1757,128 @@ body { background: #f7f8f4; color: #24352c; }
     overscroll-behavior-y: contain !important;
   }
 }
+
+
+/* Paleta Pôr do Sol — alteração exclusivamente visual */
+:root {
+  color-scheme: dark;
+  --ink: #FFF5EF;
+  --muted: #CBB3A7;
+  --line: #53382E;
+  --paper: #30201B;
+  --teal: #FF7849;
+  --teal-dark: #1C1412;
+  --accent: #FFC857;
+  --mint: #483026;
+  color: #FFF5EF;
+  background: #1C1412;
+}
+html, body { background: #1C1412 !important; color: #FFF5EF; }
+body { color: #FFF5EF !important; }
+.site-header, .site-footer, .menu-main,
+.home-page, .admin-shell, .admin-main, .admin-content,
+.auth-shell { background-color: #1C1412 !important; color: #FFF5EF; }
+.site-header, .site-footer, .category-nav, .home-features { border-color: #53382E !important; }
+.brand, .text-button, .link-button, .back-link, .home-header-link,
+.admin-brand, .admin-nav__link--active, .section-heading h2,
+.panel-heading h2, .admin-heading h1, .admin-panel h2,
+.admin-panel h3, .admin-card h2, .admin-card h3,
+.identity-title-row h1, .product-card h3 { color: #FFF5EF !important; }
+.brand b, .local-badge, .private-tag, .identity-meta, .restaurant-description,
+.restaurant-hours, .category-link, .section-heading .result-count,
+.product-card p, .site-footer p, .footer-note, .home-hero-copy > p,
+.home-feature-grid p, .admin-heading p, .admin-panel p,
+.admin-nav__link, .workspace-label, .admin-sidebar .profile-chip,
+.preview-welcome p, .preview-stats span, .preview-stats small { color: #CBB3A7 !important; }
+.brand-mark, .restaurant-avatar, .auth-mark, .phone-brand-mark {
+  background: #FF7849 !important; color: #1C1412 !important;
+}
+.admin-sidebar, .admin-topbar, .cart-drawer, .auth-card,
+.preview-window, .preview-stats > div, .home-feature-grid article,
+.home-floating-note, .product-card, .restaurant-switcher,
+.stats-grid .stat-card, .admin-panel, .restaurant-admin-card,
+.admin-create-form, .admin-settings-form, .admin-data-panel,
+.admin-product-form, .admin-card, .stat-card, .tab-manager-card,
+.qz-panel, .order-edit-modal, .complement-picker,
+.sales-period, .sales-chart__track, .sales-table th,
+.admin-orders-table th, .admin-orders-note, .counter-order-form,
+.printer-settings-form, .whatsapp-qr-wrap {
+  background: #30201B !important;
+  color: #FFF5EF !important;
+  border-color: #53382E !important;
+}
+.admin-sidebar { background: #241813 !important; border-right-color: #53382E !important; }
+.admin-sidebar .sidebar-bottom { background: #241813 !important; }
+.admin-nav__link:hover, .admin-nav__link--active,
+.account-link, .work-mode-button--active, .sales-period__button--active {
+  color: #1C1412 !important; background: #FFC857 !important; border-color: #FFC857 !important;
+}
+.restaurant-switcher, .account-link, .work-mode-button, .secondary-button,
+.order-print-button, .order-edit-button, .counter-quantity button,
+.quantity-control button, .icon-button, .add-button, .phone-add {
+  color: #FFC857 !important; background: #3A261F !important; border-color: #684435 !important;
+}
+.primary-button, .home-primary-button, .email-submit, .floating-cart,
+.primary-button--full, .phone-cart, .delivery-option--active {
+  color: #1C1412 !important; background: #FF7849 !important; border-color: #FF7849 !important;
+}
+.primary-button:hover, .home-primary-button:hover, .email-submit:hover,
+.add-button:hover, .floating-cart:hover { background: #FFC857 !important; border-color: #FFC857 !important; color: #1C1412 !important; }
+.category-link--active, .category-link--active span,
+.product-card strong, .cart-line__total, .drawer-total strong,
+.tab-manager-total strong, .sales-table td:first-child,
+.sales-table td:last-child { color: #FFC857 !important; }
+.category-link--active:after, .sales-chart__bar, .sales-status-track > div,
+.toggle-availability { background: #FF7849 !important; }
+.product-card, .product-art { border-color: #53382E !important; }
+.order-form input, .order-form select, .order-form textarea,
+.editor-form input, .editor-form textarea, .email-login-form input,
+.counter-order-form input, .counter-order-form select,
+.printer-settings-form input:not([type=file]), .qz-panel select,
+.admin-order-action select, .order-edit-modal input:not([type=checkbox]),
+.order-edit-modal select, .order-edit-modal textarea,
+.admin-product-form input, .admin-product-form select,
+.admin-product-form textarea, .admin-create-form input,
+.admin-settings-form input, .admin-data-panel input,
+.admin-data-panel select, .admin-data-panel textarea {
+  background: #1C1412 !important; color: #FFF5EF !important; border-color: #684435 !important;
+}
+input::placeholder, textarea::placeholder { color: #A98D7F !important; }
+.order-form label, .editor-form label, .counter-order-form label,
+.printer-settings-form label, .email-login-form label,
+.admin-panel label, .admin-card label { color: #CBB3A7 !important; }
+.admin-orders-table th, .sales-table th { color: #CBB3A7 !important; background: #241813 !important; }
+.admin-orders-table td, .sales-table td, .tab-manager-items span,
+.tab-manager-items strong, .tab-manager-total span { color: #FFF5EF !important; border-color: #53382E !important; }
+.admin-orders-table tbody tr:hover, .sales-table tbody tr:hover { background: #3A261F !important; }
+.home-features { background: #241813 !important; }
+.home-primary-button { box-shadow: 0 7px 17px rgba(0,0,0,.22) !important; }
+.preview-menu-icon, .preview-menu-icon--gold, .home-feature-icon,
+.empty-cart__icon, .admin-product-placeholder {
+  color: #1C1412 !important; background: #FFC857 !important;
+}
+.phone-frame { background: #241813 !important; border-color: #684435 !important; }
+.phone-screen { background: #30201B !important; color: #FFF5EF !important; }
+.phone-status, .phone-menu-header, .phone-product, .phone-product b,
+.preview-menu-row strong { color: #FFF5EF !important; border-color: #53382E !important; }
+.phone-cover { background: radial-gradient(circle at 75% 30%, rgba(255,200,87,.25), transparent 30%), linear-gradient(135deg,#1C1412,#6B3425 70%,#FF7849) !important; }
+.home-floating-note small, .preview-live, .phone-menu-header small { color: #CBB3A7 !important; }
+.status-pill, .status-pill--open, .private-tag span, .pulse-dot,
+.phone-menu-open, .whatsapp-state--on, .qz-status--connected {
+  color: #FFC857 !important; background: #3A261F !important; border-color: #684435 !important;
+}
+.status-pill span, .pulse-dot, .private-tag span { background: #FFC857 !important; box-shadow: 0 0 0 4px rgba(255,200,87,.12) !important; }
+.admin-notice, .sales-report__notice, .whatsapp-notice, .whatsapp-template-note,
+.whatsapp-connection-status, .qz-status, .form-error, .account-error {
+  color: #FFE3A1 !important; background: #3A2A1A !important; border-color: #684435 !important;
+}
+.toast { color: #FFF5EF !important; background: #30201B !important; border-color: #FF7849 !important; }
+.drawer-backdrop, .mobile-sidebar-backdrop { background: rgba(12, 7, 5, .68) !important; }
+.admin-sidebar > .admin-nav::-webkit-scrollbar-thumb,
+.admin-sidebar::-webkit-scrollbar-thumb { background: #684435 !important; }
+.admin-sidebar > .admin-nav { scrollbar-color: #684435 transparent !important; }
+@media (max-width: 760px) {
+  .admin-shell .admin-sidebar, .admin-shell .admin-sidebar .sidebar-bottom {
+    background: #241813 !important; border-color: #53382E !important;
+  }
+}
