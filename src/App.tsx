@@ -378,7 +378,7 @@ type AdminOrder = { id:number; cliente_nome:string; cliente_whatsapp:string; tot
 function makeSlug(value:string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,55) }
 function AdminView({ onBack }: { onBack: () => void }) {
   const [session,setSession]=useState<Session|null>(null), [authLoading,setAuthLoading]=useState(true), [activeTab,setActiveTab]=useState('dashboard')
-  const [sidebarCollapsed,setSidebarCollapsed]=useState(()=>typeof window!=='undefined'&&window.matchMedia('(max-width: 760px)').matches)
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(()=>typeof window!=='undefined'&&window.matchMedia('(max-width: 1024px)').matches)
   const [restaurants,setRestaurants]=useState<AdminRestaurant[]>([]), [selectedId,setSelectedId]=useState<number|null>(null)
   const [cats,setCats]=useState<AdminCategory[]>([]), [items,setItems]=useState<AdminProduct[]>([]), [orders,setOrders]=useState<AdminOrder[]>([])
   const [complementGroups,setComplementGroups]=useState<AdminComplementGroup[]>([]),[productGroupLinks,setProductGroupLinks]=useState<Record<number,number[]>>({}),[newGroupName,setNewGroupName]=useState(''),[newGroupOptions,setNewGroupOptions]=useState(''),[newProductGroupIds,setNewProductGroupIds]=useState<number[]>([])
