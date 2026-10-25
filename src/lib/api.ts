@@ -88,7 +88,7 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     accent,
     available: true,
     imageUrl: safeImageUrl(p.imagem_url),
-    complements: ((p.complementos ?? []) as any[]).map((g): ComplementGroup => ({ id:Number(g.id), name:String(g.nome), description:g.descricao ?? undefined, options:((g.opcoes ?? []) as any[]).map(o=>({id:Number(o.id),name:String(o.nome),price:Number(o.preco_adicional ?? 0)})) })),
+    complements: ((p.complementos ?? []) as any[]).map((g): ComplementGroup => ({ id:Number(g.id), name:String(g.nome), description:g.descricao ?? undefined, maxSelections:Number(g.max_escolhas ?? 0), options:((g.opcoes ?? []) as any[]).map(o=>({id:Number(o.id),name:String(o.nome),price:Number(o.preco_adicional ?? 0)})) })),
   }))
 
   return { restaurant, categories: categories.filter((c) => c.count > 0), products }
