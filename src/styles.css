@@ -2280,3 +2280,25 @@ input::placeholder, textarea::placeholder { color: #6D5A51 !important; opacity: 
 
 .home-example-button { min-height: 48px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #b85f36; border-radius: 10px; color: #fffaf5; background: linear-gradient(135deg, #c96a3c, #a84628); font-size: 12px; font-weight: 800; box-shadow: 0 8px 20px rgba(168,70,40,.24); transition: transform .2s, box-shadow .2s, background .2s; }
 .home-example-button:hover { transform: translateY(-2px); background: linear-gradient(135deg, #d87848, #923b23); box-shadow: 0 11px 24px rgba(168,70,40,.3); }
+
+
+/* Ajustes sutis do cabeçalho e da navegação do cardápio */
+.identity-meta { align-items: flex-start; flex-wrap: wrap; }
+.identity-location { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.identity-address { display: inline-flex; align-items: center; gap: 5px; }
+.identity-location .restaurant-hours { display: inline-flex; align-items: center; gap: 5px; margin: 0; color: #8a958e; font-size: 10px; font-weight: 400; line-height: 1.35; text-transform: none; letter-spacing: 0; }
+.restaurant-description { max-width: none; margin: 13px 35px 8px; text-align: right; font-size: 13px; font-style: italic; font-weight: 400; line-height: 1.6; }
+.category-nav { min-height: 0; height: auto; gap: 7px; margin-top: 17px; padding: 10px 8px; border: 0; border-top: 1px solid #edf0eb; border-bottom: 1px solid #edf0eb; border-radius: 0; background: transparent; }
+.category-link { padding: 8px 12px; border: 1px solid transparent; border-radius: 8px; color: #7c877f; font-size: 12px; font-weight: 500; }
+.category-link:hover { color: #374a3e; border-color: #e9ede7; background: #f8faf6; transform: none; }
+.category-link span { margin-left: 5px; color: #a1aaa3; font-size: 10px; font-weight: 400; }
+.category-link--active { color: #315e43; border-color: #e2ebe0; background: #f1f6ef; box-shadow: none; }
+.category-link--active span { color: #728b75; }
+@media (max-width: 680px) {
+  .identity-meta { gap: 10px; }
+  .identity-location { flex-basis: 100%; }
+  .identity-location .restaurant-hours { font-size: 9px; }
+  .restaurant-description { margin: 12px 12px 8px; font-size: 11px; }
+  .category-nav { gap: 4px; margin: 13px -18px 0; padding: 8px 14px; }
+  .category-link { padding: 7px 10px; font-size: 11px; }
+}
