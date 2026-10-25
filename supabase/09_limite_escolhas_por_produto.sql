@@ -11,7 +11,7 @@ returns jsonb language sql stable security definer set search_path=public as $$
   'produtos',coalesce((select jsonb_agg(jsonb_build_object(
     'id',p.id,'nome',p.nome,'descricao',p.descricao,'preco',p.preco,'imagem_url',p.imagem_url,'categoria_id',p.categoria_id,
     'complementos',coalesce((select jsonb_agg(jsonb_build_object(
-      'id',g.id,'nome',g.nome,'descricao',g.descricao,'max_selecoes',ppg.max_selecoes,
+      'id',g.id,'nome',g.nome,'descricao',g.descricao,'max_selecoes',pg.max_selecoes,
       'opcoes',coalesce((select jsonb_agg(jsonb_build_object('id',o.id,'nome',o.nome,'preco_adicional',o.preco_adicional) order by o.ordem,o.id)
         from public.opcoes_complementos o where o.grupo_id=g.id and o.ativo),'[]'::jsonb)
     ) order by g.ordem,g.id) from public.produto_grupos_complementos pg join public.grupos_complementos g on g.id=pg.grupo_id
