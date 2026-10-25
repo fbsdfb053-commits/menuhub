@@ -2218,3 +2218,25 @@ input::placeholder, textarea::placeholder { color: #6D5A51 !important; opacity: 
 .restaurant-switcher__avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .phone-cover--sushi { background: radial-gradient(ellipse at 72% 30%, rgba(245,190,139,.7), transparent 26%), linear-gradient(135deg,#251b18 0%,#684332 48%,#c17b4c 100%) !important; }
 .phone-cover--sushi::after { content: "🍣  🍱  🍣"; position: absolute; right: 9px; bottom: 8px; font-size: 21px; letter-spacing: 2px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
+
+/* Cadastro do restaurante: upload de foto e banner */
+.restaurant-image-upload-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:4px 0 18px; }
+.restaurant-image-upload-grid > label { display:flex; flex-direction:column; gap:9px; min-width:0; padding:14px; border:1px solid #eadbd1; border-radius:12px; background:#fffaf6; color:#49352d; font-weight:650; }
+.restaurant-image-upload-grid input[type=file] { width:100%; min-width:0; color:#59463d; font-size:12px; }
+.restaurant-image-upload-grid img { display:block; width:100%; height:140px; object-fit:cover; border-radius:9px; background:#f0e5dd; }
+.restaurant-image-upload-grid img.restaurant-banner-preview { height:110px; }
+.complement-admin-group__heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; }
+.complement-admin-group__heading > div:first-child { display:flex; flex-direction:column; gap:4px; }
+.complement-admin-options { display:flex; flex-direction:column; border-top:1px solid #eadbd1; }
+.complement-admin-option { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #f0e6df; color:#45332b; }
+.complement-admin-option > span:first-child { flex:1; min-width:0; }
+.complement-admin-option__status { font-size:11px; color:#176534; font-weight:700; }
+.complement-admin-option--inactive { color:#85756c; background:#faf6f2; }
+.complement-admin-option--inactive .complement-admin-option__status { color:#a42d25; }
+.complement-admin-option button { flex-shrink:0; }
+@media(max-width:600px) {
+ .restaurant-image-upload-grid { grid-template-columns:1fr; }
+ .complement-admin-group__heading { align-items:flex-start; flex-direction:column; }
+ .complement-admin-option { flex-wrap:wrap; }
+ .complement-admin-option > span:first-child { flex-basis:60%; }
+}
