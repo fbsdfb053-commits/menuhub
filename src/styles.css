@@ -2240,3 +2240,49 @@ body { background: #f7f8f4; color: #24352c; }
     min-width: 0 !important;
   }
 }
+
+
+/* Correção mobile: menu administrativo abre recolhido e revela todas as opções ao tocar em Menu. */
+@media (max-width: 760px) {
+  .admin-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
+  }
+  .admin-sidebar .workspace-label,
+  .admin-sidebar .restaurant-switcher,
+  .admin-sidebar .admin-nav,
+  .admin-sidebar .sidebar-bottom {
+    display: initial !important;
+  }
+  .admin-sidebar .admin-nav {
+    display: grid !important;
+    gap: 5px !important;
+    margin: 18px 0 22px !important;
+  }
+  .admin-sidebar .admin-nav__link {
+    display: flex !important;
+    justify-content: flex-start !important;
+    gap: 11px !important;
+    padding: 12px !important;
+    font-size: 13px !important;
+    text-align: left;
+  }
+  .admin-sidebar .admin-nav__link svg { flex: 0 0 18px; }
+  .admin-sidebar .sidebar-bottom { margin-top: 12px !important; }
+  .admin-shell--collapsed .admin-sidebar {
+    transform: translateX(-110%) !important;
+    pointer-events: none !important;
+  }
+  .admin-shell:not(.admin-shell--collapsed) .admin-sidebar {
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
+  }
+  .mobile-sidebar-backdrop { z-index: 1001 !important; }
+}
