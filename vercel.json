@@ -1,1 +1,22 @@
-{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "key": "host",
+          "value": "menuhub-one.vercel.app"
+        }
+      ],
+      "destination": "https://fb3d2ymenu.com.br/:path*",
+      "permanent": true
+    }
+  ]
+}
