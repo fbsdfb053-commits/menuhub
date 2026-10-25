@@ -31,19 +31,25 @@ export default async function handler(req: Req, res: Res) {
   if (!user?.id || !user.email) return respond(res, 401, { error: 'Entre na sua conta novamente.' })
   const email = user.email.trim().toLowerCase()
   const isAdmin = adminEmails().includes(email)
+  // Do not activate the paywall until every required secret and the admin allowlist are configured.
+  // This keeps the existing dashboard usable during setup; billing becomes enforced once configured.
+  if (!process.env.MERCADO_PAGO_ACCESS_TOKEN || !process.env.MERCADO_PAGO_WEBHOOK_SECRET ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY || adminEmails().length === 0) {
+    return respond(res, 200, { allowed: true, configured: false, admin: false, free: true, expiresAt: null })
+  }
   let supabase
   try { supabase = db() } catch (e) { return respond(res, 503, { error: e instanceof Error ? e.message : 'Configuração incompleta.' }) }
 
   if (req.method === 'GET') {
-    if (isAdmin) return respond(res, 200, { allowed: true, admin: true, free: true, expiresAt: null })
+    if (isAdmin) return respond(res, 200, { allowed: true, configured: true, admin: true, free: true, expiresAt: null })
     const free = await supabase.from('menuhub_acessos_gratis').select('email').eq('email', email).maybeSingle()
     if (free.error) return respond(res, 503, { error: 'Execute a migração de cobrança do Menuhub no Supabase.' })
-    if (free.data) return respond(res, 200, { allowed: true, admin: false, free: true, expiresAt: null })
+    if (free.data) return respond(res, 200, { allowed: true, configured: true, admin: false, free: true, expiresAt: null })
     const sub = await supabase.from('menuhub_assinaturas').select('vence_em').eq('usuario_id', user.id).maybeSingle()
     if (sub.error) return respond(res, 503, { error: 'Execute a migração de cobrança do Menuhub no Supabase.' })
     const expiresAt = sub.data?.vence_em ?? null
     const allowed = Boolean(expiresAt && Date.parse(expiresAt) > Date.now())
-    return respond(res, 200, { allowed, admin: false, free: false, expiresAt })
+    return respond(res, 200, { allowed, configured: true, admin: false, free: false, expiresAt })
   }
 
   const body = req.body || {}
