@@ -2116,3 +2116,44 @@ input::placeholder, textarea::placeholder { color: #A58B7F !important; }
     font-size: 11px;
   }
 }
+
+/* Acessibilidade: contraste mínimo para textos e ações, especialmente links em cartões claros. */
+.text-button, .link-button, .back-link, .home-header-link,
+.restaurant-admin-card__footer .link-button,
+.panel-heading .link-button, .panel-heading--products .link-button,
+.home-secondary-button, .profile-menu-trigger {
+  color: #7A2E16 !important;
+}
+.text-button:hover, .link-button:hover, .back-link:hover,
+.home-header-link:hover, .restaurant-admin-card__footer .link-button:hover,
+.panel-heading .link-button:hover, .panel-heading--products .link-button:hover,
+.home-secondary-button:hover {
+  color: #4B1B0D !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.restaurant-admin-card__body div span,
+.restaurant-admin-card__body small,
+.restaurant-admin-card__footer,
+.more-button, .home-floating-note small,
+.preview-live, .phone-menu-header small {
+  color: #665047 !important;
+}
+.admin-nav__link { color: #5D463D !important; }
+.admin-nav__link:hover, .admin-nav__link--active {
+  color: #3A241B !important;
+}
+.secondary-button, .order-print-button, .order-edit-button,
+.counter-quantity button, .quantity-control button,
+.icon-button, .add-button, .phone-add, .work-mode-button,
+.account-link {
+  color: #7A2E16 !important;
+}
+.secondary-button:hover, .order-print-button:hover, .order-edit-button:hover,
+.counter-quantity button:hover, .quantity-control button:hover,
+.icon-button:hover, .add-button:hover, .phone-add:hover,
+.work-mode-button:hover, .account-link:hover {
+  color: #4B1B0D !important;
+}
+input::placeholder, textarea::placeholder { color: #6D5A51 !important; opacity: 1; }
+
