@@ -35,6 +35,34 @@ function safeInstagram(value: unknown): string {
   return typeof value === 'string' ? value.replace(/[^a-zA-Z0-9._]/g, '') : ''
 }
 
+function storeHoursStatus(config: Record<string, { closed: boolean; open: string; close: string }> | null, manual: boolean | null | undefined, accepts: boolean) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
+  const weekday = parts.find(p => p.type === 'weekday')?.value ?? 'Sun'
+  const hour = Number(parts.find(p => p.type === 'hour')?.value ?? 0)
+  const minute = Number(parts.find(p => p.type === 'minute')?.value ?? 0)
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+  const today = days.indexOf(weekday)
+  const current = hour * 60 + minute
+  const configured = config && Object.keys(config).length > 0
+  const todayHours = configured ? config[String(today)] : undefined
+  const withinHours = Boolean(todayHours && !todayHours.closed && todayHours.open && todayHours.close && current >= Number(todayHours.open.slice(0,2))*60+Number(todayHours.open.slice(3,5)) && current < Number(todayHours.close.slice(0,2))*60+Number(todayHours.close.slice(3,5)))
+  const isOpen = manual === true ? true : manual === false ? false : configured ? withinHours : accepts
+  let nextOpening = ''
+  if (!isOpen && configured) {
+    for (let offset = 0; offset <= 7; offset++) {
+      const day = (today + offset) % 7
+      const hours = config[String(day)]
+      if (!hours || hours.closed || !hours.open) continue
+      const opening = Number(hours.open.slice(0,2))*60+Number(hours.open.slice(3,5))
+      if (offset === 0 && opening <= current) continue
+      const dayLabel = offset === 0 ? 'hoje' : offset === 1 ? 'amanhã' : ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'][day]
+      nextOpening = 'Abriremos ' + dayLabel + ' às ' + hours.open
+      break
+    }
+  }
+  return { isOpen, nextOpening }
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function fetchMenu(slug: string): Promise<MenuData | null> {
   const { data, error } = await supabase.rpc('obter_menu', { p_slug: slug })
@@ -46,6 +74,9 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
   const accent = safeColor(e.cor_destaque)
   const instagram = safeInstagram(e.instagram)
 
+  const scheduleConfig = e.horario_funcionamento && typeof e.horario_funcionamento === 'object' ? e.horario_funcionamento as Record<string, { closed: boolean; open: string; close: string }> : null
+  const manualOpen = typeof e.status_loja_manual === 'boolean' ? e.status_loja_manual : null
+  const storeStatus = storeHoursStatus(scheduleConfig, manualOpen, Boolean(e.aceita_pedidos))
   const restaurant: Restaurant = {
     id: e.id,
     name: e.nome,
@@ -53,8 +84,11 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     description: e.descricao ?? '',
     location: e.localizacao ?? '',
     schedule: e.horario ?? '',
+    scheduleConfig: scheduleConfig ?? undefined,
+    manualOpen,
+    nextOpening: storeStatus.nextOpening,
     instagram: instagram ? `@${instagram}` : '',
-    isOpen: Boolean(e.aceita_pedidos),
+    isOpen: storeStatus.isOpen,
     logoLetter: String(e.nome ?? '?').trim().charAt(0).toUpperCase() || '?',
     logoUrl: safeImageUrl(e.logo_url),
     coverUrl: safeImageUrl(e.capa_url),
