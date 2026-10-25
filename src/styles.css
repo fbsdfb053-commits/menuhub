@@ -2535,3 +2535,14 @@ img, video, canvas, svg { max-width: 100%; }
     margin-left: 0 !important;
   }
 }
+
+
+/* MenuHub: ações compactas e produtos agrupados por categoria */
+.selected-menu-actions--compact { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.selected-menu-actions--compact > button { flex: 0 0 auto !important; width: auto; min-height: 36px; padding: 8px 12px; font-size: 13px; }
+.selected-menu-actions--compact .secondary-button--full { flex-basis: auto; }
+.products-by-category { display: flex; flex-direction: column; gap: 22px; }
+.products-category-group { border: 1px solid var(--line, #e1e7e3); border-radius: 12px; padding: 12px 16px; background: rgba(255,255,255,.35); }
+.products-category-group > h3 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0; padding: 4px 0 10px; font-size: 15px; border-bottom: 1px solid var(--line, #e1e7e3); }
+.products-category-group > h3 span { font-size: 12px; font-weight: 500; color: var(--muted, #66716b); white-space: nowrap; }
+@media (max-width: 760px) { .selected-menu-actions--compact > button { flex: 0 1 auto !important; } .products-category-group { padding: 10px; } }
