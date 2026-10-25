@@ -424,7 +424,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
   const [tabs,setTabs]=useState<Array<{id:number;mesa:string;garcom_id:number|null;status:string;observacoes:string|null;created_at:string;closed_at:string|null;garcons?:{nome:string}|null;itens_comanda?:Array<{id:number;produto_nome:string;quantidade:number;preco_unitario:number}>}>>([])
   const [waiterName,setWaiterName]=useState(''),[waiterPhone,setWaiterPhone]=useState(''),[tabTable,setTabTable]=useState(''),[tabWaiter,setTabWaiter]=useState(''),[tabProduct,setTabProduct]=useState(''),[tabQty,setTabQty]=useState('1'),[activeTabId,setActiveTabId]=useState<number|null>(null)
   const selected=restaurants.find(r=>r.id===selectedId)??null
-  useEffect(()=>{if(subscription&&!subscription.active&&activeTab!=='subscription')setActiveTab('subscription')},[subscription,activeTab])
+  // A conta gratuita vitalícia não deve ser redirecionada para a tela de assinatura.
   const notify=(message:string,error=false)=>{setNotice(message);setNoticeError(error);window.setTimeout(()=>setNotice(''),5000)}
   const playOrderAlert=()=>{try{const audio=new Audio('/freesound_community-friend-request-14878.mp3');audio.preload='auto';void audio.play().catch(()=>notify('Não foi possível reproduzir o som. Verifique o volume do dispositivo.',true))}catch{notify('Não foi possível reproduzir o som neste navegador.',true)}}
   const testAudio=()=>{playOrderAlert();notify('Teste do som de novo pedido.')}
