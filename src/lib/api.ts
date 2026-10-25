@@ -120,7 +120,7 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     category: p.categoria_id != null && categories.some((c) => c.id === String(p.categoria_id)) ? String(p.categoria_id) : 'outros',
     tone: 'sunset',
     accent,
-    available: true,
+    available: p.disponivel !== false,
     imageUrl: safeImageUrl(p.imagem_url),
     complements: ((p.complementos ?? []) as any[]).map((g): ComplementGroup => ({ id:Number(g.id), name:String(g.nome), description:g.descricao ?? undefined, options:((g.opcoes ?? []) as any[]).map(o=>({id:Number(o.id),name:String(o.nome),price:Number(o.preco_adicional ?? 0)})) })),
   }))
