@@ -2526,3 +2526,12 @@ img, video, canvas, svg { max-width: 100%; }
   .profile-menu-panel { right: 10px !important; width: calc(100vw - 20px) !important; max-width: calc(100vw - 20px) !important; }
   .admin-content { padding-left: 10px !important; padding-right: 10px !important; }
 }
+
+
+/* Correção pontual: o menu lateral já ocupa espaço no layout desktop */
+@media (min-width: 761px) {
+  .admin-main,
+  .admin-shell--collapsed .admin-main {
+    margin-left: 0 !important;
+  }
+}
