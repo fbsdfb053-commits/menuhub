@@ -2571,3 +2571,10 @@ img, video, canvas, svg { max-width: 100%; }
 .complement-admin-option__photo-button { position: relative; display: inline-flex; align-items: center; justify-content: center; padding: 7px 10px; border: 1px solid #f1bda9; border-radius: 8px; color: #8f3218; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .complement-admin-option__photo-button input { display: block; position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .complement-choice img { width: 64px !important; height: 64px !important; object-fit: cover; border-radius: 9px; flex: 0 0 64px; }
+
+/* Limite de escolhas de sabores */
+.complement-limit-admin { display:grid; gap:5px; margin-top:8px; font-size:12px; font-weight:600; color:#59473f; }
+.complement-limit-admin select { max-width:190px; border:1px solid #e4cfc4; border-radius:8px; padding:7px 9px; background:#fff; font:inherit; }
+.complement-choice-limit { margin:0 0 8px; color:#8f3218 !important; font-weight:600; }
+.complement-choice--disabled { opacity:.45; cursor:not-allowed; }
+.complement-choice--disabled input { cursor:not-allowed; }
