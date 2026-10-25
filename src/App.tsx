@@ -370,7 +370,7 @@ function AdminLoginScreen({ onBack }: { onBack: () => void }) {
 }
 
 
-type BillingAccess = { allowed: boolean; admin: boolean; free: boolean; expiresAt: string | null }
+type BillingAccess = { allowed: boolean; configured?: boolean; admin: boolean; free: boolean; expiresAt: string | null }
 function BillingRequired({ onRefresh }: { onRefresh: () => void }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -519,7 +519,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
   if(!session)return <AdminLoginScreen onBack={onBack}/>
   if(billingLoading)return <div className="auth-shell"><div className="auth-card auth-card--loading"><div className="auth-mark">F</div><p>Verificando seu acesso…</p></div></div>
   if(billingError)return <div className="auth-shell"><div className="auth-card"><h1>Não foi possível verificar o acesso</h1><p>{billingError}</p><button className="primary-button" type="button" onClick={()=>void refreshBillingAccess()}>Tentar novamente</button><button className="back-link" type="button" onClick={()=>void supabase.auth.signOut()}>Sair da conta</button></div></div>
-  if(!billingAccess?.allowed)return <BillingRequired onRefresh={()=>void refreshBillingAccess()}/>
+  if(billingAccess?.configured !== false && !billingAccess?.allowed)return <BillingRequired onRefresh={()=>void refreshBillingAccess()}/>
   const addWaiter=async(e:React.FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!selected||!waiterName.trim())return;const {data,error}=await supabase.from('garcons').insert({empresa_id:selected.id,nome:waiterName.trim(),telefone:waiterPhone.trim()||null,ativo:true}).select('id,nome,telefone,ativo').single();if(error){notify('Não foi possível cadastrar o garçom. O SQL 09 ainda não foi aplicado no projeto Supabase de teste. Execute supabase/09_comandas_garcons.sql no SQL Editor e recarregue o painel. '+error.message,true);return}setWaiters(old=>[...old,data as any].sort((a,b)=>a.nome.localeCompare(b.nome)));setWaiterName('');setWaiterPhone('');notify('Garçom cadastrado.')}
   const toggleWaiter=async(w:{id:number;ativo:boolean})=>{const {error}=await supabase.from('garcons').update({ativo:!w.ativo}).eq('id',w.id);if(error){notify('Não foi possível atualizar o garçom: '+error.message,true);return}setWaiters(old=>old.map(x=>x.id===w.id?{...x,ativo:!w.ativo}:x));notify(w.ativo?'Garçom desativado.':'Garçom reativado.')}
   const openTab=async(e:React.FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!selected||!tabTable.trim())return;const {data,error}=await supabase.from('comandas').insert({empresa_id:selected.id,mesa:tabTable.trim(),garcom_id:tabWaiter?Number(tabWaiter):null,status:'aberta'}).select('id,mesa,garcom_id,status,observacoes,created_at,closed_at').single();if(error){notify('Não foi possível abrir a comanda: '+error.message,true);return}setTabs(old=>[{...(data as any),garcons:waiters.find(w=>w.id===Number(tabWaiter))?{nome:waiters.find(w=>w.id===Number(tabWaiter))!.nome}:null,itens_comanda:[]},...old]);setActiveTabId(data.id);setTabTable('');notify('Comanda aberta.')}
