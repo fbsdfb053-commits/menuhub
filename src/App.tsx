@@ -784,7 +784,14 @@ function ProductAdminRow({product,restaurantId,categories,complementGroups,linke
 }
 function notifyProductError(){window.alert('Informe o nome e um preço válido.')} function notifyUploadDone(){window.alert('Imagem enviada. Clique em “Salvar informações” para guardar a alteração.')}
 function HomePage() {
-  useEffect(() => { document.title = 'FB3d2y Menu — Seu cardápio digital' }, [])
+  const [exampleMenu,setExampleMenu]=useState<MenuData|null>(null)
+  useEffect(() => {
+    document.title = 'FB3d2y Menu — Seu cardápio digital'
+    let mounted = true
+    fetchMenu('yamamoto-sushibar').then(data=>{if(mounted)setExampleMenu(data)}).catch(()=>{})
+    return ()=>{mounted=false}
+  }, [])
+  const previewProducts = exampleMenu?.products.filter(p=>p.available).slice(0,2) ?? []
   return (
     <div className="home-page">
       <header className="home-header">
@@ -810,12 +817,12 @@ function HomePage() {
               <div className="phone-screen">
                 <div className="phone-status"><span>9:41</span><span>● ● ▰</span></div>
                 <div className="phone-camera"><span /></div>
-                <div className="phone-menu-header"><span className="phone-brand-mark">🍣</span><div><strong>Yamamoto SushiBar</strong><small>Sushi artesanal · Cardápio</small></div><span className="phone-menu-open">Aberto</span></div>
-                <div className="phone-cover phone-cover--sushi"><span>PREPARADO NA HORA</span><strong>Seu sushi favorito<br/>está aqui.</strong></div>
+                <div className="phone-menu-header"><span className="phone-brand-mark">🍣</span><div><strong>{exampleMenu?.restaurant.name ?? 'Yamamoto Sushibar'}</strong><small>{exampleMenu?.restaurant.location ?? 'Centro · Mulungu'}</small></div><span className="phone-menu-open">{exampleMenu ? (exampleMenu.restaurant.isOpen ? 'Aberto' : 'Fechado') : 'Sushi'}</span></div>
+                <div className="phone-cover phone-cover--sushi" style={exampleMenu?.restaurant.coverUrl ? {backgroundImage:`linear-gradient(120deg,rgba(25,17,14,.25),rgba(25,17,14,.55)),url("${exampleMenu.restaurant.coverUrl}")`,backgroundPosition:'center',backgroundSize:'cover'} : undefined}><span>PREPARADO NA HORA</span><strong>Seu sushi favorito<br/>está aqui.</strong></div>
                 <div className="phone-menu-body">
                   <div className="phone-menu-title"><div><small>FRESQUINHO, FEITO COM CARINHO</small><strong>Favoritos do SushiBar</strong></div><span>Ver menu</span></div>
-                  <div className="phone-product"><div className="phone-food phone-food--one"><span /></div><div><strong>Combinados</strong><small>Peças variadas para compartilhar</small><b>Ver opções</b></div><span className="phone-add">+</span></div>
-                  <div className="phone-product"><div className="phone-food phone-food--two"><span /></div><div><strong>Temakis</strong><small>Salmão, camarão e outros sabores</small><b>Ver opções</b></div><span className="phone-add">+</span></div>
+                  <div className="phone-product"><div className="phone-food phone-food--one" style={previewProducts[0]?.imageUrl ? {backgroundImage:`url("${previewProducts[0].imageUrl}")`,backgroundSize:'cover',backgroundPosition:'center'} : undefined}><span /></div><div><strong>{previewProducts[0]?.name ?? 'Combinados'}</strong><small>{previewProducts[0]?.description ?? 'Peças variadas para compartilhar'}</small><b>{previewProducts[0] ? formatPrice(previewProducts[0].price) : 'Ver opções'}</b></div><span className="phone-add">+</span></div>
+                  <div className="phone-product"><div className="phone-food phone-food--two" style={previewProducts[1]?.imageUrl ? {backgroundImage:`url("${previewProducts[1].imageUrl}")`,backgroundSize:'cover',backgroundPosition:'center'} : undefined}><span /></div><div><strong>{previewProducts[1]?.name ?? 'Temakis'}</strong><small>{previewProducts[1]?.description ?? 'Salmão, camarão e outros sabores'}</small><b>{previewProducts[1] ? formatPrice(previewProducts[1].price) : 'Ver opções'}</b></div><span className="phone-add">+</span></div>
                   <div className="phone-cart"><ShoppingBag size={14}/><span>Seu pedido · escolha seus itens</span><b>Yamamoto</b></div>
                 </div>
               </div>
