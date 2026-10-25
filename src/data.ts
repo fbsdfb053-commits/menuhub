@@ -1,4 +1,4 @@
-export type ComplementOption = { id: number; name: string; price: number }
+export type ComplementOption = { id: number; name: string; price: number; imageUrl?: string }
 export type ComplementGroup = { id: number; name: string; description?: string; options: ComplementOption[] }
 
 export type Product = {
