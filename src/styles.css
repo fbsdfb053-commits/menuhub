@@ -2240,3 +2240,6 @@ input::placeholder, textarea::placeholder { color: #6D5A51 !important; opacity: 
  .complement-admin-option { flex-wrap:wrap; }
  .complement-admin-option > span:first-child { flex-basis:60%; }
 }
+
+/* Botao Perfil e configuracoes mais discreto */
+.profile-menu-trigger { min-height:34px !important; padding:5px 9px !important; font-size:12px !important; }
