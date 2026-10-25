@@ -94,6 +94,7 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     coverUrl: safeImageUrl(e.capa_url),
     coverTone: `linear-gradient(120deg, color-mix(in srgb, ${accent} 40%, #000) 0%, ${accent} 100%)`,
     accent,
+    rating: e.slug === 'yamamoto-sushibar' ? 4.7 : undefined,
   }
 
   const rawProducts: any[] = raw.produtos ?? []
