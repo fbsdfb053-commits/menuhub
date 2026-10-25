@@ -2555,3 +2555,11 @@ img, video, canvas, svg { max-width: 100%; }
 .products-category-group > h3 > strong { display: inline-block; font-weight: 700; }
 .products-category-group > h3 > span { display: inline-block; margin-left: auto; white-space: nowrap; }
 @media (max-width: 420px) { .selected-menu-actions--compact { gap: 5px !important; } .selected-menu-actions--compact > button { padding: 7px 6px !important; font-size: 10px !important; } }
+
+/* Correção final do painel de menu: botões compactos na mesma linha */
+.admin-panel.menu-panel .selected-menu-actions--compact { display: grid !important; grid-template-columns: max-content max-content max-content; justify-content: start; align-items: center; gap: 8px !important; }
+.admin-panel.menu-panel .selected-menu-actions--compact > button { display: inline-flex !important; width: auto !important; min-width: 0 !important; min-height: 34px !important; flex: none !important; padding: 7px 10px !important; margin: 0 !important; gap: 5px !important; font-size: 12px !important; line-height: 1.1 !important; white-space: nowrap !important; }
+.admin-panel.menu-panel .selected-menu-actions--compact > button svg { width: 14px !important; height: 14px !important; }
+.products-category-group > h3 { column-gap: 18px !important; }
+.products-category-group > h3 > span { padding-left: 4px; }
+@media (max-width: 560px) { .admin-panel.menu-panel .selected-menu-actions--compact { grid-template-columns: repeat(3, max-content); gap: 5px !important; } .admin-panel.menu-panel .selected-menu-actions--compact > button { padding: 7px 7px !important; font-size: 10px !important; } }
