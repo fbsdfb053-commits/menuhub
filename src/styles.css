@@ -2157,3 +2157,58 @@ input::placeholder, textarea::placeholder { color: #A58B7F !important; }
 }
 input::placeholder, textarea::placeholder { color: #6D5A51 !important; opacity: 1; }
 
+
+
+/* Loja aberta/fechada e horários semanais */
+.sidebar-toggle {
+  min-height: 27px !important;
+  height: 27px !important;
+  padding: 3px 8px !important;
+  margin: 4px 12px 8px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  gap: 5px !important;
+}
+.sidebar-toggle span { font-size: 11px !important; }
+.admin-shell--collapsed .sidebar-toggle {
+  width: 30px !important;
+  min-width: 30px !important;
+  padding: 3px !important;
+  margin: 4px auto 8px !important;
+  justify-content: center !important;
+}
+.admin-shell--collapsed .sidebar-toggle span { display: none !important; }
+.store-order-toggle {
+  display: flex; align-items: center; justify-content: flex-start; gap: 9px;
+  width: calc(100% - 24px); margin: 0 12px 12px; padding: 10px 12px;
+  border: 1px solid #D9C8BE; border-radius: 11px; background: #FFF1E8;
+  color: #7A2E16; font: inherit; font-size: 12px; font-weight: 750; cursor: pointer;
+}
+.store-order-toggle--open { background: #E8F6EC !important; color: #176534 !important; border-color: #A8D8B5 !important; }
+.store-order-toggle--closed { background: #FFF0EE !important; color: #A42D25 !important; border-color: #E9B8B3 !important; }
+.store-order-toggle:disabled { opacity: .55; cursor: not-allowed; }
+.admin-shell--collapsed .store-order-toggle { width: 38px; height: 38px; padding: 0; margin: 0 auto 12px; justify-content: center; }
+.admin-shell--collapsed .store-order-toggle span { display: none; }
+.opening-hours-form { display: flex; flex-direction: column; gap: 0; }
+.opening-hours-intro { display: flex; align-items: flex-start; gap: 12px; padding: 4px 0 16px; color: #7A2E16; }
+.opening-hours-intro strong { color: #3A241B; }
+.opening-hours-intro p { margin: 5px 0 0; }
+.opening-hours-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 1px solid #F0DCD1; }
+.opening-hours-day { display: flex; align-items: center; gap: 9px; min-width: 165px; color: #3A241B !important; font-weight: 650; }
+.opening-hours-day input { width: 17px; height: 17px; accent-color: #D9562E; }
+.opening-hours-times { display: flex; align-items: end; justify-content: flex-end; gap: 10px; }
+.opening-hours-times label { display: flex; flex-direction: column; gap: 5px; color: #6D554A !important; font-size: 12px; }
+.opening-hours-times input { width: 115px; min-height: 40px; padding: 7px 9px; border: 1px solid #E8CFC1; border-radius: 9px; background: #fff; color: #3A241B; font: inherit; }
+.opening-hours-times > span { padding-bottom: 11px; color: #6D554A; font-size: 12px; }
+.opening-hours-closed-label { color: #A42D25; font-size: 13px; font-weight: 700; margin-right: auto; }
+.opening-hours-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 18px; border-top: 1px solid #F0DCD1; }
+.restaurant-closed-notice { display: flex; flex-direction: column; gap: 5px; margin: 16px 0; padding: 14px 16px; border: 1px solid #E9B8B3; border-radius: 12px; background: #FFF0EE; color: #7D2922; }
+.restaurant-closed-notice strong { display: flex; align-items: center; gap: 8px; color: #A42D25; }
+.restaurant-closed-notice span { font-size: 14px; font-weight: 650; }
+@media (max-width: 560px) {
+  .opening-hours-row { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .opening-hours-day { min-width: 0; }
+  .opening-hours-times { width: 100%; justify-content: flex-start; }
+  .opening-hours-times input { width: min(36vw, 125px); }
+  .opening-hours-actions > button { width: 100%; justify-content: center; }
+}
