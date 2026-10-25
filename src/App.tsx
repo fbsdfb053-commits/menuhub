@@ -751,7 +751,7 @@ function RestaurantSettings({restaurant,saving,onSave}:{restaurant:AdminRestaura
     email_contato:restaurant.email_contato??'', horario:restaurant.horario??'',
     instagram:restaurant.instagram??'',
     logo_url:restaurant.logo_url??'', capa_url:restaurant.capa_url??'',
-    aceita_pedidos:restaurant.aceita_pedidos, ativo:restaurant.ativo
+    ativo:restaurant.ativo
   })
   useEffect(()=>{setForm({
     nome:restaurant.nome, descricao:restaurant.descricao??'', cnpj:restaurant.cnpj??'',
@@ -775,7 +775,7 @@ function RestaurantSettings({restaurant,saving,onSave}:{restaurant:AdminRestaura
     <div className="form-row">{textField('email_contato','E-mail comercial')}{textField('instagram','Instagram','@seurestaurante')}</div>
     <div className="form-row">{textField('logo_url','URL da foto de perfil','https://...')}{textField('capa_url','URL do banner / capa','https://...')}</div>
     <div className="restaurant-image-upload-grid"><label>Trocar foto de perfil<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{const url=await uploadMenuImage(file,restaurant.id);setForm(old=>({...old,logo_url:url}));}catch(err){window.alert(err instanceof Error?err.message:'Não foi possível enviar a foto.')}finally{e.target.value=''}}}/>{form.logo_url&&<img src={form.logo_url} alt="Prévia da foto de perfil"/>}</label><label>Trocar banner do restaurante<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{const url=await uploadMenuImage(file,restaurant.id);setForm(old=>({...old,capa_url:url}));}catch(err){window.alert(err instanceof Error?err.message:'Não foi possível enviar o banner.')}finally{e.target.value=''}}}/>{form.capa_url&&<img className="restaurant-banner-preview" src={form.capa_url} alt="Prévia do banner"/>}</label></div>
-    <div className="form-row"><label className="admin-check-label"><input type="checkbox" checked={form.aceita_pedidos} onChange={e=>setForm({...form,aceita_pedidos:e.target.checked})}/> Aceitar pedidos</label><label className="admin-check-label"><input type="checkbox" checked={form.ativo} onChange={e=>setForm({...form,ativo:e.target.checked})}/> Menu publicado</label></div>
+    <div className="form-row"><label className="admin-check-label"><input type="checkbox" checked={form.ativo} onChange={e=>setForm({...form,ativo:e.target.checked})}/> Menu publicado</label></div>
     <button className="primary-button" type="submit" disabled={saving}>{saving?'Salvando…':'Salvar dados do restaurante'}</button>
   </form>
 }
