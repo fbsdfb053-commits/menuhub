@@ -11,7 +11,7 @@ returns jsonb language sql stable security definer set search_path=public as $$
   'produtos',coalesce((select jsonb_agg(jsonb_build_object(
     'id',p.id,'nome',p.nome,'descricao',p.descricao,'preco',p.preco,'imagem_url',p.imagem_url,'categoria_id',p.categoria_id,
     'complementos',coalesce((select jsonb_agg(jsonb_build_object(
-      'id',g.id,'nome',g.nome,'descricao',g.descricao,'max_selecoes',pg.max_selecoes,
+      'id',g.id,'nome',g.nome,'descricao',g.descricao,'max_selecoes',ppg.max_selecoes,
       'opcoes',coalesce((select jsonb_agg(jsonb_build_object('id',o.id,'nome',o.nome,'preco_adicional',o.preco_adicional) order by o.ordem,o.id)
         from public.opcoes_complementos o where o.grupo_id=g.id and o.ativo),'[]'::jsonb)
     ) order by g.ordem,g.id) from public.produto_grupos_complementos pg join public.grupos_complementos g on g.id=pg.grupo_id
@@ -62,9 +62,9 @@ begin
    join public.opcoes_complementos o on o.id=(chosen.value->>'id')::int
    join public.grupos_complementos g on g.id=o.grupo_id
    join public.produto_grupos_complementos pg on pg.grupo_id=g.id and pg.produto_id=v_prod.id
-   where o.ativo and g.ativo and g.max_selecoes>0
-   group by g.id,g.max_selecoes
-   having count(*)>g.max_selecoes
+   where o.ativo and g.ativo and pg.max_selecoes>0
+   group by g.id,pg.max_selecoes
+   having count(*)>pg.max_selecoes
   ) then raise exception 'Você selecionou mais opções do que o permitido em um dos grupos.'; end if;
   for v_opt in select * from jsonb_array_elements(coalesce(v_item->'complementos','[]'::jsonb)) loop
    select o.* into v_option from public.opcoes_complementos o
