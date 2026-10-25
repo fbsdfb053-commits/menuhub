@@ -770,13 +770,13 @@ function HomePage() {
               <div className="phone-screen">
                 <div className="phone-status"><span>9:41</span><span>● ● ▰</span></div>
                 <div className="phone-camera"><span /></div>
-                <div className="phone-menu-header"><span className="phone-brand-mark">F</span><div><strong>Seu Restaurante</strong><small>Cardápio digital</small></div><span className="phone-menu-open">Aberto</span></div>
-                <div className="phone-cover"><span>FEITO COM CARINHO</span><strong>Um sabor<br/>para cada momento.</strong></div>
+                <div className="phone-menu-header"><span className="phone-brand-mark">🍕</span><div><strong>Forno da Vila</strong><small>Pizzaria · Cardápio</small></div><span className="phone-menu-open">Aberto</span></div>
+                <div className="phone-cover phone-cover--pizza"><span>SAINDO DO FORNO</span><strong>Sua pizza favorita<br/>está aqui.</strong></div>
                 <div className="phone-menu-body">
-                  <div className="phone-menu-title"><div><small>ESCOLHA O SEU FAVORITO</small><strong>Mais pedidos</strong></div><span>Ver todos</span></div>
-                  <div className="phone-product"><div className="phone-food phone-food--one"><span /></div><div><strong>Combo da casa</strong><small>Nosso favorito, feito na hora</small><b>R$ 32,90</b></div><span className="phone-add">+</span></div>
-                  <div className="phone-product"><div className="phone-food phone-food--two"><span /></div><div><strong>Especial do chef</strong><small>Ingredientes frescos</small><b>R$ 26,90</b></div><span className="phone-add">+</span></div>
-                  <div className="phone-cart"><ShoppingBag size={14}/><span>Ver meu pedido</span><b>R$ 32,90</b></div>
+                  <div className="phone-menu-title"><div><small>FEITAS NA HORA, COM CARINHO</small><strong>Pizzas mais pedidas</strong></div><span>Ver todas</span></div>
+                  <div className="phone-product"><div className="phone-food phone-food--one"><span /></div><div><strong>Calabresa</strong><small>Mussarela, calabresa e cebola</small><b>R$ 49,90</b></div><span className="phone-add">+</span></div>
+                  <div className="phone-product"><div className="phone-food phone-food--two"><span /></div><div><strong>Margherita</strong><small>Mussarela, tomate e manjericão</small><b>R$ 44,90</b></div><span className="phone-add">+</span></div>
+                  <div className="phone-cart"><ShoppingBag size={14}/><span>Meu pedido · 2 pizzas</span><b>R$ 94,80</b></div>
                 </div>
               </div>
             </div>
