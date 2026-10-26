@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const authHeader = req.headers.authorization || ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-  if (!token) return respond(res, 401, { error: 'Sessão não encontrada. Entre novamente no Menuhub.' })
+  if (!token) return respond(res, 401, { error: 'Sessão não encontrada. Entre novamente na sua conta.' })
 
   // Validate the user's access token through Supabase Auth REST API.
   // This avoids SDK-version differences in auth.getUser typings.
@@ -36,9 +36,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       Authorization: 'Bearer ' + token,
     },
   })
-  if (!authResponse.ok) return respond(res, 401, { error: 'Sessão inválida. Entre novamente no Menuhub.' })
+  if (!authResponse.ok) return respond(res, 401, { error: 'Sessão inválida. Entre novamente na sua conta.' })
   const userData = await authResponse.json() as { id?: string }
-  if (!userData.id) return respond(res, 401, { error: 'Sessão inválida. Entre novamente no Menuhub.' })
+  if (!userData.id) return respond(res, 401, { error: 'Sessão inválida. Entre novamente na sua conta.' })
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false, autoRefreshToken: false } })
   const body = (req.body || {}) as Body
@@ -58,8 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       printerId: body.printerId,
       contentType: 'raw_base64',
       content: Buffer.from(body.content, 'utf8').toString('base64'),
-      title: body.title || 'Menuhub - comanda',
-      source: 'Menuhub',
+      title: body.title || 'FB3d2y Menu - comanda',
+      source: 'FB3d2y Menu',
     }
     const printResponse = await fetch('https://api.printnode.com/printjobs', {
       method: 'POST',
