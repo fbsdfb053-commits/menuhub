@@ -88,7 +88,7 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     manualOpen,
     nextOpening: storeStatus.nextOpening,
     instagram: instagram ? `@${instagram}` : '',
-    whatsapp: typeof e.whatsapp_contato === 'string' ? e.whatsapp_contato : '',
+    whatsapp: typeof e.whatsapp_contato === 'string' && e.whatsapp_contato.trim() ? e.whatsapp_contato : typeof e.telefone_contato === 'string' ? e.telefone_contato : '',
     isOpen: storeStatus.isOpen,
     logoLetter: String(e.nome ?? '?').trim().charAt(0).toUpperCase() || '?',
     logoUrl: safeImageUrl(e.logo_url),
