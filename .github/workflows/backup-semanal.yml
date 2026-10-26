@@ -1,6 +1,9 @@
 name: Backup semanal do Supabase para Google Drive
 
 on:
+  push:
+    paths:
+      - ".github/workflows/backup-semanal.yml"
   schedule:
     - cron: "0 10 * * 5"
   workflow_dispatch:
