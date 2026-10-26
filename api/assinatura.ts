@@ -34,7 +34,7 @@ export default async function handler(req:Req,res:Res){
   headers:{Authorization:'Bearer '+mp,'Content-Type':'application/json','X-Idempotency-Key':idempotencyKey},
   body:JSON.stringify({
    transaction_amount:50,
-   description:'Menuhub — assinatura por 30 dias',
+   description:'FB3d2y Menu — assinatura por 30 dias',
    payment_method_id:'pix',
    payer:{email:user.email||'cliente@menuhub.com.br'},
    external_reference:user.id,
