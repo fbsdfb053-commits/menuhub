@@ -11,6 +11,7 @@ export type Product = {
   accent: string
   available: boolean
   imageUrl?: string
+  maxComplementSelections?: number
   complements?: ComplementGroup[]
 }
 
