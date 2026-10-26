@@ -1,0 +1,143 @@
+name: Backup semanal do Supabase para Google Drive
+
+on:
+  schedule:
+    - cron: "0 10 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: menuhub-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Instalar ferramentas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client python3-pip
+          python -m pip install --break-system-packages requests
+
+      - name: Exportar banco de dados
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          test -n "$SUPABASE_DB_URL" || (echo "Falta o segredo SUPABASE_DB_URL" && exit 1)
+          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges --format=p > database.sql
+          test -s database.sql
+          grep -q "PostgreSQL database dump" database.sql
+
+      - name: Baixar fotos e arquivos do Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python <<'PY'
+          import json, os, pathlib, requests
+          base = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          headers = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+          root = pathlib.Path("storage")
+          root.mkdir(exist_ok=True)
+          session = requests.Session()
+          session.headers.update(headers)
+          buckets_response = session.get(f"{base}/storage/v1/bucket", timeout=60)
+          buckets_response.raise_for_status()
+          buckets = buckets_response.json()
+          manifest = {"buckets": [], "objects": []}
+
+          def walk(bucket, prefix=""):
+              offset = 0
+              while True:
+                  r = session.post(
+                      f"{base}/storage/v1/object/list/{bucket}",
+                      json={"prefix": prefix, "limit": 100, "offset": offset,
+                            "sortBy": {"column": "name", "order": "asc"}},
+                      timeout=60)
+                  r.raise_for_status()
+                  items = r.json()
+                  if not items:
+                      break
+                  for item in items:
+                      name = item.get("name", "")
+                      if not name:
+                          continue
+                      path = f"{prefix}/{name}" if prefix else name
+                      if item.get("id") is None and item.get("metadata") is None:
+                          walk(bucket, path)
+                          continue
+                      destination = root / bucket / pathlib.Path(path)
+                      destination.parent.mkdir(parents=True, exist_ok=True)
+                      url = f"{base}/storage/v1/object/{bucket}/{path}"
+                      obj = session.get(url, timeout=180)
+                      obj.raise_for_status()
+                      destination.write_bytes(obj.content)
+                      manifest["objects"].append({
+                          "bucket": bucket, "path": path,
+                          "file": destination.as_posix(),
+                          "bytes": len(obj.content)
+                      })
+                  offset += len(items)
+                  if len(items) < 100:
+                      break
+
+          for bucket in buckets:
+              name = bucket.get("name")
+              if name:
+                  manifest["buckets"].append(name)
+                  walk(name)
+
+          (root / "manifest.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(f"Buckets: {len(manifest['buckets'])}; arquivos: {len(manifest['objects'])}")
+          PY
+
+      - name: Criar e validar arquivo ZIP
+        run: |
+          python - <<'PY'
+          import pathlib, zipfile
+          name = "backup-semanal.zip"
+          with zipfile.ZipFile(name, "w", zipfile.ZIP_DEFLATED) as z:
+              z.write("database.sql", "database.sql")
+              for p in pathlib.Path("storage").rglob("*"):
+                  if p.is_file():
+                      z.write(p, p.as_posix())
+          with zipfile.ZipFile(name) as z:
+              bad = z.testzip()
+              names = z.namelist()
+              assert bad is None, f"ZIP inválido: {bad}"
+              assert "database.sql" in names
+              assert "storage/manifest.json" in names
+          print("ZIP validado.")
+          PY
+
+      - name: Enviar backup ao Google Drive
+        env:
+          DRIVE_BACKUP_URL: ${{ secrets.DRIVE_BACKUP_URL }}
+          DRIVE_BACKUP_TOKEN: ${{ secrets.DRIVE_BACKUP_TOKEN }}
+        run: |
+          test -n "$DRIVE_BACKUP_URL" || (echo "Falta o segredo DRIVE_BACKUP_URL" && exit 1)
+          test -n "$DRIVE_BACKUP_TOKEN" || (echo "Falta o segredo DRIVE_BACKUP_TOKEN" && exit 1)
+          python - <<'PY'
+          import base64, json, os, pathlib, requests
+          p = pathlib.Path("backup-semanal.zip")
+          payload = {
+              "token": os.environ["DRIVE_BACKUP_TOKEN"],
+              "filename": "backup-semanal.zip",
+              "fileBase64": base64.b64encode(p.read_bytes()).decode("ascii")
+          }
+          r = requests.post(os.environ["DRIVE_BACKUP_URL"], json=payload, timeout=300)
+          r.raise_for_status()
+          try:
+              result = r.json()
+          except Exception:
+              raise SystemExit("O Google Apps Script não retornou confirmação JSON.")
+          print(json.dumps(result))
+          if result.get("ok") is not True:
+              raise SystemExit("O Google Drive não confirmou o backup: " + str(result.get("erro", "erro desconhecido")))
+          PY
