@@ -6,6 +6,8 @@ export default async function handler(req:Req,res:Res){
   if(req.method!=='GET')return json(res,405,{error:'Método não permitido.'})
   const raw=req.query?.slug
   const slug=Array.isArray(raw)?raw[0]:raw
+  const rawShare=req.query?.share
+  const includeShareVersion=(Array.isArray(rawShare)?rawShare[0]:rawShare)==='2'
   const base=(process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL||'').replace(/\/$/,'')
   const anon=process.env.SUPABASE_ANON_KEY||process.env.VITE_SUPABASE_ANON_KEY||''
   if(!slug||!/^[a-z0-9-]{1,80}$/i.test(slug))return res.status(400).send('Menu inválido.')
@@ -19,10 +21,10 @@ export default async function handler(req:Req,res:Res){
     const title=escapeHtml(e.nome||'Cardápio digital')
     const description=escapeHtml(e.descricao||'Confira o cardápio e faça seu pedido online.')
     const image=escapeHtml(e.logo_url||e.capa_url||'https://fb3d2ymenu.com.br/fb3d2y-mark.svg')
-    const url='https://fb3d2ymenu.com.br/menu/'+encodeURIComponent(e.slug||slug)
+    const url='https://fb3d2ymenu.com.br/menu/'+encodeURIComponent(e.slug||slug)+(includeShareVersion?'?share=2':'')
     const safeUrl=escapeHtml(url)
     res.setHeader('Content-Type','text/html; charset=utf-8')
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=600')
-    return res.status(200).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${safeUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="FB3d2y Menu"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${safeUrl}"><meta property="og:image" content="${image}"><meta property="og:image:secure_url" content="${image}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${image}"></head><body><p>Confira o cardápio de <a href="${safeUrl}">${title}</a>.</p></body></html>`)
+    return res.status(200).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${safeUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="FB3d2y Menu"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${safeUrl}"><meta property="og:image" content="${image}"><meta property="og:image:secure_url" content="${image}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${image}"></head><body><p>Confira o cardápio de <a href="${safeUrl}">${title}</a>.</p></body></html>`)
   }catch{return res.status(500).send('Não foi possível preparar a prévia do menu.')}
 }
