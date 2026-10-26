@@ -150,6 +150,7 @@ export async function createOrder(slug: string, form: OrderForm, items: OrderIte
 
 export async function uploadMenuImage(file: File, restaurantId: number, options: { optimizeForShare?: boolean } = {}): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
+  if (options.optimizeForShare && file.size > 600 * 1024) throw new Error('A foto de perfil deve ter no máximo 600 KB. Reduza o tamanho da imagem e tente novamente.')
   if (file.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.')
   let uploadFile = file
   let contentType = file.type
