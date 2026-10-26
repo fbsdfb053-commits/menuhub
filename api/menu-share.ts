@@ -7,7 +7,7 @@ export default async function handler(req:Req,res:Res){
   const raw=req.query?.slug
   const slug=Array.isArray(raw)?raw[0]:raw
   const rawShare=req.query?.share
-  const includeShareVersion=(Array.isArray(rawShare)?rawShare[0]:rawShare)==='3'
+  const includeShareVersion=(Array.isArray(rawShare)?rawShare[0]:rawShare)==='4'
   const base=(process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL||'').replace(/\/$/,'')
   const anon=process.env.SUPABASE_ANON_KEY||process.env.VITE_SUPABASE_ANON_KEY||''
   if(!slug||!/^[a-z0-9-]{1,80}$/i.test(slug))return res.status(400).send('Menu inválido.')
@@ -20,7 +20,7 @@ export default async function handler(req:Req,res:Res){
     const e=data.empresa
     const title=escapeHtml(e.nome||'Cardápio digital')
     const image=escapeHtml(e.logo_url||e.capa_url||'https://fb3d2ymenu.com.br/fb3d2y-mark.svg')
-    const url='https://fb3d2ymenu.com.br/menu/'+encodeURIComponent(e.slug||slug)+(includeShareVersion?'?share=3':'')
+    const url='https://fb3d2ymenu.com.br/menu/'+encodeURIComponent(e.slug||slug)+(includeShareVersion?'?share=4':'')
     const safeUrl=escapeHtml(url)
     res.setHeader('Content-Type','text/html; charset=utf-8')
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=600')
