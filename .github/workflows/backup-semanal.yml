@@ -36,7 +36,7 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           test -n "$SUPABASE_DB_URL" || (echo "Falta o segredo SUPABASE_DB_URL" && exit 1)
-          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges --format=p > database.sql
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges --format=p > database.sql
           test -s database.sql
           grep -q "PostgreSQL database dump" database.sql
 
