@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
         <h1 style={{fontSize:'clamp(30px,5vw,44px)',lineHeight:1.1,margin:'12px 0'}}>Política de Privacidade</h1>
         <p>Última atualização: 26 de outubro de 2026</p>
       </header>
-      <p>Esta Política explica como o FB3d2y Menu (“MenuHub”) trata dados pessoais quando restaurantes usam a plataforma e quando clientes consultam cardápios ou fazem pedidos. O serviço é operado no Brasil.</p>
+      <p>Esta Política explica como o FB3d2y Menu trata dados pessoais quando restaurantes usam a plataforma e quando clientes consultam cardápios ou fazem pedidos. O serviço é operado no Brasil.</p>
       <h2>1. Dados que podem ser tratados</h2>
       <ul>
         <li><b>Conta do restaurante:</b> dados básicos da conta Google usados para autenticação, como nome e e-mail, além dos dados de cadastro do estabelecimento.</li>
