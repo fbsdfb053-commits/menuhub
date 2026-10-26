@@ -20,7 +20,7 @@ export default async function handler(req:Req,res:Res){
     const e=data.empresa
     const title=escapeHtml(e.nome||'Cardápio digital')
     const description=escapeHtml(e.descricao||'Confira o cardápio e faça seu pedido online.')
-    const image=escapeHtml(e.logo_url||e.capa_url||'https://fb3d2ymenu.com.br/og-menu.png')
+    const image=escapeHtml(e.logo_url||e.capa_url||'https://fb3d2ymenu.com.br/fb3d2y-mark.svg')
     const url='https://fb3d2ymenu.com.br/menu/'+encodeURIComponent(e.slug||slug)+(includeShareVersion?'?share=3':'')
     const safeUrl=escapeHtml(url)
     res.setHeader('Content-Type','text/html; charset=utf-8')
