@@ -43,6 +43,7 @@ import {
 import { hasSupabaseConfig, supabase } from './lib/supabase'
 import { createOrder, fetchMenu, uploadMenuImage, type MenuData, type OrderForm, type OrderItem } from './lib/api'
 import type { Session } from '@supabase/supabase-js'
+import PrivacyPolicy from './PrivacyPolicy'
 
 type CartLine = {
   product: Product
@@ -883,7 +884,7 @@ function HomePage() {
           </div>
         </section>
       </main>
-      <footer className="home-footer"><a className="brand" href="/"><span className="brand-mark">F</span><span>FB3d2y <b>Menu</b></span></a><span>Cardápios próximos, pedidos simples.</span><a href="/menu/yamamoto-sushibar">Conhecer o SushiBar <ArrowLeft size={14}/></a></footer>
+      <footer className="home-footer"><a className="brand" href="/"><span className="brand-mark">F</span><span>FB3d2y <b>Menu</b></span></a><span>Cardápios próximos, pedidos simples.</span><a href="/privacy">Política de Privacidade</a><a href="/menu/yamamoto-sushibar">Conhecer o SushiBar <ArrowLeft size={14}/></a></footer>
     </div>
   )
 }
@@ -891,6 +892,7 @@ function HomePage() {
 export default function App() {
   const path = window.location.pathname
   const [admin, setAdmin] = useState(() => path.startsWith('/admin'))
+  if (path === '/privacy' || path === '/privacy/') return <PrivacyPolicy />
   if (admin) return <AdminView onBack={() => { window.history.pushState({}, '', '/'); setAdmin(false) }} />
   const slug = menuSlugFromPath(path)
   if (slug) return <MenuLoader slug={slug} />
