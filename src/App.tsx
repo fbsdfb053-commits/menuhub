@@ -119,7 +119,7 @@ function RestaurantHero({ restaurant }: { restaurant: Restaurant }) {
   const instagramHandle = restaurant.instagram.replace('@', '')
   const whatsappDigits = restaurant.whatsapp?.replace(/\D/g, '') ?? ''
   const share = () => {
-    const url = window.location.origin + '/menu/' + encodeURIComponent(restaurant.slug)
+    const url = window.location.origin + '/menu/' + encodeURIComponent(restaurant.slug) + '?share=2'
     if (navigator.share) void navigator.share({ title: restaurant.name, text: restaurant.description || 'Confira nosso cardápio online.', url }).catch(() => undefined)
     else void navigator.clipboard?.writeText(url).then(() => window.alert('Link do cardápio copiado.')).catch(() => window.alert(url))
   }
