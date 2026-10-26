@@ -6,7 +6,9 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(WhatsApp|whatsapp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|Pinterest|Googlebot).*"
+          "value": {
+            "re": ".*([Ww][Hh][Aa][Tt][Ss][Aa][Pp][Pp]|[Ff][Aa][Cc][Ee][Bb][Oo][Oo][Kk][Ee][Xx][Tt][Ee][Rr][Nn][Aa][Ll][Hh][Ii][Tt]|[Ff][Aa][Cc][Ee][Bb][Oo][Tt]|[Tt][Ww][Ii][Tt][Tt][Ee][Rr][Bb][Oo][Tt]|[Tt][Ee][Ll][Ee][Gg][Rr][Aa][Mm][Bb][Oo][Tt]|[Ss][Ll][Aa][Cc][Kk][Bb][Oo][Tt]|[Dd][Ii][Ss][Cc][Oo][Rr][Dd][Bb][Oo][Tt]|[Ll][Ii][Nn][Kk][Ee][Dd][Ii][Nn][Bb][Oo][Tt]|[Pp][Ii][Nn][Tt][Ee][Rr][eE][sS][tT]|[Gg][Oo][oO][gG][lL][eE][bB][oO][tT]).*"
+          }
         }
       ],
       "destination": "/api/menu-share?slug=:slug"
