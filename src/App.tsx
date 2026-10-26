@@ -83,9 +83,9 @@ function GoogleAccountButton({ className = 'text-button' }: { className?: string
   return <span className="account-control"><button className={className} type="button" onClick={() => void signIn()} disabled={loading}>{loading ? 'abrindo Google…' : 'Criar conta / entrar'}</button>{error && <small className="account-error">{error}</small>}</span>
 }
 
-function ProductArtwork({ product, compact = false }: { product: Product; compact?: boolean }) {
+function ProductArtwork({ product, compact = false, priority = false }: { product: Product; compact?: boolean; priority?: boolean }) {
   if (product.imageUrl) {
-    return <div className={`product-art product-art--photo ${compact ? 'product-art--compact' : ''}`}><img src={product.imageUrl} alt="" loading="lazy" /></div>
+    return <div className={`product-art product-art--photo ${compact ? 'product-art--compact' : ''}`}><img src={product.imageUrl} alt="" loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" /></div>
   }
   return (
     <div className={`product-art product-art--${product.tone} ${compact ? 'product-art--compact' : ''}`} aria-hidden="true">
@@ -120,7 +120,7 @@ function RestaurantHero({ restaurant }: { restaurant: Restaurant }) {
   const instagramHandle = restaurant.instagram.replace('@', '')
   const whatsappDigits = restaurant.whatsapp?.replace(/\D/g, '') ?? ''
   const share = () => {
-    const url = window.location.origin + '/menu/' + encodeURIComponent(restaurant.slug) + '?share=2'
+    const url = window.location.origin + '/menu/' + encodeURIComponent(restaurant.slug) + '?share=3'
     if (navigator.share) void navigator.share({ title: restaurant.name, text: restaurant.description || 'Confira nosso cardápio online.', url }).catch(() => undefined)
     else void navigator.clipboard?.writeText(url).then(() => window.alert('Link do cardápio copiado.')).catch(() => window.alert(url))
   }
@@ -164,10 +164,10 @@ function CategoryNav({ categories: list, selected, onSelect }: { categories: Cat
   )
 }
 
-function ProductCard({ product, categoryLabel, canOrder, onAdd }: { product: Product; categoryLabel?: string; canOrder: boolean; onAdd: (product: Product) => void }) {
+function ProductCard({ product, categoryLabel, canOrder, onAdd, priority = false }: { product: Product; categoryLabel?: string; canOrder: boolean; onAdd: (product: Product) => void; priority?: boolean }) {
   return (
     <article className="product-card">
-      <ProductArtwork product={product} />
+      <ProductArtwork product={product} priority={priority} />
       <div className="product-card__body">
         <div className="product-card__topline"><span className="product-category">{categoryLabel}</span><button type="button" className="add-button" onClick={() => onAdd(product)} disabled={!canOrder} aria-label={`Adicionar ${product.name}`}><Plus size={18} /></button></div>
         <h3>{product.name}</h3>
@@ -325,7 +325,7 @@ function MenuView({ data, isDemo, onPlaceOrder }: MenuViewProps) {
         <CategoryNav categories={menuCategories} selected={selectedCategory} onSelect={setSelectedCategory} />
         <section className="menu-section">
           <div className="section-heading"><div><span className="eyebrow">feito na hora</span><h2>{selectedCategory === 'all' ? 'O que vai ser hoje?' : categoryLabel(selectedCategory)}</h2></div><span className="result-count">{filteredProducts.length} opções</span></div>
-          {filteredProducts.length === 0 ? <p className="restaurant-description">Este menu ainda não tem produtos publicados.</p> : selectedCategory === 'all' ? <div className="all-categories-list">{menuCategories.map(category => { const categoryProducts = filteredProducts.filter(product => product.category === category.id); return categoryProducts.length ? <section className="all-category-section" key={category.id}><div className="all-category-heading"><h3>{category.label}</h3><span>{categoryProducts.length} itens</span></div><div className="product-grid">{categoryProducts.map(product => <ProductCard key={product.id} product={product} categoryLabel={category.label} canOrder={restaurant.isOpen} onAdd={addProduct} />)}</div></section> : null; })}{filteredProducts.some(product => !menuCategories.some(category => category.id === product.category)) && <section className="all-category-section"><div className="all-category-heading"><h3>Outros</h3></div><div className="product-grid">{filteredProducts.filter(product => !menuCategories.some(category => category.id === product.category)).map(product => <ProductCard key={product.id} product={product} categoryLabel={categoryLabel(product.category)} canOrder={restaurant.isOpen} onAdd={addProduct} />)}</div></section>}</div> : <div className="product-grid">{filteredProducts.map((product) => <ProductCard key={product.id} product={product} categoryLabel={categoryLabel(product.category)} canOrder={restaurant.isOpen} onAdd={addProduct} />)}</div>}
+          {filteredProducts.length === 0 ? <p className="restaurant-description">Este menu ainda não tem produtos publicados.</p> : selectedCategory === 'all' ? <div className="all-categories-list">{menuCategories.map(category => { const categoryProducts = filteredProducts.filter(product => product.category === category.id); return categoryProducts.length ? <section className="all-category-section" key={category.id}><div className="all-category-heading"><h3>{category.label}</h3><span>{categoryProducts.length} itens</span></div><div className="product-grid">{categoryProducts.map(product => <ProductCard key={product.id} product={product} categoryLabel={category.label} canOrder={restaurant.isOpen} onAdd={addProduct} priority={filteredProducts.slice(0,4).some(item => item.id === product.id)} />)}</div></section> : null; })}{filteredProducts.some(product => !menuCategories.some(category => category.id === product.category)) && <section className="all-category-section"><div className="all-category-heading"><h3>Outros</h3></div><div className="product-grid">{filteredProducts.filter(product => !menuCategories.some(category => category.id === product.category)).map(product => <ProductCard key={product.id} product={product} categoryLabel={categoryLabel(product.category)} canOrder={restaurant.isOpen} onAdd={addProduct} priority={filteredProducts.slice(0,4).some(item => item.id === product.id)} />)}</div></section>}</div> : <div className="product-grid">{filteredProducts.map((product) => <ProductCard key={product.id} product={product} categoryLabel={categoryLabel(product.category)} canOrder={restaurant.isOpen} onAdd={addProduct} />)}</div>}
         </section>
       </main>
       <footer className="site-footer"><div><span className="brand brand--footer"><span className="brand-mark">F</span><span>FB3d2y <b>Menu</b></span></span><p>Cardápios próximos, pedidos simples.</p></div><span className="footer-note">feito para negócios locais · beta</span></footer>
