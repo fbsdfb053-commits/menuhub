@@ -2593,3 +2593,9 @@ img, video, canvas, svg { max-width: 100%; }
 .complement-quantity b { min-width: 12px; text-align: center; font-size: 12px; }
 .toast { animation: menu-toast-in .18s ease-out; }
 @keyframes menu-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+.complement-option-edit-fields { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(100px, .6fr); gap: 8px; flex: 1 1 100%; min-width: 220px; }
+.complement-option-edit-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted, #64736d); }
+.complement-option-edit-fields input { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px 9px; border: 1px solid #d6e0da; border-radius: 8px; color: #20372e; background: #fff; font: inherit; }
+.complement-option-edit-fields .admin-product-actions { grid-column: 1 / -1; }
+@media (max-width: 600px) { .complement-option-edit-fields { grid-template-columns: 1fr; } }
