@@ -13,6 +13,7 @@ AS $function$
       'descricao', e.descricao,
       'localizacao', e.localizacao,
       'horario', e.horario,
+      'telefone_contato', e.telefone_contato,
       'horario_funcionamento', e.horario_funcionamento,
       'status_loja_manual', e.status_loja_manual,
       'instagram', e.instagram,
