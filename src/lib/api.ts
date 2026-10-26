@@ -148,14 +148,55 @@ export async function createOrder(slug: string, form: OrderForm, items: OrderIte
 }
 
 
-export async function uploadMenuImage(file: File, restaurantId: number): Promise<string> {
+export async function uploadMenuImage(file: File, restaurantId: number, options: { optimizeForShare?: boolean } = {}): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
   if (file.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.')
-  const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+  let uploadFile = file
+  let contentType = file.type
+  let extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+
+  if (options.optimizeForShare) {
+    try {
+      const bitmap = await createImageBitmap(file)
+      const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('Não foi possível preparar a foto.')
+      context.fillStyle = '#ffffff'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      bitmap.close()
+      const toJpeg = (quality: number) => new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Não foi possível otimizar a foto.')), 'image/jpeg', quality)
+      })
+      let optimized = await toJpeg(0.78)
+      if (optimized.size > 580 * 1024) optimized = await toJpeg(0.65)
+      if (optimized.size > 580 * 1024) {
+        const smaller = document.createElement('canvas')
+        const shrink = Math.min(1, 900 / Math.max(canvas.width, canvas.height))
+        smaller.width = Math.max(1, Math.round(canvas.width * shrink))
+        smaller.height = Math.max(1, Math.round(canvas.height * shrink))
+        const smallerContext = smaller.getContext('2d')
+        if (!smallerContext) throw new Error('Não foi possível preparar a foto.')
+        smallerContext.fillStyle = '#ffffff'
+        smallerContext.fillRect(0, 0, smaller.width, smaller.height)
+        smallerContext.drawImage(canvas, 0, 0, smaller.width, smaller.height)
+        optimized = await new Promise<Blob>((resolve, reject) => smaller.toBlob(blob => blob ? resolve(blob) : reject(new Error('Não foi possível otimizar a foto.')), 'image/jpeg', 0.6))
+      }
+      uploadFile = new File([optimized], 'profile-share.jpg', { type: 'image/jpeg' })
+      contentType = 'image/jpeg'
+      extension = 'jpg'
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Não foi possível otimizar a foto.')
+    }
+  }
+
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user) throw new Error('Entre na sua conta para enviar imagens.')
   const path = auth.user.id + '/' + restaurantId + '/' + crypto.randomUUID() + '.' + extension
-  const { error } = await supabase.storage.from('menu-images').upload(path, file, { upsert: false, contentType: file.type })
+  const { error } = await supabase.storage.from('menu-images').upload(path, uploadFile, { upsert: false, contentType })
   if (error) throw new Error(error.message.includes('Bucket not found') ? 'O armazenamento de imagens ainda não foi configurado no Supabase. Execute o arquivo supabase/03_imagens.sql.' : error.message)
   return supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
 }
