@@ -2578,3 +2578,18 @@ img, video, canvas, svg { max-width: 100%; }
 .complement-choice-limit { margin:0 0 8px; color:#8f3218 !important; font-weight:600; }
 .complement-choice--disabled { opacity:.45; cursor:not-allowed; }
 .complement-choice--disabled input { cursor:not-allowed; }
+
+/* Ajustes sutis para a janela de complementos e seus controles de quantidade. */
+.complement-picker { font-size: 13px; }
+.complement-picker .drawer-header h2 { font-size: 20px; }
+.complement-choice-group h3 { font-size: 14px; }
+.complement-choice-group p, .complement-choice span { font-size: 12px; }
+.complement-choice { gap: 9px; }
+.complement-choice img { width: 52px !important; height: 52px !important; flex: 0 0 52px !important; }
+.complement-option-price { display: block; margin-top: 2px; color: #657571; font-size: 11px; }
+.complement-quantity { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.complement-quantity button { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid #d8e3de; border-radius: 8px; background: #f8fbf9; color: #315d50; }
+.complement-quantity button:disabled { opacity: .35; cursor: not-allowed; }
+.complement-quantity b { min-width: 12px; text-align: center; font-size: 12px; }
+.toast { animation: menu-toast-in .18s ease-out; }
+@keyframes menu-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
