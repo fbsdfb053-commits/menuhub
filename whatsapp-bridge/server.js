@@ -113,11 +113,11 @@ async function handleIncomingMessage(restaurantId, sock, message) {
 
 
 function normalizedStatus(value) {
-  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().toLowerCase()
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
 }
 
 function whatsappJid(value) {
-  let digits = String(value || '').replace(/\\D/g, '')
+  let digits = String(value || '').replace(/\D/g, '')
   if (digits.startsWith('00')) digits = digits.slice(2)
   if (digits.length === 10 || digits.length === 11) digits = '55' + digits
   if (digits.length < 12 || digits.length > 13) return null
@@ -147,7 +147,7 @@ function formatOrderStatusMessage(template, order) {
     pedido_id: String(order.id),
     status: String(order.status || '')
   }
-  return template.replace(/\\{\\{?\\s*(cliente_nome|nome|pedido_id|pedido|status)\\s*\\}\\}?/gi, (_match, key) => values[key.toLowerCase()] ?? '').trim().slice(0, 4000)
+  return template.replace(/\{\{?\s*(cliente_nome|nome|pedido_id|pedido|status)\s*\}\}?/gi, (_match, key) => values[key.toLowerCase()] ?? '').trim().slice(0, 4000)
 }
 
 async function handleOrderStatusEvent(payload) {
