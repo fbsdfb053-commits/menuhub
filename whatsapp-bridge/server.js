@@ -247,7 +247,7 @@ function formatOrderStatusMessage(template, order) {
   }
   let message = template
   for (const [key, value] of Object.entries(values)) {
-    message = message.replaceAll(`{${key}}`, value).replaceAll(`{{${key}}}`, value)
+    message = message.replaceAll(`{{${key}}}`, value).replaceAll(`{${key}}`, value)
   }
   return message.trim().slice(0, 4000)
 }
