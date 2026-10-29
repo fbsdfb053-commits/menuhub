@@ -178,32 +178,82 @@ function orderStatusSettings(status, config) {
   const key = normalizedStatus(status)
   const settings = {
     novo: { enabled: 'statusNew', message: 'messageNew', fallback: 'Olá {nome}! Recebemos seu pedido #{pedido}.' },
+    aceito: { enabled: 'statusAccepted', message: 'messageAccepted', fallback: 'Olá {nome}! O restaurante aceitou seu pedido #{pedido}.' },
+    aceita: { enabled: 'statusAccepted', message: 'messageAccepted', fallback: 'Olá {nome}! O restaurante aceitou seu pedido #{pedido}.' },
     preparando: { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
+    'em preparo': { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
     pronto: { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto.' },
+    'retirada disponivel': { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto para retirada.' },
+    'saiu para entrega': { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
     concluido: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi concluído.' },
+    entregue: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi entregue.' },
     cancelado: { enabled: 'statusCanceled', message: 'messageCanceled', fallback: 'Olá {nome}, seu pedido #{pedido} foi cancelado. Entre em contato com o restaurante se precisar de ajuda.' }
   }
   const setting = settings[key]
-  if (!setting || config?.[setting.enabled] !== true) return null
-  const configuredMessage = config?.[setting.message]
-  return { ...setting, text: typeof configuredMessage === 'string' && configuredMessage.trim() ? configuredMessage.trim() : setting.fallback }
+  if (setting && config?.[setting.enabled] === false) return null
+  const configuredMessage = setting ? config?.[setting.message] : null
+  const fallback = setting?.fallback || `Olá {nome}! O status do seu pedido #{pedido} foi atualizado para: {status}.`
+  return {
+    text: typeof configuredMessage === 'string' && configuredMessage.trim() ? configuredMessage.trim() : fallback
+  }
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0)
+}
+
+async function buildOrderReceiptMessage(order) {
+  const [restaurantResult, itemsResult] = await Promise.all([
+    admin.from('empresas').select('nome').eq('id', Number(order.empresa_id)).maybeSingle(),
+    admin.from('itens_pedido').select('nome_produto,quantidade,preco_unitario').eq('pedido_id', Number(order.id)).order('id')
+  ])
+  if (restaurantResult.error) throw restaurantResult.error
+  if (itemsResult.error) throw itemsResult.error
+
+  const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0]
+  const restaurantName = restaurantResult.data?.nome || 'nosso restaurante'
+  const lines = [
+    `Olá, ${firstName}! Recebemos seu pedido #${order.id} no *${restaurantName}*.`,
+    '',
+    '*Resumo do pedido*'
+  ]
+  for (const item of itemsResult.data || []) {
+    const quantity = Number(item.quantidade) || 1
+    const unitPrice = Number(item.preco_unitario) || 0
+    const itemName = item.nome_produto || 'Item do cardápio'
+    lines.push(`• ${quantity}x ${itemName} — ${formatCurrency(unitPrice * quantity)}`)
+  }
+  if (!itemsResult.data?.length) lines.push('Os itens do pedido foram registrados.')
+  lines.push('', `*Total: ${formatCurrency(order.total)}*`)
+  if (order.forma_pagamento) lines.push(`Pagamento: ${order.forma_pagamento}`)
+  if (order.tipo_entrega) lines.push(`Entrega: ${order.tipo_entrega}`)
+  if (normalizedStatus(order.tipo_entrega) === 'entrega' && order.endereco_entrega) {
+    lines.push(`Endereço: ${order.endereco_entrega}`)
+  }
+  if (order.observacoes?.trim()) lines.push(`Observações: ${order.observacoes.trim()}`)
+  if (order.precisa_troco && order.troco_para) lines.push(`Troco para: ${formatCurrency(order.troco_para)}`)
+  lines.push('', 'Vamos avisar você por aqui quando houver atualização no seu pedido.')
+  return lines.join('\\n').slice(0, 4000)
 }
 
 function formatOrderStatusMessage(template, order) {
+  const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0]
   const values = {
-    nome: String(order.cliente_nome || 'cliente'),
+    nome: firstName,
     cliente_nome: String(order.cliente_nome || 'cliente'),
     pedido: String(order.id),
     pedido_id: String(order.id),
     status: String(order.status || '')
   }
-  return template.replace(/\{\{?\s*(cliente_nome|nome|pedido_id|pedido|status)\s*\}\}?/gi, (_match, key) => values[key.toLowerCase()] ?? '').trim().slice(0, 4000)
+  return template.replace(/\\{\\{?\\s*(cliente_nome|nome|pedido_id|pedido|status)\\s*\\}\\}?/gi, (_match, key) => values[key.toLowerCase()] ?? '').trim().slice(0, 4000)
 }
 
 async function handleOrderStatusEvent(payload) {
   const order = payload?.new
   if (!order || !order.id || !order.empresa_id || !order.status) return
-  if (payload.eventType === 'UPDATE' && normalizedStatus(payload.old?.status) === normalizedStatus(order.status)) return
+
+  const isInsert = payload.eventType === 'INSERT'
+  if (!isInsert && normalizedStatus(payload.old?.status) === normalizedStatus(order.status)) return
 
   const settings = await admin
     .from('whatsapp_bot_config')
@@ -219,17 +269,17 @@ async function handleOrderStatusEvent(payload) {
 
   const jid = whatsappJid(order.cliente_whatsapp)
   if (!jid) {
-    log.warn({ orderId: order.id, restaurantId: order.empresa_id }, 'Order status WhatsApp skipped: invalid customer number')
+    log.warn({ orderId: order.id, restaurantId: order.empresa_id }, 'Order WhatsApp notification skipped: invalid customer number')
     return
   }
 
   const state = stateFor(String(order.empresa_id))
   if (state.status !== 'connected' || !state.socket) {
-    log.warn({ orderId: order.id, restaurantId: order.empresa_id, status: order.status }, 'Order status WhatsApp skipped: restaurant WhatsApp is not connected')
+    log.warn({ orderId: order.id, restaurantId: order.empresa_id, status: order.status }, 'Order WhatsApp notification skipped: restaurant WhatsApp is not connected')
     return
   }
 
-  // Reserve the (order, status) pair before sending so concurrent/replayed events cannot duplicate a message.
+  // A unique (order, status) key prevents duplicate messages if Realtime replays an event.
   const reservation = await admin
     .from('whatsapp_status_enviados')
     .insert({ pedido_id: Number(order.id), status: String(order.status) })
@@ -241,11 +291,12 @@ async function handleOrderStatusEvent(payload) {
   }
 
   try {
-    const text = formatOrderStatusMessage(notification.text, order)
+    const text = isInsert
+      ? await buildOrderReceiptMessage(order)
+      : formatOrderStatusMessage(notification.text, order)
     await state.socket.sendMessage(jid, { text })
-    log.info({ orderId: order.id, restaurantId: order.empresa_id, status: order.status }, 'Order status WhatsApp notification sent')
+    log.info({ orderId: order.id, restaurantId: order.empresa_id, status: order.status, event: isInsert ? 'receipt' : 'status' }, 'Order WhatsApp notification sent')
   } catch (err) {
-    // Allow a later event/retry to try again if WhatsApp rejected the send.
     await admin.from('whatsapp_status_enviados').delete().eq('id', reservation.data.id)
     throw err
   }
