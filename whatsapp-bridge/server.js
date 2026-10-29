@@ -12,7 +12,9 @@ const app = express()
 // Authorization and JSON requests trigger a CORS preflight (OPTIONS).
 const allowedOrigins = new Set([
   'https://menuhub-git-teste-menuhub-fb3d2y.vercel.app',
-  'https://menuhub-one.vercel.app'
+  'https://menuhub-one.vercel.app',
+  'https://fb3d2ymenu.com.br',
+  'https://www.fb3d2ymenu.com.br'
 ])
 app.use((req, res, next) => {
   const origin = req.headers.origin
