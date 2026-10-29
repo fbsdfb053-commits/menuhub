@@ -183,15 +183,17 @@ function orderStatusSettings(status, config) {
     preparando: { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
     'em preparo': { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
     pronto: { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto.' },
-    'retirada disponivel': { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto para retirada.' },
-    'saiu para entrega': { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
-    concluido: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi concluído.' },
+    'retirada disponivel': { enabled: 'statusReady', message: null, fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto para retirada.' },
+    'em entrega': { enabled: 'statusReady', message: null, fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
+    'saiu para entrega': { enabled: 'statusReady', message: null, fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
+    concluido: null,
     entregue: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi entregue.' },
     cancelado: { enabled: 'statusCanceled', message: 'messageCanceled', fallback: 'Olá {nome}, seu pedido #{pedido} foi cancelado. Entre em contato com o restaurante se precisar de ajuda.' }
   }
   const setting = settings[key]
+  if (setting === null) return null
   if (setting && config?.[setting.enabled] === false) return null
-  const configuredMessage = setting ? config?.[setting.message] : null
+  const configuredMessage = setting?.message ? config?.[setting.message] : null
   const fallback = setting?.fallback || `Olá {nome}! O status do seu pedido #{pedido} foi atualizado para: {status}.`
   return {
     text: typeof configuredMessage === 'string' && configuredMessage.trim() ? configuredMessage.trim() : fallback
@@ -205,10 +207,19 @@ function formatCurrency(value) {
 async function buildOrderReceiptMessage(order) {
   const [restaurantResult, itemsResult] = await Promise.all([
     admin.from('empresas').select('nome').eq('id', Number(order.empresa_id)).maybeSingle(),
-    admin.from('itens_pedido').select('nome_produto,quantidade,preco_unitario').eq('pedido_id', Number(order.id)).order('id')
+    admin.from('itens_pedido').select('produto_id,nome_produto,quantidade,preco_unitario').eq('pedido_id', Number(order.id)).order('id')
   ])
   if (restaurantResult.error) throw restaurantResult.error
   if (itemsResult.error) throw itemsResult.error
+
+  const orderItems = itemsResult.data || []
+  const productIds = [...new Set(orderItems.map(item => Number(item.produto_id)).filter(id => Number.isSafeInteger(id) && id > 0))]
+  let productPrices = new Map()
+  if (productIds.length) {
+    const productsResult = await admin.from('produtos').select('id,preco').in('id', productIds)
+    if (productsResult.error) throw productsResult.error
+    productPrices = new Map((productsResult.data || []).map(product => [Number(product.id), Number(product.preco) || 0]))
+  }
 
   const firstName = String(order.cliente_nome || 'cliente').trim().split(' ').filter(Boolean)[0]
   const restaurantName = restaurantResult.data?.nome || 'nosso restaurante'
@@ -217,13 +228,16 @@ async function buildOrderReceiptMessage(order) {
     '',
     '*Resumo do pedido*'
   ]
-  for (const item of itemsResult.data || []) {
+  for (const item of orderItems) {
     const quantity = Number(item.quantidade) || 1
-    const unitPrice = Number(item.preco_unitario) || 0
+    const savedPrice = Number(item.preco_unitario)
+    const unitPrice = Number.isFinite(savedPrice) && savedPrice > 0
+      ? savedPrice
+      : productPrices.get(Number(item.produto_id)) ?? 0
     const itemName = item.nome_produto || 'Item do cardápio'
     lines.push(`• ${quantity}x ${itemName} — ${formatCurrency(unitPrice * quantity)}`)
   }
-  if (!itemsResult.data?.length) lines.push('Os itens do pedido foram registrados.')
+  if (!orderItems.length) lines.push('Os itens do pedido foram registrados.')
   lines.push('', `*Total: ${formatCurrency(order.total)}*`)
   if (order.forma_pagamento) lines.push(`Pagamento: ${order.forma_pagamento}`)
   if (order.tipo_entrega) lines.push(`Entrega: ${order.tipo_entrega}`)
