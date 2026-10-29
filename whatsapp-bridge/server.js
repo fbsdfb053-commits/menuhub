@@ -111,6 +111,111 @@ async function handleIncomingMessage(restaurantId, sock, message) {
   }
 }
 
+
+function normalizedStatus(value) {
+  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().toLowerCase()
+}
+
+function whatsappJid(value) {
+  let digits = String(value || '').replace(/\\D/g, '')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (digits.length === 10 || digits.length === 11) digits = '55' + digits
+  if (digits.length < 12 || digits.length > 13) return null
+  return digits + '@s.whatsapp.net'
+}
+
+function orderStatusSettings(status, config) {
+  const key = normalizedStatus(status)
+  const settings = {
+    novo: { enabled: 'statusNew', message: 'messageNew', fallback: 'Olá {nome}! Recebemos seu pedido #{pedido}.' },
+    preparando: { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
+    pronto: { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto.' },
+    concluido: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi concluído.' },
+    cancelado: { enabled: 'statusCanceled', message: 'messageCanceled', fallback: 'Olá {nome}, seu pedido #{pedido} foi cancelado. Entre em contato com o restaurante se precisar de ajuda.' }
+  }
+  const setting = settings[key]
+  if (!setting || config?.[setting.enabled] !== true) return null
+  const configuredMessage = config?.[setting.message]
+  return { ...setting, text: typeof configuredMessage === 'string' && configuredMessage.trim() ? configuredMessage.trim() : setting.fallback }
+}
+
+function formatOrderStatusMessage(template, order) {
+  const values = {
+    nome: String(order.cliente_nome || 'cliente'),
+    cliente_nome: String(order.cliente_nome || 'cliente'),
+    pedido: String(order.id),
+    pedido_id: String(order.id),
+    status: String(order.status || '')
+  }
+  return template.replace(/\\{\\{?\\s*(cliente_nome|nome|pedido_id|pedido|status)\\s*\\}\\}?/gi, (_match, key) => values[key.toLowerCase()] ?? '').trim().slice(0, 4000)
+}
+
+async function handleOrderStatusEvent(payload) {
+  const order = payload?.new
+  if (!order || !order.id || !order.empresa_id || !order.status) return
+  if (payload.eventType === 'UPDATE' && normalizedStatus(payload.old?.status) === normalizedStatus(order.status)) return
+
+  const settings = await admin
+    .from('whatsapp_bot_config')
+    .select('config')
+    .eq('empresa_id', Number(order.empresa_id))
+    .maybeSingle()
+  if (settings.error) throw settings.error
+  const config = settings.data?.config
+  if (!config || config.enabled !== true) return
+
+  const notification = orderStatusSettings(order.status, config)
+  if (!notification) return
+
+  const jid = whatsappJid(order.cliente_whatsapp)
+  if (!jid) {
+    log.warn({ orderId: order.id, restaurantId: order.empresa_id }, 'Order status WhatsApp skipped: invalid customer number')
+    return
+  }
+
+  const state = stateFor(String(order.empresa_id))
+  if (state.status !== 'connected' || !state.socket) {
+    log.warn({ orderId: order.id, restaurantId: order.empresa_id, status: order.status }, 'Order status WhatsApp skipped: restaurant WhatsApp is not connected')
+    return
+  }
+
+  // Reserve the (order, status) pair before sending so concurrent/replayed events cannot duplicate a message.
+  const reservation = await admin
+    .from('whatsapp_status_enviados')
+    .insert({ pedido_id: Number(order.id), status: String(order.status) })
+    .select('id')
+    .single()
+  if (reservation.error) {
+    if (reservation.error.code === '23505') return
+    throw reservation.error
+  }
+
+  try {
+    const text = formatOrderStatusMessage(notification.text, order)
+    await state.socket.sendMessage(jid, { text })
+    log.info({ orderId: order.id, restaurantId: order.empresa_id, status: order.status }, 'Order status WhatsApp notification sent')
+  } catch (err) {
+    // Allow a later event/retry to try again if WhatsApp rejected the send.
+    await admin.from('whatsapp_status_enviados').delete().eq('id', reservation.data.id)
+    throw err
+  }
+}
+
+function startOrderStatusRealtime() {
+  admin
+    .channel('menuhub-order-status-notifications')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
+      void handleOrderStatusEvent(payload).catch(err => log.error({ err, orderId: payload?.new?.id }, 'New order WhatsApp notification failed'))
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos' }, payload => {
+      void handleOrderStatusEvent(payload).catch(err => log.error({ err, orderId: payload?.new?.id }, 'Order status WhatsApp notification failed'))
+    })
+    .subscribe((status, err) => {
+      if (status === 'SUBSCRIBED') log.info('Supabase Realtime subscribed to order status changes')
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') log.error({ status, err }, 'Supabase Realtime order status subscription failed')
+    })
+}
+
 function safeId(value) {
   const id = Number(value)
   if (!Number.isSafeInteger(id) || id < 1) return null
@@ -257,4 +362,5 @@ app.post('/api/whatsapp/:restaurantId/logout', async (req, res) => {
   sessions.set(id, { status: 'disconnected', qr: null, qrDataUrl: null, phone: null, socket: null, starting: false, lastError: null })
   res.json({ status: 'disconnected' })
 })
+startOrderStatusRealtime()
 app.listen(PORT, '0.0.0.0', () => log.info({ port: PORT }, 'Menuhub WhatsApp bridge listening'))
