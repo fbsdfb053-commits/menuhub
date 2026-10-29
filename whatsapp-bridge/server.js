@@ -185,7 +185,7 @@ function orderStatusSettings(status, config) {
     pronto: { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto.' },
     'retirada disponivel': { enabled: 'statusPickupReady', message: 'messagePickupReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto para retirada.' },
     'em entrega': { enabled: 'statusOutForDelivery', message: 'messageOutForDelivery', fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
-    'saiu para entrega': { enabled: 'statusReady', message: null, fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
+    'saiu para entrega': { enabled: 'statusOutForDelivery', message: 'messageOutForDelivery', fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
     concluido: null,
     entregue: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi entregue.' },
     cancelado: { enabled: 'statusCanceled', message: 'messageCanceled', fallback: 'Olá {nome}, seu pedido #{pedido} foi cancelado. Entre em contato com o restaurante se precisar de ajuda.' }
