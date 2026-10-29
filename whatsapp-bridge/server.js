@@ -295,11 +295,24 @@ async function handleOrderStatusEvent(payload) {
   }
 
   try {
+    // Resolve the phone number through WhatsApp before sending. Some accounts use
+    // LID addressing, so constructing an @s.whatsapp.net JID can target the wrong address.
+    const recipients = await state.socket.onWhatsApp(jid)
+    const recipient = Array.isArray(recipients)
+      ? recipients.find(item => item?.exists && item?.jid)
+      : null
+    if (!recipient) {
+      log.warn({ orderId: order.id, restaurantId: order.empresa_id, status: order.status }, 'Order WhatsApp notification skipped: customer number was not resolved by WhatsApp')
+      await admin.from('whatsapp_status_enviados').delete().eq('id', reservation.data.id)
+      return
+    }
+
     const text = isInsert
       ? await buildOrderReceiptMessage(order)
       : formatOrderStatusMessage(notification.text, order)
-    await state.socket.sendMessage(jid, { text })
-    log.info({ orderId: order.id, restaurantId: order.empresa_id, status: order.status, event: isInsert ? 'receipt' : 'status' }, 'Order WhatsApp notification sent')
+    const sent = await state.socket.sendMessage(recipient.jid, { text })
+    if (!sent?.key?.id) throw new Error('WhatsApp did not return a message ID')
+    log.info({ orderId: order.id, restaurantId: order.empresa_id, status: order.status, event: isInsert ? 'receipt' : 'status', messageId: sent.key.id }, 'Order WhatsApp notification accepted by WhatsApp')
   } catch (err) {
     await admin.from('whatsapp_status_enviados').delete().eq('id', reservation.data.id)
     throw err
