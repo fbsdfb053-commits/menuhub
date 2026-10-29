@@ -1,6 +1,6 @@
 # Menuhub WhatsApp QR bridge (non-official test integration)
 
-This service links a WhatsApp account using the WhatsApp Web protocol via Baileys. It is **not an official Meta API integration**; WhatsApp may log out the session or restrict the number. Use a test number and follow WhatsApp's terms. The bridge handles QR/session and simple inbound auto-replies when the restaurant owner enables the bot in Menuhub. It recognizes common keywords for menu, opening hours, and payment; other text receives the configured welcome message. Automatic order-status messages are not implemented yet.
+This service links a WhatsApp account using the WhatsApp Web protocol via Baileys. It is **not an official Meta API integration**; WhatsApp may log out the session or restrict the number. Use a test number and follow WhatsApp's terms. The bridge handles QR/session, inbound auto-replies, and customer order notifications when the restaurant owner enables the bot in Menuhub. It recognizes common keywords for menu, opening hours, and payment; menu requests return currently available products from Supabase. When a new order is created, it sends the customer a receipt with items, quantities, prices, total, payment method, delivery/pickup details, observations, and change information when available. It also sends a message when the order status changes, using the configured templates where available and a generic update for other statuses.
 
 ## Temporary free Render test
 
@@ -27,4 +27,4 @@ Set `VITE_WHATSAPP_BRIDGE_URL` in the Menuhub **test/preview** environment to th
 - Logging out in the Menuhub panel deletes this bridge's local session files. You can also unlink the device from WhatsApp on the phone.
 - Use a separate test number first. The bot replies only to direct incoming text messages (not groups/status messages), only when the saved `enabled` setting is on, and uses the saved welcome/menu/hours/payment texts. Test with a few trusted contacts before relying on it for customers.
 - Replies are basic keyword-based rules, not an AI agent; unknown messages receive the welcome message. The current duplicate guard and rate limit are in-memory and reset when the service restarts.
-- Automatic order-status messages are not implemented yet. Before adding them, implement order event hooks, customer consent/opt-in, persistent deduplication, and delivery/error handling.
+- Order notifications use Supabase Realtime on `public.pedidos` and the `whatsapp_status_enviados` table for persistent deduplication. The database must have the `notificacoes_pedidos_realtime` migration applied and the unique `(pedido_id, status)` index on `whatsapp_status_enviados`.
