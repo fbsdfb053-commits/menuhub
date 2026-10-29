@@ -198,7 +198,7 @@ async function pollOrderNotifications() {
         continue
       }
       try {
-        if (previous === undefined && status === 'novo') {
+        if (previous === undefined) {
           const { data: items, error: itemsError } = await admin
             .from('itens_pedido')
             .select('nome_produto,quantidade,preco_unitario')
@@ -206,7 +206,8 @@ async function pollOrderNotifications() {
           if (itemsError) throw itemsError
           await state.socket.sendMessage(jid, { text: receiptMessage(order, items || []) })
           log.info({ restaurantId: order.empresa_id, orderId: order.id }, 'WhatsApp order receipt sent')
-        } else {
+        }
+        if (status !== 'novo') {
           const template = orderStatusMessage(order.status, order, config)
           if (typeof template === 'string' && template.trim()) {
             await state.socket.sendMessage(jid, { text: template.trim().slice(0, 4000) })
