@@ -111,6 +111,78 @@ async function handleIncomingMessage(restaurantId, sock, message) {
   }
 }
 
+
+function normalizeOrderStatus(value) {
+  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim()
+}
+function customerJid(value) {
+  let digits = String(value || '').replace(/\\D/g, '')
+  if (digits.length === 10 || digits.length === 11) digits = '55' + digits
+  if (digits.length < 12 || digits.length > 15) return null
+  return digits + '@s.whatsapp.net'
+}
+function orderStatusMessage(status, config) {
+  const normalized = normalizeOrderStatus(status)
+  if (normalized === 'novo') return config.statusNew ? config.messageNew : null
+  if (normalized === 'preparando' || normalized === 'em preparo') return config.statusPreparing ? config.messagePreparing : null
+  if (normalized === 'pronto') return config.statusReady ? config.messageReady : null
+  if (normalized === 'saiu para entrega' || normalized === 'em rota de entrega' || normalized === 'a caminho') return config.statusOutForDelivery ? config.messageOutForDelivery : null
+  if (normalized === 'concluido' || normalized === 'entregue') return config.statusDelivered ? config.messageDelivered : null
+  return null
+}
+
+// Detect status changes from Supabase and send the matching customer notification.
+const knownOrderStatuses = new Map()
+let orderPollingInitialized = false
+let pollingOrders = false
+async function pollOrderNotifications() {
+  if (pollingOrders) return
+  pollingOrders = true
+  try {
+    const { data: configs, error: configError } = await admin.from('whatsapp_bot_config').select('empresa_id,config')
+    if (configError) throw configError
+    const configByRestaurant = new Map((configs || []).map(row => [String(row.empresa_id), row.config || {}]))
+    const { data: orders, error: orderError } = await admin
+      .from('pedidos')
+      .select('id,empresa_id,cliente_nome,cliente_whatsapp,status,criado_em')
+      .order('criado_em', { ascending: false })
+      .limit(2000)
+    if (orderError) throw orderError
+
+    for (const order of orders || []) {
+      const key = String(order.empresa_id) + ':' + String(order.id)
+      const status = normalizeOrderStatus(order.status)
+      const previous = knownOrderStatuses.get(key)
+      knownOrderStatuses.set(key, status)
+      if (!orderPollingInitialized || (previous === undefined && status !== 'novo') || previous === status) continue
+
+      const config = configByRestaurant.get(String(order.empresa_id))
+      const state = sessions.get(String(order.empresa_id))
+      if (!config || config.enabled !== true || !state || state.status !== 'connected' || !state.socket) continue
+      const jid = customerJid(order.cliente_whatsapp)
+      if (!jid) {
+        log.warn({ orderId: order.id, restaurantId: order.empresa_id }, 'Order notification skipped: invalid customer WhatsApp number')
+        continue
+      }
+      const template = orderStatusMessage(order.status, config)
+      if (typeof template !== 'string' || !template.trim()) continue
+      const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0] || 'cliente'
+      const message = template.replace(/\\{nome\\}/g, firstName).replace(/\\{pedido\\}/g, String(order.id)).slice(0, 4000)
+      try {
+        await state.socket.sendMessage(jid, { text: message })
+        log.info({ restaurantId: order.empresa_id, orderId: order.id, status: order.status }, 'WhatsApp order status notification sent')
+      } catch (err) {
+        log.error({ err, restaurantId: order.empresa_id, orderId: order.id, status: order.status }, 'WhatsApp order status notification failed')
+      }
+    }
+    orderPollingInitialized = true
+  } catch (err) {
+    log.error({ err }, 'Order notification polling failed')
+  } finally {
+    pollingOrders = false
+  }
+}
+
 function safeId(value) {
   const id = Number(value)
   if (!Number.isSafeInteger(id) || id < 1) return null
@@ -257,4 +329,6 @@ app.post('/api/whatsapp/:restaurantId/logout', async (req, res) => {
   sessions.set(id, { status: 'disconnected', qr: null, qrDataUrl: null, phone: null, socket: null, starting: false, lastError: null })
   res.json({ status: 'disconnected' })
 })
+setInterval(() => { void pollOrderNotifications() }, 5000)
+void pollOrderNotifications()
 app.listen(PORT, '0.0.0.0', () => log.info({ port: PORT }, 'Menuhub WhatsApp bridge listening'))
