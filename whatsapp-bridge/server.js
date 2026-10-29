@@ -66,6 +66,55 @@ function messageText(message) {
   ).trim()
 }
 
+function isMenuRequest(text) {
+  const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  return /\b(cardapio|menu|comida|pratos|opcoes|opcoes do menu)\b/.test(normalized)
+}
+
+async function buildMenuReply(restaurantId) {
+  const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
+    admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle(),
+    admin.from('produtos').select('nome,preco,descricao,categoria_id,ordem').eq('empresa_id', Number(restaurantId)).eq('disponivel', true).order('ordem').order('nome'),
+    admin.from('categorias').select('id,nome,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome')
+  ])
+  if (restaurantResult.error) throw restaurantResult.error
+  if (productsResult.error) throw productsResult.error
+  if (categoriesResult.error) throw categoriesResult.error
+
+  const restaurantName = restaurantResult.data?.nome || 'Cardápio'
+  const availableProducts = productsResult.data || []
+  if (!availableProducts.length) return `*${restaurantName}*\nNo momento, não há itens disponíveis no cardápio.`
+
+  const categoryNames = new Map((categoriesResult.data || []).map(category => [category.id, category.nome]))
+  const groups = new Map()
+  for (const product of availableProducts) {
+    const groupName = categoryNames.get(product.categoria_id) || 'Outros itens'
+    if (!groups.has(groupName)) groups.set(groupName, [])
+    groups.get(groupName).push(product)
+  }
+
+  const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+  const lines = [`*${restaurantName}*`, '*Itens disponíveis no momento:*', '']
+  let truncated = false
+  for (const [groupName, products] of groups) {
+    const groupLines = [`*${groupName}*`]
+    for (const product of products) {
+      let line = `• ${product.nome} — ${currency.format(Number(product.preco) || 0)}`
+      if (product.descricao?.trim()) line += `\n  ${product.descricao.trim().slice(0, 120)}`
+      groupLines.push(line)
+    }
+    const section = groupLines.join('\n') + '\n'
+    if ((lines.join('\n') + '\n' + section).length > 3500) {
+      lines.push('Para ver mais opções, peça uma categoria específica.')
+      truncated = true
+      break
+    }
+    lines.push(...groupLines, '')
+  }
+  if (truncated) log.info({ restaurantId }, 'Menu WhatsApp reply shortened to fit message limit')
+  return lines.join('\n').trim().slice(0, 3900)
+}
+
 function chooseReply(text, config) {
   const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   if (/\b(cardapio|menu|comida|pratos|opcoes|opcoes do menu)\b/.test(normalized)) return config.faqMenu
@@ -101,11 +150,12 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     const config = data?.config
     if (!config || config.enabled !== true) return
 
-    const reply = chooseReply(text, config)
+    const menuRequested = isMenuRequest(text)
+    const reply = menuRequested ? await buildMenuReply(restaurantId) : chooseReply(text, config)
     if (typeof reply !== 'string' || !reply.trim()) return
     senderReplyTimes.set(senderKey, now)
     await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
-    log.info({ restaurantId, messageId, topic: reply === config.faqMenu ? 'menu' : reply === config.faqHours ? 'hours' : reply === config.faqPayment ? 'payment' : 'welcome' }, 'Automatic WhatsApp reply sent')
+    log.info({ restaurantId, messageId, topic: menuRequested ? 'menu' : reply === config.faqHours ? 'hours' : reply === config.faqPayment ? 'payment' : 'welcome' }, 'Automatic WhatsApp reply sent')
   } catch (err) {
     log.error({ err, restaurantId, messageId }, 'Automatic WhatsApp reply failed')
   }
