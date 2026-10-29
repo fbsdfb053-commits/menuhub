@@ -210,7 +210,7 @@ async function buildOrderReceiptMessage(order) {
   if (restaurantResult.error) throw restaurantResult.error
   if (itemsResult.error) throw itemsResult.error
 
-  const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0]
+  const firstName = String(order.cliente_nome || 'cliente').trim().split(' ').filter(Boolean)[0]
   const restaurantName = restaurantResult.data?.nome || 'nosso restaurante'
   const lines = [
     `Olá, ${firstName}! Recebemos seu pedido #${order.id} no *${restaurantName}*.`,
@@ -233,11 +233,11 @@ async function buildOrderReceiptMessage(order) {
   if (order.observacoes?.trim()) lines.push(`Observações: ${order.observacoes.trim()}`)
   if (order.precisa_troco && order.troco_para) lines.push(`Troco para: ${formatCurrency(order.troco_para)}`)
   lines.push('', 'Vamos avisar você por aqui quando houver atualização no seu pedido.')
-  return lines.join('\\n').slice(0, 4000)
+  return lines.join(String.fromCharCode(10)).slice(0, 4000)
 }
 
 function formatOrderStatusMessage(template, order) {
-  const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0]
+  const firstName = String(order.cliente_nome || 'cliente').trim().split(' ').filter(Boolean)[0]
   const values = {
     nome: firstName,
     cliente_nome: String(order.cliente_nome || 'cliente'),
@@ -245,7 +245,11 @@ function formatOrderStatusMessage(template, order) {
     pedido_id: String(order.id),
     status: String(order.status || '')
   }
-  return template.replace(/\\{\\{?\\s*(cliente_nome|nome|pedido_id|pedido|status)\\s*\\}\\}?/gi, (_match, key) => values[key.toLowerCase()] ?? '').trim().slice(0, 4000)
+  let message = template
+  for (const [key, value] of Object.entries(values)) {
+    message = message.replaceAll(`{${key}}`, value).replaceAll(`{{${key}}}`, value)
+  }
+  return message.trim().slice(0, 4000)
 }
 
 async function handleOrderStatusEvent(payload) {
