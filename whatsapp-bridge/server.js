@@ -112,6 +112,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
 }
 
 
+
 function normalizeOrderStatus(value) {
   return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim()
 }
@@ -121,17 +122,44 @@ function customerJid(value) {
   if (digits.length < 12 || digits.length > 15) return null
   return digits + '@s.whatsapp.net'
 }
-function orderStatusMessage(status, config) {
+function money(value) {
+  return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+function receiptMessage(order, items) {
+  const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0] || 'cliente'
+  const lines = [
+    '🧾 *Pedido recebido no Menuhub*',
+    'Olá, ' + firstName + '!',
+    'Pedido nº *' + order.id + '*',
+    '',
+    '*Resumo do pedido:*',
+    ...(items || []).map(item => '• ' + Number(item.quantidade || 1) + 'x ' + String(item.nome_produto || 'Item') + ' — ' + money(Number(item.preco_unitario || 0) * Number(item.quantidade || 1))),
+    '',
+    '*Total: ' + money(order.total) + '*',
+    'Tipo: ' + String(order.tipo_entrega || 'Não informado'),
+    order.forma_pagamento ? 'Pagamento: ' + String(order.forma_pagamento) : '',
+    order.tipo_entrega === 'Entrega' && order.endereco_entrega ? 'Endereço: ' + String(order.endereco_entrega) : '',
+    order.observacoes ? 'Observações: ' + String(order.observacoes) : '',
+    '',
+    'Enviaremos novas mensagens quando o status do pedido mudar.'
+  ].filter(Boolean)
+  return lines.join('\\n').slice(0, 4000)
+}
+function orderStatusMessage(status, order, config) {
   const normalized = normalizeOrderStatus(status)
-  if (normalized === 'novo') return config.statusNew ? config.messageNew : null
-  if (normalized === 'preparando' || normalized === 'em preparo') return config.statusPreparing ? config.messagePreparing : null
-  if (normalized === 'pronto') return config.statusReady ? config.messageReady : null
-  if (normalized === 'saiu para entrega' || normalized === 'em rota de entrega' || normalized === 'a caminho') return config.statusOutForDelivery ? config.messageOutForDelivery : null
-  if (normalized === 'concluido' || normalized === 'entregue') return config.statusDelivered ? config.messageDelivered : null
+  const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0] || 'cliente'
+  const orderNumber = String(order.id)
+  const template = (value) => typeof value === 'string' ? value.replace(/\\{nome\\}/g, firstName).replace(/\\{pedido\\}/g, orderNumber) : ''
+  if (normalized === 'aceito' || normalized === 'aceita') return config.statusAccepted !== false ? template(config.messageAccepted || 'Olá, {nome}! Seu pedido #{pedido} foi aceito pelo restaurante. 👍') : null
+  if (normalized === 'preparando' || normalized === 'em preparo') return config.statusPreparing !== false ? template(config.messagePreparing || 'Olá, {nome}! Seu pedido #{pedido} está sendo preparado. 🍳') : null
+  if (normalized === 'pronto' || normalized === 'retirada disponivel' || normalized === 'saiu para entrega') {
+    if (config.statusReady === false) return null
+    if (normalizeOrderStatus(order.tipo_entrega) === 'entrega') return template(config.messageOutForDelivery || 'Olá, {nome}! Seu pedido #{pedido} saiu para entrega. 🛵')
+    return template(config.messageReady || 'Olá, {nome}! Seu pedido #{pedido} está pronto para retirada.')
+  }
+  // Finalizado/concluído is an internal status and deliberately sends no customer message.
   return null
 }
-
-// Detect status changes from Supabase and send the matching customer notification.
 const knownOrderStatuses = new Map()
 let orderPollingInitialized = false
 let pollingOrders = false
@@ -144,35 +172,50 @@ async function pollOrderNotifications() {
     const configByRestaurant = new Map((configs || []).map(row => [String(row.empresa_id), row.config || {}]))
     const { data: orders, error: orderError } = await admin
       .from('pedidos')
-      .select('id,empresa_id,cliente_nome,cliente_whatsapp,status,criado_em')
+      .select('id,empresa_id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,forma_pagamento,observacoes,criado_em')
       .order('criado_em', { ascending: false })
       .limit(2000)
     if (orderError) throw orderError
 
-    for (const order of orders || []) {
+    for (const order of [...(orders || [])].reverse()) {
       const key = String(order.empresa_id) + ':' + String(order.id)
       const status = normalizeOrderStatus(order.status)
       const previous = knownOrderStatuses.get(key)
-      knownOrderStatuses.set(key, status)
-      if (!orderPollingInitialized || (previous === undefined && status !== 'novo') || previous === status) continue
+      if (!orderPollingInitialized) {
+        knownOrderStatuses.set(key, status)
+        continue
+      }
+      if (previous === status) continue
 
+      // Record the new state only after attempting delivery, so temporary connection issues can retry.
       const config = configByRestaurant.get(String(order.empresa_id))
       const state = sessions.get(String(order.empresa_id))
       if (!config || config.enabled !== true || !state || state.status !== 'connected' || !state.socket) continue
       const jid = customerJid(order.cliente_whatsapp)
       if (!jid) {
         log.warn({ orderId: order.id, restaurantId: order.empresa_id }, 'Order notification skipped: invalid customer WhatsApp number')
+        knownOrderStatuses.set(key, status)
         continue
       }
-      const template = orderStatusMessage(order.status, config)
-      if (typeof template !== 'string' || !template.trim()) continue
-      const firstName = String(order.cliente_nome || 'cliente').trim().split(/\\s+/)[0] || 'cliente'
-      const message = template.replace(/\\{nome\\}/g, firstName).replace(/\\{pedido\\}/g, String(order.id)).slice(0, 4000)
       try {
-        await state.socket.sendMessage(jid, { text: message })
-        log.info({ restaurantId: order.empresa_id, orderId: order.id, status: order.status }, 'WhatsApp order status notification sent')
+        if (previous === undefined && status === 'novo') {
+          const { data: items, error: itemsError } = await admin
+            .from('itens_pedido')
+            .select('nome_produto,quantidade,preco_unitario')
+            .eq('pedido_id', order.id)
+          if (itemsError) throw itemsError
+          await state.socket.sendMessage(jid, { text: receiptMessage(order, items || []) })
+          log.info({ restaurantId: order.empresa_id, orderId: order.id }, 'WhatsApp order receipt sent')
+        } else {
+          const template = orderStatusMessage(order.status, order, config)
+          if (typeof template === 'string' && template.trim()) {
+            await state.socket.sendMessage(jid, { text: template.trim().slice(0, 4000) })
+            log.info({ restaurantId: order.empresa_id, orderId: order.id, status: order.status }, 'WhatsApp order status notification sent')
+          }
+        }
+        knownOrderStatuses.set(key, status)
       } catch (err) {
-        log.error({ err, restaurantId: order.empresa_id, orderId: order.id, status: order.status }, 'WhatsApp order status notification failed')
+        log.error({ err, restaurantId: order.empresa_id, orderId: order.id, status: order.status }, 'WhatsApp order notification failed')
       }
     }
     orderPollingInitialized = true
