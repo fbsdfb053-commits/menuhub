@@ -183,8 +183,8 @@ function orderStatusSettings(status, config) {
     preparando: { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
     'em preparo': { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
     pronto: { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto.' },
-    'retirada disponivel': { enabled: 'statusReady', message: null, fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto para retirada.' },
-    'em entrega': { enabled: 'statusReady', message: null, fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
+    'retirada disponivel': { enabled: 'statusPickupReady', message: 'messagePickupReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto para retirada.' },
+    'em entrega': { enabled: 'statusOutForDelivery', message: 'messageOutForDelivery', fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
     'saiu para entrega': { enabled: 'statusReady', message: null, fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
     concluido: null,
     entregue: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi entregue.' },
@@ -267,11 +267,19 @@ function formatOrderStatusMessage(template, order) {
 }
 
 async function handleOrderStatusEvent(payload) {
-  const order = payload?.new
+  let order = payload?.new
   if (!order || !order.id || !order.empresa_id || !order.status) return
 
   const isInsert = payload.eventType === 'INSERT'
   if (!isInsert && normalizedStatus(payload.old?.status) === normalizedStatus(order.status)) return
+
+  // The order RPC inserts total=0, then stores items and final total in one transaction.
+  // Re-read after commit so the receipt always contains the persisted final values.
+  if (isInsert) {
+    const latestOrder = await admin.from('pedidos').select('*').eq('id', Number(order.id)).maybeSingle()
+    if (latestOrder.error) throw latestOrder.error
+    if (latestOrder.data) order = latestOrder.data
+  }
 
   const settings = await admin
     .from('whatsapp_bot_config')
