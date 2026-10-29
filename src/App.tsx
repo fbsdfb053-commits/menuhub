@@ -741,7 +741,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
       <section className="admin-panel whatsapp-config-panel">
         <div className="panel-heading"><div><span className="eyebrow">etapa 3 · acompanhamento</span><h2>Avisos de status do pedido</h2></div></div>
         <p>Marque quais mudanças de status devem gerar uma mensagem. Use <code>{'{nome}'}</code> para o primeiro nome do cliente e <code>{'{pedido}'}</code> para o número do pedido.</p>
-        <div className="whatsapp-status-tabs" role="tablist" aria-label="Etapas de atualização do pedido">
+        <div className="whatsapp-status-tabs" role="tablist" aria-label="Etapas de atualização do pedido" style={{display:'flex',flexWrap:'wrap',gap:8}}>
           {([
             ['preparing','Mover para preparo'],
             ['ready','Pedido pronto'],
