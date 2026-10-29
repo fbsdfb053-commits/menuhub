@@ -573,10 +573,14 @@ type WhatsAppBotConfig = {
   statusNew: boolean
   statusPreparing: boolean
   statusReady: boolean
+  statusOutForDelivery: boolean
+  statusPickupReady: boolean
   statusDelivered: boolean
   messageNew: string
   messagePreparing: string
   messageReady: string
+  messageOutForDelivery: string
+  messagePickupReady: string
   messageDelivered: string
 }
 const defaultWhatsAppBotConfig: WhatsAppBotConfig = {
@@ -588,14 +592,19 @@ const defaultWhatsAppBotConfig: WhatsAppBotConfig = {
   statusNew: true,
   statusPreparing: true,
   statusReady: true,
+  statusOutForDelivery: true,
+  statusPickupReady: true,
   statusDelivered: true,
   messageNew: 'Olá, {nome}! Recebemos seu pedido #{pedido}. Obrigado pela preferência!',
   messagePreparing: 'Olá, {nome}! Seu pedido #{pedido} já está sendo preparado. 🍳',
   messageReady: 'Boa notícia, {nome}! Seu pedido #{pedido} está pronto!',
+  messageOutForDelivery: 'Olá, {nome}! Seu pedido #{pedido} saiu para entrega. 🚴',
+  messagePickupReady: 'Olá, {nome}! Seu pedido #{pedido} está disponível para retirada.',
   messageDelivered: 'Olá, {nome}! Seu pedido #{pedido} foi concluído. Obrigado pela preferência!',
 }
 function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:number|null;restaurantName:string;notify:(message:string,error?:boolean)=>void}) {
   const [config,setConfig]=useState<WhatsAppBotConfig>(defaultWhatsAppBotConfig)
+  const [activeStatusTab,setActiveStatusTab]=useState<'preparing'|'ready'|'delivery'|'pickup'>('preparing')
   const [loading,setLoading]=useState(false)
   const [saving,setSaving]=useState(false)
   const [tableMissing,setTableMissing]=useState(false)
@@ -732,12 +741,18 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
       <section className="admin-panel whatsapp-config-panel">
         <div className="panel-heading"><div><span className="eyebrow">etapa 3 · acompanhamento</span><h2>Avisos de status do pedido</h2></div></div>
         <p>Marque quais mudanças de status devem gerar uma mensagem. Use <code>{'{nome}'}</code> para o primeiro nome do cliente e <code>{'{pedido}'}</code> para o número do pedido.</p>
-        {([
-          ['Novo','Pedido recebido','statusNew','messageNew'],
-          ['Preparando','Em preparo','statusPreparing','messagePreparing'],
-          ['Pronto','Pedido pronto','statusReady','messageReady'],
-          ['Concluído','Pedido concluído/entregue','statusDelivered','messageDelivered'],
-        ] as const).map(([status,label,flag,message])=><div className="whatsapp-status-editor" key={status}><label className="whatsapp-toggle"><input type="checkbox" checked={config[flag]} onChange={e=>update({[flag]:e.target.checked} as Partial<WhatsAppBotConfig>)}/><span>{label}</span></label><textarea aria-label={'Mensagem para '+label} rows={2} maxLength={1000} value={config[message]} onChange={e=>update({[message]:e.target.value})}/><small>Status da conexão: {status}</small></div>)}
+        <div className="whatsapp-status-tabs" role="tablist" aria-label="Etapas de atualização do pedido">
+          {([
+            ['preparing','Mover para preparo'],
+            ['ready','Pedido pronto'],
+            ['delivery','Pedido em entrega'],
+            ['pickup','Retirada disponível'],
+          ] as const).map(([key,label])=><button key={key} type="button" role="tab" aria-selected={activeStatusTab===key} className={activeStatusTab===key?'primary-button':'secondary-button'} onClick={()=>setActiveStatusTab(key)}>{label}</button>)}
+        </div>
+        {activeStatusTab==='preparing'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusPreparing} onChange={e=>update({statusPreparing:e.target.checked})}/><span>Enviar aviso ao mover para preparo</span></label><textarea aria-label="Mensagem ao mover para preparo" rows={3} maxLength={1000} value={config.messagePreparing} onChange={e=>update({messagePreparing:e.target.value})}/></div>}
+        {activeStatusTab==='ready'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusReady} onChange={e=>update({statusReady:e.target.checked})}/><span>Enviar aviso quando o pedido estiver pronto</span></label><textarea aria-label="Mensagem de pedido pronto" rows={3} maxLength={1000} value={config.messageReady} onChange={e=>update({messageReady:e.target.value})}/></div>}
+        {activeStatusTab==='delivery'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusOutForDelivery} onChange={e=>update({statusOutForDelivery:e.target.checked})}/><span>Enviar aviso quando sair para entrega</span></label><textarea aria-label="Mensagem de pedido em entrega" rows={3} maxLength={1000} value={config.messageOutForDelivery} onChange={e=>update({messageOutForDelivery:e.target.value})}/></div>}
+        {activeStatusTab==='pickup'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusPickupReady} onChange={e=>update({statusPickupReady:e.target.checked})}/><span>Enviar aviso quando estiver disponível para retirada</span></label><textarea aria-label="Mensagem de retirada disponível" rows={3} maxLength={1000} value={config.messagePickupReady} onChange={e=>update({messagePickupReady:e.target.value})}/></div>}
         <div className="whatsapp-template-note"><strong>Importante sobre envios</strong><p>Para iniciar mensagens fora da janela de atendimento do WhatsApp, a Meta normalmente exige modelos aprovados. A integração final precisa mapear cada status para um modelo permitido e respeitar as regras de consentimento e envio.</p></div>
         <button className="primary-button" type="button" onClick={()=>void save()} disabled={saving||loading}>{saving?'Salvando…':'Salvar configurações do bot'}</button>
         {loading&&<small>Carregando configurações…</small>}
