@@ -19,7 +19,7 @@ export default async function handler(req:Req,res:Res){
     if(!data?.empresa)return res.status(404).send('Menu não encontrado.')
     const e=data.empresa
     const title=escapeHtml(e.nome||'Cardápio digital')
-    const image=escapeHtml(e.capa_url||e.logo_url||'https://fb3d2ymenu.com.br/fb3d2y-mark.svg')
+    const image=escapeHtml(e.logo_url||'https://fb3d2ymenu.com.br/fb3d2y-mark.svg')
     const url='https://fb3d2ymenu.com.br/menu/'+encodeURIComponent(e.slug||slug)+(includeShareVersion?'?share=4':'')
     const safeUrl=escapeHtml(url)
     res.setHeader('Content-Type','text/html; charset=utf-8')
