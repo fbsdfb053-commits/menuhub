@@ -570,7 +570,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
     const storeName=(selected?.nome||cfg.name||'Restaurante').replace(/[<>]/g,'');
     const complementCounts=new Map<string,number>();
     itemLines=itemLines.map(line=>{
-      const match=line.nome.match(/^(.*?)\s+\\((.+)\\)$/);
+      const match=line.nome.match(/^(.*?)\s+\((.+)\)$/);
       if(!match)return line;
       for(const rawName of match[2].split(/\s*,\s*/)){
         const name=rawName.split(/\s+[-–—]\s+/)[0].trim();
