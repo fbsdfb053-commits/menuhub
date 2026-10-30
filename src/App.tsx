@@ -259,7 +259,12 @@ function CartDrawer({ cart, isDemo, deliveryRegions, onClose, onAdjust, onSubmit
   const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0)
   useEffect(() => { try { window.localStorage.setItem('menuhub-customer-data', JSON.stringify({name,phone,deliveryType,address,paymentMethod})) } catch { /* armazenamento do navegador indisponível */ } }, [name,phone,deliveryType,address,paymentMethod])
   const phoneDigits = phone.replace(/\D/g, '')
-  const valid = name.trim().length >= 2 && phoneDigits.length >= 10 && phoneDigits.length <= 13 && (deliveryType === 'Retirada' || (address.trim().length >= 5 && Boolean(selectedRegion))) && (paymentMethod !== 'Dinheiro' || !needsChange || (Number(changeFor.replace(',', '.')) > 0 && Number.isFinite(Number(changeFor.replace(',', '.')))))
+  const nameValid=name.trim().length>=2
+  const phoneValid=phoneDigits.length>=10&&phoneDigits.length<=13
+  const addressValid=deliveryType!=="Entrega"||address.trim().length>=5
+  const regionValid=deliveryType!=="Entrega"||Boolean(selectedRegion)
+  const changeValid=paymentMethod!=="Dinheiro"||!needsChange||(Number(changeFor.replace(",","."))>0&&Number.isFinite(Number(changeFor.replace(",","."))))
+  const valid=nameValid&&phoneValid&&addressValid&&regionValid&&changeValid
 
   const send = async () => {
     setSending(true)
@@ -286,14 +291,15 @@ function CartDrawer({ cart, isDemo, deliveryRegions, onClose, onAdjust, onSubmit
           ))}
         </div>
         <div className="order-form">
+          <style>{`.order-form label .required-indicator{color:#dc4545;font-weight:900;margin-left:4px}.order-form label .required-indicator[aria-hidden="true"]{display:none}.order-form label:has(.field-invalid) input,.order-form label:has(.field-invalid) textarea,.order-form label:has(.field-invalid) select{border-color:#e5a0a0;box-shadow:0 0 0 2px rgba(220,69,69,.07)}.order-form label:has(.field-invalid) .required-indicator{display:inline;color:#dc4545}`}</style>
           <span className="eyebrow">para enviar, só precisamos de</span>
-          <label>Seu nome<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Como podemos te chamar?" maxLength={100} /></label>
-          <label>WhatsApp<input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(88) 9 9999-9999" inputMode="tel" maxLength={20} /></label>
+          <label>Seu nome<span className="required-indicator" aria-hidden={nameValid}>*</span><input className={!nameValid?"field-invalid":""} aria-invalid={!nameValid} value={name} onChange={(event) => setName(event.target.value)} placeholder="Como podemos te chamar?" maxLength={100} /></label>
+          <label>WhatsApp<span className="required-indicator" aria-hidden={phoneValid}>*</span><input className={!phoneValid?"field-invalid":""} aria-invalid={!phoneValid} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(88) 9 9999-9999" inputMode="tel" maxLength={20} /></label>
           <div className="delivery-choice" role="radiogroup" aria-label="Como você quer receber?">
             <button type="button" role="radio" aria-checked={deliveryType === 'Retirada'} className={deliveryType === 'Retirada' ? 'delivery-option delivery-option--active' : 'delivery-option'} onClick={() => setDeliveryType('Retirada')}>Retirar no local</button>
             <button type="button" role="radio" aria-checked={deliveryType === 'Entrega'} className={deliveryType === 'Entrega' ? 'delivery-option delivery-option--active' : 'delivery-option'} onClick={() => setDeliveryType('Entrega')}>Entrega</button>
           </div>
-          {deliveryType === 'Entrega' && <><label>Marque a taxa de acordo com sua região.<select value={deliveryRegion} onChange={event=>setDeliveryRegion(event.target.value)}><option value="">Selecione sua região</option>{deliveryRegions.map(region=><option key={region.name} value={region.name}>{region.name}{region.negotiate?' — taxa a combinar':' — '+formatPrice(Number(region.fee))}</option>)}</select></label>{selectedRegion?.places?.length ? <small className="delivery-region-places">{selectedRegion.places.join(' · ')}</small> : null}{selectedRegion?.negotiate&&<p className="delivery-region-note">Nossa equipe combinará a taxa de entrega com você.</p>}<label>Endereço de entrega<textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Rua, número, bairro e referência" rows={2} maxLength={300} /></label></>}
+          {deliveryType === 'Entrega' && <><label>Marque a taxa de acordo com sua região.<span className="required-indicator" aria-hidden={regionValid}>*</span><select className={!regionValid?"field-invalid":""} aria-invalid={!regionValid} value={deliveryRegion} onChange={event=>setDeliveryRegion(event.target.value)}><option value="">Selecione sua região</option>{deliveryRegions.map(region=><option key={region.name} value={region.name}>{region.name}{region.negotiate?' — taxa a combinar':' — '+formatPrice(Number(region.fee))}</option>)}</select></label>{selectedRegion?.places?.length ? <small className="delivery-region-places">{selectedRegion.places.join(' · ')}</small> : null}{selectedRegion?.negotiate&&<p className="delivery-region-note">Nossa equipe combinará a taxa de entrega com você.</p>}<label>Endereço de entrega<span className="required-indicator" aria-hidden={addressValid}>*</span><textarea className={!addressValid?"field-invalid":""} aria-invalid={!addressValid} value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Rua, número, bairro e referência" rows={2} maxLength={300} /></label></>}
           <label>Como você vai pagar?
             <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as OrderForm['paymentMethod'])}>
               <option value="Pix">Pix</option>
@@ -303,7 +309,7 @@ function CartDrawer({ cart, isDemo, deliveryRegions, onClose, onAdjust, onSubmit
             </select>
           </label>
           <label>Observações do pedido<textarea value={observations} onChange={(event) => setObservations(event.target.value)} placeholder="Ex.: sem cebola, molho à parte…" rows={3} maxLength={500} /></label>
-          {paymentMethod === 'Dinheiro' && <div className="cash-change-fields"><label className="admin-check-label"><input type="checkbox" checked={needsChange} onChange={(event) => { setNeedsChange(event.target.checked); if (!event.target.checked) setChangeFor('') }} /> Precisa de troco?</label>{needsChange && <label>Troco para quanto? (R$)<input value={changeFor} onChange={(event) => setChangeFor(event.target.value)} inputMode="decimal" placeholder="Ex.: 50,00" required /></label>}</div>}
+          {paymentMethod === 'Dinheiro' && <div className="cash-change-fields"><label className="admin-check-label"><input type="checkbox" checked={needsChange} onChange={(event) => { setNeedsChange(event.target.checked); if (!event.target.checked) setChangeFor('') }} /> Precisa de troco?</label>{needsChange && <label>Troco para quanto? (R$)<span className="required-indicator" aria-hidden={changeValid}>*</span><input className={!changeValid?"field-invalid":""} aria-invalid={!changeValid} value={changeFor} onChange={(event) => setChangeFor(event.target.value)} inputMode="decimal" placeholder="Ex.: 50,00" required /></label>}</div>}
         </div>
         <div className="drawer-total"><span>Subtotal dos itens</span><strong>{formatPrice(total)}</strong></div>{deliveryType==='Entrega'&&selectedRegion&&!selectedRegion.negotiate&&<div className="drawer-total"><span>Taxa de entrega</span><strong>{formatPrice(deliveryFee)}</strong></div>}{deliveryType==='Entrega'&&selectedRegion?.negotiate&&<div className="drawer-total"><span>Taxa de entrega</span><strong>A combinar</strong></div>}<div className="drawer-total"><span>Total do pedido</span><strong>{formatPrice(total+deliveryFee)}{deliveryType==='Entrega'&&selectedRegion?.negotiate?' + taxa a combinar':''}</strong></div>
         {error && <p className="form-error" role="alert">{error}</p>}
