@@ -621,6 +621,8 @@ type SalesPeriod = 7 | 30 | 90
 
 
 type WhatsAppBotConfig = {
+  botName: string
+  personality: string
   enabled: boolean
   welcomeMessage: string
   faqMenu: string
@@ -640,6 +642,8 @@ type WhatsAppBotConfig = {
   messageDelivered: string
 }
 const defaultWhatsAppBotConfig: WhatsAppBotConfig = {
+  botName: '',
+  personality: 'Seja cordial, prestativo e objetivo. Responda em português brasileiro. Use emojis com moderação e adapte o vocabulário ao tipo de restaurante.',
   enabled: false,
   welcomeMessage: 'Olá! 👋 Seja bem-vindo(a)! Como podemos ajudar?',
   faqMenu: 'Você pode consultar nosso cardápio e fazer seu pedido pelo link do nosso menu.',
@@ -722,7 +726,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
       setLoading(false)
       if(error){setTableMissing(true);return}
       if(data){
-        setConfig({...defaultWhatsAppBotConfig,...(data.config as Partial<WhatsAppBotConfig>??{})})
+        setConfig({...defaultWhatsAppBotConfig,botName:/yamamoto/i.test(restaurantName)?'Yama':'',...(data.config as Partial<WhatsAppBotConfig>??{})})
         setMetaPhoneId(data.meta_phone_number_id??'')
         setConnectionNote(data.connection_note??'')
       }
@@ -787,6 +791,10 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
       <section className="admin-panel whatsapp-config-panel">
         <div className="panel-heading"><div><span className="eyebrow">etapa 2 · comportamento</span><h2>Respostas automáticas</h2></div><label className="whatsapp-toggle"><input type="checkbox" checked={config.enabled} onChange={e=>update({enabled:e.target.checked})}/><span>{config.enabled?'Ativado':'Desativado'}</span></label></div>
         <p>Edite os textos que o bot usará. As mensagens ficam salvas por restaurante; a automação só começará a enviar mensagens depois que a conexão oficial for concluída.</p>
+        <div className="whatsapp-faq-grid">
+          <label>Nome do seu bot<input type="text" maxLength={40} value={config.botName} onChange={e=>update({botName:e.target.value})} placeholder="Ex.: Yama"/></label>
+          <label>Personalidade e estilo de atendimento<textarea rows={3} maxLength={1200} value={config.personality} onChange={e=>update({personality:e.target.value})} placeholder="Ex.: descontraído, educado, usa emojis de sushi e respostas curtas."/></label>
+        </div>
         <label>Mensagem de boas-vindas<textarea rows={2} maxLength={1000} value={config.welcomeMessage} onChange={e=>update({welcomeMessage:e.target.value})}/></label>
         <div className="whatsapp-faq-grid">
           <label>Resposta sobre cardápio<textarea rows={3} maxLength={1000} value={config.faqMenu} onChange={e=>update({faqMenu:e.target.value})}/></label>
