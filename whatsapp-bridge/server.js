@@ -209,7 +209,7 @@ async function buildIntelligentReply(restaurantId, text, config) {
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   // A apresentação é determinística para preservar o nome configurado, inclusive kanji.
-  if (/\\b(se apresente|quem e voce|qual seu nome|como voce se chama)\\b/.test(normalized)) {
+  if (/(se apresente|quem e voce|qual seu nome|como voce se chama)/.test(normalized)) {
     const botName = String(config?.botName || '').trim() || 'assistente virtual'
     return 'Sou ' + botName + ', atendente do ' + (restaurant?.nome || 'nosso estabelecimento') + '. 🍣'
   }
@@ -323,7 +323,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       const { data: restaurantData } = await admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle()
       const botName = String(config.botName || '').trim() || 'assistente virtual'
       const restaurantName = restaurantData?.nome || 'nosso estabelecimento'
-      const greeting = 'Olá! Sou ' + botName + ', atendente do ' + restaurantName + '. Vou te atender por aqui. 😊\\n'
+      const greeting = 'Olá! Sou ' + botName + ', atendente do ' + restaurantName + '. Vou te atender por aqui. 😊' + String.fromCharCode(10)
       reply = greeting + reply.trim()
     }
 
