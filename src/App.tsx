@@ -489,7 +489,7 @@ type AdminComplementOption = {id:number;nome:string;preco_adicional:number;image
 type AdminComplementGroup = {id:number;empresa_id:number;nome:string;descricao:string|null;ordem:number;ativo:boolean;max_selecoes:number;opcoes_complementos:AdminComplementOption[]}
 const EMPTY_GROUP_IDS: number[] = []
 const EMPTY_GROUP_LIMITS: Record<number, number> = {}
-type AdminOrder = { id:number; cliente_nome:string; cliente_whatsapp:string; total:number; status:string; tipo_entrega:string; endereco_entrega:string|null; criado_em:string; origem?:string|null; forma_pagamento?:string|null; observacoes?:string|null; precisa_troco?:boolean|null; troco_para?:number|null }
+type AdminOrder = { id:number; cliente_nome:string; cliente_whatsapp:string; total:number; status:string; tipo_entrega:string; endereco_entrega:string|null; criado_em:string; origem?:string|null; forma_pagamento?:string|null; observacoes?:string|null; precisa_troco?:boolean|null; troco_para?:number|null; regiao_entrega?:string|null; taxa_entrega?:number|null }
 function makeSlug(value:string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,55) }
 function AdminView({ onBack }: { onBack: () => void }) {
   const [session,setSession]=useState<Session|null>(null), [authLoading,setAuthLoading]=useState(true), [activeTab,setActiveTab]=useState('dashboard')
