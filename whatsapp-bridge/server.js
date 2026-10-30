@@ -115,6 +115,112 @@ async function buildMenuReply(restaurantId) {
   return lines.join('\n').trim().slice(0, 3900)
 }
 
+
+function normalizeText(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
+function humanHelpMessage(restaurant, reason) {
+  const digits = String(restaurant?.whatsapp_contato || '').replace(/\D/g, '')
+  const phone = digits ? (digits.length <= 11 ? '55' + digits : digits) : ''
+  const contact = phone ? '\nFale diretamente com nossa equipe: https://wa.me/' + phone : '\nNossa equipe pode confirmar essa informação diretamente com você.'
+  return reason + '\nNão quero passar uma informação incorreta. ' + contact
+}
+
+function formatBusinessHours(restaurant) {
+  const schedule = restaurant?.horario_funcionamento
+  if (schedule && typeof schedule === 'object') {
+    const days = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Fortaleza', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
+    const weekday = parts.find(part => part.type === 'weekday')?.value
+    const hour = Number(parts.find(part => part.type === 'hour')?.value)
+    const minute = Number(parts.find(part => part.type === 'minute')?.value)
+    const dayIndex = ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 })[weekday]
+    const today = schedule[String(dayIndex)]
+    const lines = days.map((day, index) => {
+      const item = schedule[String(index)]
+      if (!item || item.closed) return '• ' + day + ': fechado'
+      if (!item.open || !item.close) return '• ' + day + ': horário não informado'
+      return '• ' + day + ': ' + item.open + ' às ' + item.close
+    })
+    let current = 'O horário de hoje não está cadastrado.'
+    if (today?.closed) current = 'Hoje estamos fechados.'
+    else if (today?.open && today?.close) {
+      const currentMinutes = hour * 60 + minute
+      const open = today.open.split(':').map(Number)
+      const close = today.close.split(':').map(Number)
+      const isOpen = currentMinutes >= open[0] * 60 + open[1] && currentMinutes < close[0] * 60 + close[1]
+      current = isOpen ? 'Hoje estamos abertos até ' + today.close + '.' : 'Hoje nosso horário é das ' + today.open + ' às ' + today.close + '.'
+    }
+    if (typeof restaurant.status_loja_manual === 'boolean') current = restaurant.status_loja_manual ? 'A loja está marcada como aberta no momento.' : 'A loja está marcada como fechada no momento.'
+    if (restaurant.aceita_pedidos === false) current += ' No momento, não estamos aceitando pedidos.'
+    return 'Nosso funcionamento:\n' + current + '\n\n' + lines.join('\n')
+  }
+  if (restaurant?.horario?.trim()) return 'Nosso horário informado é: ' + restaurant.horario.trim() + '.'
+  return null
+}
+
+async function buildIntelligentReply(restaurantId, text, config) {
+  const normalized = normalizeText(text)
+  const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
+    admin.from('empresas').select('nome,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual').eq('id', Number(restaurantId)).maybeSingle(),
+    admin.from('produtos').select('id,nome,preco,descricao,categoria_id,disponivel,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome'),
+    admin.from('categorias').select('id,nome,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome')
+  ])
+  if (restaurantResult.error) throw restaurantResult.error
+  if (productsResult.error) throw productsResult.error
+  if (categoriesResult.error) throw categoriesResult.error
+  const restaurant = restaurantResult.data
+  const products = productsResult.data || []
+  const categories = categoriesResult.data || []
+  const available = products.filter(product => product.disponivel === true)
+  const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  if (/\b(falar com (alguem|atendente|pessoa)|atendente|atendimento humano|pessoa real|quero falar|chamar alguem)\b/.test(normalized)) {
+    return humanHelpMessage(restaurant, 'Claro! Nossa equipe pode continuar o atendimento com você.')
+  }
+  if (/\b(horario|horarios|abre|aberto|aberta|fecha|fechado|fechada|funciona|funcionamento)\b/.test(normalized)) {
+    return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
+  }
+  if (/\b(pagamento|pagar|pix|cartao|dinheiro|credito|debito|vale|forma de pagamento)\b/.test(normalized)) {
+    return config.faqPayment?.trim() || humanHelpMessage(restaurant, 'Não encontrei as formas de pagamento cadastradas.')
+  }
+  if (/\b(taxa|frete|entrega|entregam|bairro|regiao|distancia|delivery)\b/.test(normalized)) {
+    return humanHelpMessage(restaurant, 'Sobre taxa e disponibilidade de entrega, nossa equipe precisa confirmar sua região.')
+  }
+  if (/\b(promocao|promocoes|oferta|ofertas|desconto|cupom|combo do dia)\b/.test(normalized)) {
+    return humanHelpMessage(restaurant, 'Não encontrei uma lista de promoções atualizada para consultar.')
+  }
+
+  const category = categories.find(item => normalized.includes(normalizeText(item.nome)))
+  if (category && /\b(categoria|opcoes|itens|tem|quais|mostrar|ver)\b/.test(normalized)) {
+    const items = available.filter(product => product.categoria_id === category.id)
+    if (!items.length) return 'No momento, não encontrei itens disponíveis na categoria ' + category.nome + '.'
+    return '*' + category.nome + '*\n' + items.map(product => '• ' + product.nome + ' — ' + currency.format(Number(product.preco) || 0) + (product.descricao?.trim() ? '\n  ' + product.descricao.trim().slice(0, 140) : '')).join('\n')
+  }
+
+  const productMatches = products.map(product => ({ product, name: normalizeText(product.nome) }))
+    .filter(item => item.name.length >= 3 && normalized.includes(item.name))
+    .sort((a, b) => b.name.length - a.name.length)
+  if (productMatches.length) {
+    const product = productMatches[0].product
+    if (product.disponivel !== true) return 'No momento, *' + product.nome + '* está indisponível. Posso ajudar com outra opção?'
+    const asksDescription = /\b(ingrediente|ingredientes|compoe|composicao|vem|acompanha|descricao|o que e|feito de|tem dentro)\b/.test(normalized)
+    const asksPrice = /\b(preco|quanto custa|valor|custa|reais)\b/.test(normalized)
+    const lines = ['*' + product.nome + '*', 'Preço: ' + currency.format(Number(product.preco) || 0)]
+    if (product.descricao?.trim()) lines.push('Descrição: ' + product.descricao.trim())
+    else if (asksDescription) lines.push('A descrição e os ingredientes não estão cadastrados. Nossa equipe pode confirmar para você.')
+    if (!asksPrice && !asksDescription && product.descricao?.trim()) lines.push('Quer saber o preço, os detalhes ou ver outras opções?')
+    return lines.join('\n')
+  }
+
+  if (isMenuRequest(text)) return buildMenuReply(restaurantId)
+  if (/\b(tem|possui|vende|disponivel|disponibilidade|ainda tem)\b/.test(normalized)) {
+    return humanHelpMessage(restaurant, 'Não consegui identificar com segurança qual item você procura.')
+  }
+  return humanHelpMessage(restaurant, 'Posso ajudar com cardápio, preços, descrições, horários e formas de pagamento. Para outras dúvidas, nossa equipe pode atender você.')
+}
+
 function chooseReply(text, config) {
   const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   if (/\b(cardapio|menu|comida|pratos|opcoes|opcoes do menu)\b/.test(normalized)) return config.faqMenu
@@ -150,8 +256,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     const config = data?.config
     if (!config || config.enabled !== true) return
 
-    const menuRequested = isMenuRequest(text)
-    const reply = menuRequested ? await buildMenuReply(restaurantId) : chooseReply(text, config)
+    const reply = await buildIntelligentReply(restaurantId, text, config)
     if (typeof reply !== 'string' || !reply.trim()) return
     senderReplyTimes.set(senderKey, now)
     await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
