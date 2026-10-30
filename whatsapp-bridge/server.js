@@ -46,6 +46,77 @@ const processedMessages = new Map()
 const senderReplyTimes = new Map()
 const welcomedContacts = new Map()
 const welcomeStateFile = path.join(AUTH_DIR, 'welcomed-contacts.json')
+const aiUsageFile = path.join(AUTH_DIR, 'ai-usage.json')
+const AI_DAILY_CONTACT_LIMIT = 5
+const AI_DAILY_RESTAURANT_LIMIT = 50
+function fortalezaDayKey() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Fortaleza', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+}
+let aiUsageState = { date: fortalezaDayKey(), restaurants: {}, contacts: {} }
+try {
+  const savedUsage = JSON.parse(fs.readFileSync(aiUsageFile, 'utf8'))
+  if (savedUsage?.date === fortalezaDayKey()) {
+    aiUsageState = {
+      date: savedUsage.date,
+      restaurants: savedUsage.restaurants || {},
+      contacts: savedUsage.contacts || {}
+    }
+  }
+} catch {}
+
+function restaurantIsOpenForAi(restaurant) {
+  if (restaurant?.aceita_pedidos === false) return false
+  if (typeof restaurant?.status_loja_manual === 'boolean') return restaurant.status_loja_manual
+  const schedule = restaurant?.horario_funcionamento
+  if (!schedule || typeof schedule !== 'object' || !Object.keys(schedule).length) return false
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Fortaleza', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(new Date())
+  const weekday = parts.find(part => part.type === 'weekday')?.value
+  const hour = Number(parts.find(part => part.type === 'hour')?.value)
+  const minute = Number(parts.find(part => part.type === 'minute')?.value)
+  const day = ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 })[weekday]
+  const current = hour * 60 + minute
+  const today = schedule[String(day)]
+  if (today && !today.closed && today.open && today.close) {
+    const [oh, om] = today.open.split(':').map(Number)
+    const [ch, cm] = today.close.split(':').map(Number)
+    const opening = oh * 60 + om
+    const closing = ch * 60 + cm
+    if (closing > opening && current >= opening && current < closing) return true
+    if (closing <= opening && current >= opening) return true
+  }
+  const yesterday = schedule[String((day + 6) % 7)]
+  if (yesterday && !yesterday.closed && yesterday.open && yesterday.close) {
+    const [oh, om] = yesterday.open.split(':').map(Number)
+    const [ch, cm] = yesterday.close.split(':').map(Number)
+    if (ch * 60 + cm <= oh * 60 + om && current < ch * 60 + cm) return true
+  }
+  return false
+}
+
+function reserveAiUsage(restaurantId, senderKey, restaurant) {
+  if (!process.env.OPENAI_API_KEY) return { allowed: false, reason: 'unavailable' }
+  if (!restaurantIsOpenForAi(restaurant)) return { allowed: false, reason: 'closed' }
+  const today = fortalezaDayKey()
+  if (aiUsageState.date !== today) aiUsageState = { date: today, restaurants: {}, contacts: {} }
+  const restaurantKey = String(restaurantId)
+  const contactKey = restaurantKey + ':' + senderKey
+  const restaurantCount = Number(aiUsageState.restaurants[restaurantKey] || 0)
+  const contactCount = Number(aiUsageState.contacts[contactKey] || 0)
+  if (restaurantCount >= AI_DAILY_RESTAURANT_LIMIT) return { allowed: false, reason: 'restaurant_limit' }
+  if (contactCount >= AI_DAILY_CONTACT_LIMIT) return { allowed: false, reason: 'contact_limit' }
+  aiUsageState.restaurants[restaurantKey] = restaurantCount + 1
+  aiUsageState.contacts[contactKey] = contactCount + 1
+  try {
+    const tempFile = aiUsageFile + '.tmp'
+    fs.writeFileSync(tempFile, JSON.stringify(aiUsageState), { mode: 0o600 })
+    fs.renameSync(tempFile, aiUsageFile)
+  } catch (saveError) {
+    log.warn({ message: String(saveError?.message || saveError) }, 'Could not persist AI usage counters')
+  }
+  return { allowed: true, restaurantCount: restaurantCount + 1, contactCount: contactCount + 1 }
+}
 try {
   const savedWelcomes = JSON.parse(fs.readFileSync(welcomeStateFile, 'utf8'))
   for (const [key, timestamp] of Object.entries(savedWelcomes)) {
@@ -192,7 +263,7 @@ function formatBusinessHours(restaurant) {
   return null
 }
 
-async function buildIntelligentReply(restaurantId, text, config) {
+async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const normalized = normalizeText(text)
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
     admin.from('empresas').select('nome,slug,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual').eq('id', Number(restaurantId)).maybeSingle(),
@@ -206,6 +277,9 @@ async function buildIntelligentReply(restaurantId, text, config) {
   const products = productsResult.data || []
   const categories = categoriesResult.data || []
   const available = products.filter(product => product.disponivel === true)
+  if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)[!.,? ]*$/.test(normalized)) {
+    return 'Olá! 😊 O que posso fazer por você hoje?'
+  }
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   // A apresentação é determinística para preservar o nome configurado, inclusive kanji.
@@ -229,9 +303,6 @@ async function buildIntelligentReply(restaurantId, text, config) {
   if (isHoursQuestion(text)) {
     return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
   }
-
-  const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log })
-  if (aiReply) return aiReply
 
   if (/\b(falar com (alguem|atendente|pessoa)|atendente|atendimento humano|pessoa real|quero falar|chamar alguem)\b/.test(normalized)) {
     return humanHelpMessage(restaurant, 'Claro! Nossa equipe pode continuar o atendimento com você.')
@@ -272,6 +343,21 @@ async function buildIntelligentReply(restaurantId, text, config) {
   }
 
   if (isMenuRequest(text)) return buildMenuReply(restaurantId)
+
+  const aiPermission = reserveAiUsage(restaurantId, senderKey, restaurant)
+  if (aiPermission.allowed) {
+    const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log })
+    if (aiReply) return aiReply
+  } else if (aiPermission.reason === 'closed') {
+    const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
+    const menuLink = restaurant?.slug ? '\\nCardápio: ' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : ''
+    return 'No momento estamos fora do horário de funcionamento. Confira nosso cardápio.' + menuLink
+  } else if (aiPermission.reason === 'restaurant_limit' || aiPermission.reason === 'contact_limit') {
+    const digits = String(restaurant?.whatsapp_contato || '').replace(/\\D/g, '')
+    const phone = digits ? (digits.length <= 11 ? '55' + digits : digits) : ''
+    return 'Atingimos o limite diário do atendimento inteligente. ' + (phone ? 'Nossa equipe pode continuar por aqui: https://wa.me/' + phone : 'Nossa equipe poderá continuar o atendimento durante o expediente.')
+  }
+
   if (/\b(tem|possui|vende|disponivel|disponibilidade|ainda tem)\b/.test(normalized)) {
     return humanHelpMessage(restaurant, 'Não consegui identificar com segurança qual item você procura.')
   }
@@ -313,7 +399,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     const config = data?.config
     if (!config || config.enabled !== true) return
 
-    let reply = await buildIntelligentReply(restaurantId, text, config)
+    let reply = await buildIntelligentReply(restaurantId, text, config, senderKey)
     if (typeof reply !== 'string' || !reply.trim()) return
 
     // Apresenta o bot na primeira interação com cada contato (e novamente após 24 horas).
