@@ -44,6 +44,14 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { pe
 const sessions = new Map()
 const processedMessages = new Map()
 const senderReplyTimes = new Map()
+const welcomedContacts = new Map()
+const welcomeStateFile = path.join(AUTH_DIR, 'welcomed-contacts.json')
+try {
+  const savedWelcomes = JSON.parse(fs.readFileSync(welcomeStateFile, 'utf8'))
+  for (const [key, timestamp] of Object.entries(savedWelcomes)) {
+    if (Date.now() - Number(timestamp) < 30 * 24 * 60 * 60 * 1000) welcomedContacts.set(key, Number(timestamp))
+  }
+} catch {}
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
 
 function messageText(message) {
@@ -200,6 +208,12 @@ async function buildIntelligentReply(restaurantId, text, config) {
   const available = products.filter(product => product.disponivel === true)
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
+  // A apresentação é determinística para preservar o nome configurado, inclusive kanji.
+  if (/\\b(se apresente|quem e voce|qual seu nome|como voce se chama)\\b/.test(normalized)) {
+    const botName = String(config?.botName || '').trim() || 'assistente virtual'
+    return 'Sou ' + botName + ', atendente do ' + (restaurant?.nome || 'nosso estabelecimento') + '. 🍣'
+  }
+
   // Respostas objetivas são resolvidas no backend, nunca por inferência da IA.
   if (isMenuLinkRequest(text)) {
     const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://menuhub-one.vercel.app').replace(/\/$/, '')
@@ -299,11 +313,30 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     const config = data?.config
     if (!config || config.enabled !== true) return
 
-    const reply = await buildIntelligentReply(restaurantId, text, config)
+    let reply = await buildIntelligentReply(restaurantId, text, config)
     if (typeof reply !== 'string' || !reply.trim()) return
+
+    // Apresenta o bot na primeira interação com cada contato (e novamente após 24 horas).
+    const lastWelcome = welcomedContacts.get(senderKey) || 0
+    const shouldIntroduce = now - lastWelcome >= 24 * 60 * 60 * 1000
+    if (shouldIntroduce) {
+      const { data: restaurantData } = await admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle()
+      const botName = String(config.botName || '').trim() || 'assistente virtual'
+      const restaurantName = restaurantData?.nome || 'nosso estabelecimento'
+      const greeting = 'Olá! Sou ' + botName + ', atendente do ' + restaurantName + '. Vou te atender por aqui. 😊\\n'
+      reply = greeting + reply.trim()
+    }
+
     senderReplyTimes.set(senderKey, now)
     await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
-    log.info({ restaurantId, messageId, aiEnabled: Boolean(process.env.OPENAI_API_KEY) }, 'Automatic WhatsApp reply sent')
+    if (shouldIntroduce) {
+      welcomedContacts.set(senderKey, now)
+      const cutoff = now - 30 * 24 * 60 * 60 * 1000
+      for (const [key, timestamp] of welcomedContacts) if (timestamp < cutoff) welcomedContacts.delete(key)
+      try { fs.writeFileSync(welcomeStateFile, JSON.stringify(Object.fromEntries(welcomedContacts)), { mode: 0o600 }) }
+      catch (saveError) { log.warn({ message: String(saveError?.message || saveError) }, 'Could not persist WhatsApp welcome state') }
+    }
+    log.info({ restaurantId, messageId, aiEnabled: Boolean(process.env.OPENAI_API_KEY), introduced: shouldIntroduce }, 'Automatic WhatsApp reply sent')
   } catch (err) {
     log.error({ err, restaurantId, messageId }, 'Automatic WhatsApp reply failed')
   }
