@@ -9,8 +9,17 @@ export async function generateAiReply({ text, restaurant, products, categories, 
     categoria: (categories || []).find(item => item.id === product.categoria_id)?.nome || 'Outros',
     descricao: String(product.descricao || '').slice(0, 180)
   }))
+  const now = new Date()
+  const timezone = 'America/Fortaleza'
+  const currentDate = new Intl.DateTimeFormat('pt-BR', { timeZone: timezone, weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }).format(now)
+  const currentTime = new Intl.DateTimeFormat('pt-BR', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)
+  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://menuhub-one.vercel.app').replace(/\/$/, '')
   const businessContext = {
     nome: restaurant?.nome || 'Restaurante',
+    link_cardapio: restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null,
+    data_atual: currentDate,
+    hora_atual: currentTime,
+    fuso_horario: timezone,
     horario: restaurant?.horario || null,
     horario_funcionamento: restaurant?.horario_funcionamento || null,
     aceita_pedidos: restaurant?.aceita_pedidos ?? null,
@@ -37,7 +46,7 @@ export async function generateAiReply({ text, restaurant, products, categories, 
             role: 'system',
             content: [{
               type: 'input_text',
-              text: 'Você atende clientes deste restaurante pelo WhatsApp. Responda em português brasileiro, com naturalidade e simpatia. Pode usar emojis de forma natural e moderada, especialmente emojis de sushi e comida japonesa (🍣 🍱 🍤 🍙 🥢), sem exagerar. Seja muito breve: normalmente uma frase, no máximo 250 caracteres e até 3 frases. Não repita a pergunta, não faça apresentações e não termine sempre oferecendo ajuda. Use somente os dados fornecidos. Nunca invente preço, ingrediente, disponibilidade, promoção, taxa, prazo, entrega ou forma de pagamento. Se faltar informação, diga brevemente que a equipe precisa confirmar. Use exatamente os preços cadastrados. Para pedidos de cardápio, apresente poucas opções e convide o cliente a pedir uma categoria. Retorne somente a mensagem para o cliente.'
+              text: 'Você atende clientes deste restaurante pelo WhatsApp. Responda em português brasileiro, com naturalidade e simpatia. Pode usar emojis de forma natural e moderada, especialmente emojis de sushi e comida japonesa (🍣 🍱 🍤 🍙 🥢), sem exagerar. Seja muito breve: normalmente uma frase, no máximo 250 caracteres e até 3 frases. Não repita a pergunta, não faça apresentações e não termine sempre oferecendo ajuda. Use somente os dados fornecidos. A data, o dia da semana, a hora e o link do cardápio enviados nos dados cadastrados são informações oficiais: nunca calcule, adivinhe, contradiga ou invente esses dados. Quando pedirem o link do cardápio, envie exatamente link_cardapio. Nunca invente preço, ingrediente, disponibilidade, promoção, taxa, prazo, entrega ou forma de pagamento. Se faltar informação, diga brevemente que a equipe precisa confirmar. Use exatamente os preços cadastrados. Para pedidos de cardápio, apresente poucas opções e convide o cliente a pedir uma categoria. Retorne somente a mensagem para o cliente.'
             }]
           },
           {
