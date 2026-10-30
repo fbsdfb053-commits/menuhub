@@ -541,8 +541,8 @@ async function ownerFor(req, restaurantId) {
 }
 function sessionPath(id) { return path.join(AUTH_DIR, id) }
 async function registerWhatsAppConnection(restaurantId, rawJid) {
-  const phone = String(rawJid || '').split('@')[0].split(':')[0].replace(/\\D/g, '')
-  if (!/^\\d{8,15}$/.test(phone)) {
+  const phone = String(rawJid || '').split('@')[0].split(':')[0].replace(/\D/g, '')
+  if (!/^\d{8,15}$/.test(phone)) {
     throw new Error('O WhatsApp conectou, mas o servidor não conseguiu identificar o número da conta.')
   }
 
