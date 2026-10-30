@@ -240,12 +240,13 @@ function ProductCard({ product, categoryLabel, canOrder, onAdd, priority = false
   )
 }
 
-function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartLine[]; isDemo: boolean; onClose: () => void; onAdjust: (lineId: string, amount: number) => void; onSubmit: (form: OrderForm) => Promise<void> }) {
+function CartDrawer({ cart, isDemo, deliveryRegions, onClose, onAdjust, onSubmit }: { cart: CartLine[]; isDemo: boolean; deliveryRegions: {name:string;fee:number;places:string[];negotiate?:boolean}[]; onClose: () => void; onAdjust: (lineId: string, amount: number) => void; onSubmit: (form: OrderForm) => Promise<void> }) {
   const [savedCustomer] = useState(() => { try { return JSON.parse(window.localStorage.getItem('menuhub-customer-data') || '{}') as {name?:string;phone?:string;deliveryType?:OrderForm['deliveryType'];address?:string;paymentMethod?:OrderForm['paymentMethod']} } catch { return {} } })
   const [name, setName] = useState(savedCustomer.name ?? '')
   const [phone, setPhone] = useState(savedCustomer.phone ?? '')
   const [deliveryType, setDeliveryType] = useState<OrderForm['deliveryType']>(savedCustomer.deliveryType === 'Entrega' ? 'Entrega' : 'Retirada')
   const [address, setAddress] = useState(savedCustomer.address ?? '')
+  const [deliveryRegion, setDeliveryRegion] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<OrderForm['paymentMethod']>(savedCustomer.paymentMethod ?? 'Pix')
   const [observations, setObservations] = useState('')
   const [needsChange, setNeedsChange] = useState(false)
@@ -253,16 +254,18 @@ function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartL
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const total = cart.reduce((sum, line) => sum + (line.product.price + line.complements.reduce((n,o)=>n+o.price,0)) * line.quantity, 0)
+  const selectedRegion = deliveryRegions.find(region => region.name === deliveryRegion)
+  const deliveryFee = deliveryType === 'Entrega' && selectedRegion && !selectedRegion.negotiate ? Number(selectedRegion.fee) : 0
   const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0)
   useEffect(() => { try { window.localStorage.setItem('menuhub-customer-data', JSON.stringify({name,phone,deliveryType,address,paymentMethod})) } catch { /* armazenamento do navegador indisponível */ } }, [name,phone,deliveryType,address,paymentMethod])
   const phoneDigits = phone.replace(/\D/g, '')
-  const valid = name.trim().length >= 2 && phoneDigits.length >= 10 && phoneDigits.length <= 13 && (deliveryType === 'Retirada' || address.trim().length >= 5) && (paymentMethod !== 'Dinheiro' || !needsChange || (Number(changeFor.replace(',', '.')) > 0 && Number.isFinite(Number(changeFor.replace(',', '.')))))
+  const valid = name.trim().length >= 2 && phoneDigits.length >= 10 && phoneDigits.length <= 13 && (deliveryType === 'Retirada' || (address.trim().length >= 5 && Boolean(selectedRegion))) && (paymentMethod !== 'Dinheiro' || !needsChange || (Number(changeFor.replace(',', '.')) > 0 && Number.isFinite(Number(changeFor.replace(',', '.')))))
 
   const send = async () => {
     setSending(true)
     setError(null)
     try {
-      await onSubmit({ name: name.trim(), phone, deliveryType, address: address.trim(), paymentMethod, observations: observations.trim(), needsChange: paymentMethod === 'Dinheiro' && needsChange, changeFor: paymentMethod === 'Dinheiro' && needsChange ? Number(changeFor.replace(',', '.')) : null })
+      await onSubmit({ name: name.trim(), phone, deliveryType, address: address.trim(), paymentMethod, observations: observations.trim(), needsChange: paymentMethod === 'Dinheiro' && needsChange, changeFor: paymentMethod === 'Dinheiro' && needsChange ? Number(changeFor.replace(',', '.')) : null, deliveryRegion: deliveryType === 'Entrega' ? deliveryRegion : '', deliveryFee })
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'Não foi possível enviar o pedido. Tente de novo.')
       setSending(false)
@@ -290,7 +293,7 @@ function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartL
             <button type="button" role="radio" aria-checked={deliveryType === 'Retirada'} className={deliveryType === 'Retirada' ? 'delivery-option delivery-option--active' : 'delivery-option'} onClick={() => setDeliveryType('Retirada')}>Retirar no local</button>
             <button type="button" role="radio" aria-checked={deliveryType === 'Entrega'} className={deliveryType === 'Entrega' ? 'delivery-option delivery-option--active' : 'delivery-option'} onClick={() => setDeliveryType('Entrega')}>Entrega</button>
           </div>
-          {deliveryType === 'Entrega' && <label>Endereço de entrega<textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Rua, número, bairro e referência" rows={2} maxLength={300} /></label>}
+          {deliveryType === 'Entrega' && <><label>Região de entrega<select value={deliveryRegion} onChange={event=>setDeliveryRegion(event.target.value)}><option value="">Selecione sua região</option>{deliveryRegions.map(region=><option key={region.name} value={region.name}>{region.name}{region.negotiate?' — taxa a combinar':' — '+formatPrice(Number(region.fee))}</option>)}</select></label>{selectedRegion?.places?.length>0&&<small className="delivery-region-places">{selectedRegion.places.join(' · ')}</small>}{selectedRegion?.negotiate&&<p className="delivery-region-note">Nossa equipe combinará a taxa de entrega com você.</p>}<label>Endereço de entrega<textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Rua, número, bairro e referência" rows={2} maxLength={300} /></label></>}
           <label>Como você vai pagar?
             <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as OrderForm['paymentMethod'])}>
               <option value="Pix">Pix</option>
@@ -302,7 +305,7 @@ function CartDrawer({ cart, isDemo, onClose, onAdjust, onSubmit }: { cart: CartL
           <label>Observações do pedido<textarea value={observations} onChange={(event) => setObservations(event.target.value)} placeholder="Ex.: sem cebola, molho à parte…" rows={3} maxLength={500} /></label>
           {paymentMethod === 'Dinheiro' && <div className="cash-change-fields"><label className="admin-check-label"><input type="checkbox" checked={needsChange} onChange={(event) => { setNeedsChange(event.target.checked); if (!event.target.checked) setChangeFor('') }} /> Precisa de troco?</label>{needsChange && <label>Troco para quanto? (R$)<input value={changeFor} onChange={(event) => setChangeFor(event.target.value)} inputMode="decimal" placeholder="Ex.: 50,00" required /></label>}</div>}
         </div>
-        <div className="drawer-total"><span>Total do pedido</span><strong>{formatPrice(total)}</strong></div>
+        <div className="drawer-total"><span>Subtotal dos itens</span><strong>{formatPrice(total)}</strong></div>{deliveryType==='Entrega'&&selectedRegion&&!selectedRegion.negotiate&&<div className="drawer-total"><span>Taxa de entrega</span><strong>{formatPrice(deliveryFee)}</strong></div>}{deliveryType==='Entrega'&&selectedRegion?.negotiate&&<div className="drawer-total"><span>Taxa de entrega</span><strong>A combinar</strong></div>}<div className="drawer-total"><span>Total do pedido</span><strong>{formatPrice(total+deliveryFee)}{deliveryType==='Entrega'&&selectedRegion?.negotiate?' + taxa a combinar':''}</strong></div>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button className="primary-button primary-button--full" type="button" onClick={() => void send()} disabled={!valid || sending}><ShoppingBag size={18} /> {sending ? 'Enviando…' : 'Enviar pedido'}</button>
         <p className="privacy-note">{isDemo ? 'Nesta demonstração, o pedido não é enviado a ninguém.' : 'Seu pedido será enviado direto ao restaurante, que vai combinar o pagamento com você pelo WhatsApp.'}</p>
@@ -394,7 +397,7 @@ function MenuView({ data, isDemo, onPlaceOrder }: MenuViewProps) {
       {confirmation && <div className="toast"><CheckCircle2 size={18} /><span>{confirmation}</span><button type="button" onClick={() => setConfirmation(null)} aria-label="Fechar aviso"><X size={15} /></button></div>}
       {count > 0 && !isCartOpen && <button className="floating-cart" type="button" onClick={() => setCartOpen(true)}><span><ShoppingBag size={18} /> Seu pedido</span><b>{formatPrice(total)} <span className="cart-count">{count}</span></b></button>}
       {selectedProduct&&<ComplementPicker product={selectedProduct} selectedIds={selectedComplementIds} onChangeQuantity={(id,amount)=>setSelectedComplementIds(old=>{if(amount<0){const index=old.indexOf(id);if(index<0)return old;return [...old.slice(0,index),...old.slice(index+1)]}const limit=Number(selectedProduct.maxComplementSelections??0);if(limit>0&&old.length>=limit)return old;return [...old,id]})} onClose={()=>setSelectedProduct(null)} onAdd={()=>addLineToCart(selectedProduct,selectedComplementIds.map(id=>(selectedProduct.complements??[]).flatMap(g=>g.options).find(o=>o.id===id)).filter((o):o is ComplementOption=>Boolean(o)))} />}
-      {isCartOpen && (cart.length > 0 ? <CartDrawer cart={cart} isDemo={isDemo} onClose={() => setCartOpen(false)} onAdjust={adjust} onSubmit={submitOrder} /> : <div className="drawer-backdrop" onClick={() => setCartOpen(false)}><aside className="cart-drawer" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><span className="eyebrow">seu pedido</span><h2>0 itens</h2></div><button className="icon-button" type="button" onClick={() => setCartOpen(false)} aria-label="Fechar carrinho"><X size={20} /></button></div><EmptyCart onClose={() => setCartOpen(false)} /></aside></div>)}
+      {isCartOpen && (cart.length > 0 ? <CartDrawer cart={cart} deliveryRegions={data.restaurant.deliveryRegions??[]} isDemo={isDemo} onClose={() => setCartOpen(false)} onAdjust={adjust} onSubmit={submitOrder} /> : <div className="drawer-backdrop" onClick={() => setCartOpen(false)}><aside className="cart-drawer" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><span className="eyebrow">seu pedido</span><h2>0 itens</h2></div><button className="icon-button" type="button" onClick={() => setCartOpen(false)} aria-label="Fechar carrinho"><X size={20} /></button></div><EmptyCart onClose={() => setCartOpen(false)} /></aside></div>)}
     </div>
   )
 }
