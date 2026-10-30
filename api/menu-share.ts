@@ -19,11 +19,11 @@ export default async function handler(req:Req,res:Res){
     if(!data?.empresa)return res.status(404).send('Menu não encontrado.')
     const e=data.empresa
     const title=escapeHtml(e.nome||'Cardápio digital')
-    const image=escapeHtml(e.logo_url||e.capa_url||'https://fb3d2ymenu.com.br/fb3d2y-mark.svg')
+    const image=escapeHtml(e.capa_url||e.logo_url||'https://fb3d2ymenu.com.br/fb3d2y-mark.svg')
     const url='https://fb3d2ymenu.com.br/menu/'+encodeURIComponent(e.slug||slug)+(includeShareVersion?'?share=4':'')
     const safeUrl=escapeHtml(url)
     res.setHeader('Content-Type','text/html; charset=utf-8')
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=600')
-    return res.status(200).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="canonical" href="${safeUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="FB3d2y Menu"><meta property="og:title" content="${title}"><meta property="og:description" content="Acesse o cardápio online."><meta property="og:url" content="${safeUrl}"><meta property="og:image" content="${image}"><meta property="og:image:secure_url" content="${image}"><meta property="og:image:alt" content="Logo de ${title}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="${title}"><meta name="twitter:image" content="${image}"></head><body><a href="${safeUrl}">${title}</a></body></html>`)
+    return res.status(200).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="canonical" href="${safeUrl}"><meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:site_name" content="FB3d2y Menu"><meta property="og:title" content="${title}"><meta property="og:description" content="Acesse o cardápio online."><meta property="og:url" content="${safeUrl}"><meta property="og:image" content="${image}"><meta property="og:image:secure_url" content="${image}"><meta property="og:image:alt" content="Foto do cardápio de ${title}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:image" content="${image}"></head><body><a href="${safeUrl}">${title}</a></body></html>`)
   }catch{return res.status(500).send('Não foi possível preparar a prévia do menu.')}
 }
