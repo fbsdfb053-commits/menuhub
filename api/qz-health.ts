@@ -1,4 +1,4 @@
-import { createPrivateKey, createSign, X509Certificate } from 'node:crypto'
+import { createPrivateKey, createSign, verify, X509Certificate } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -15,10 +15,26 @@ export default function handler(req: { method?: string }, res: Res) {
   }
 
   const raw = process.env.QZ_PRIVATE_KEY
-  if (!raw) return res.status(200).json({ keyPresent: false, keyValid: false, matchesCertificate: false })
+  if (!raw) {
+    return res.status(200).json({
+      keyPresent: false,
+      keyValid: false,
+      matchesCertificate: false
+    })
+  }
+
+  let privateKey
+  try {
+    privateKey = createPrivateKey(raw.replace(/\\n/g, '\n'))
+  } catch {
+    return res.status(200).json({
+      keyPresent: true,
+      keyValid: false,
+      matchesCertificate: false
+    })
+  }
 
   try {
-    const privateKey = createPrivateKey(raw.replace(/\\n/g, '\n'))
     const certificate = new X509Certificate(
       readFileSync(join(process.cwd(), 'public/qz/digital-certificate.txt'))
     )
@@ -27,11 +43,13 @@ export default function handler(req: { method?: string }, res: Res) {
     signer.update(message)
     signer.end()
     const signature = signer.sign(privateKey)
-    const matchesCertificate = certificate.publicKey.verify(
+    const matchesCertificate = verify(
       'RSA-SHA512',
       Buffer.from(message),
+      certificate.publicKey,
       signature
     )
+
     return res.status(200).json({
       keyPresent: true,
       keyValid: true,
@@ -40,7 +58,7 @@ export default function handler(req: { method?: string }, res: Res) {
   } catch {
     return res.status(200).json({
       keyPresent: true,
-      keyValid: false,
+      keyValid: true,
       matchesCertificate: false
     })
   }
