@@ -72,6 +72,11 @@ function isMenuRequest(text) {
   return /\b(cardapio|menu|comida|pratos|opcoes|opcoes do menu)\b/.test(normalized)
 }
 
+function isMenuLinkRequest(text) {
+  const normalized = normalizeText(text)
+  return isMenuRequest(text) && /\b(link|url|endereco)\b/.test(normalized)
+}
+
 async function buildMenuReply(restaurantId) {
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
     admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle(),
@@ -121,6 +126,24 @@ function normalizeText(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 }
 
+function currentFortalezaDate() {
+  const now = new Date()
+  const options = { timeZone: 'America/Fortaleza' }
+  const dateParts = new Intl.DateTimeFormat('pt-BR', { ...options, day: '2-digit', month: '2-digit', year: 'numeric' }).format(now)
+  const weekday = new Intl.DateTimeFormat('pt-BR', { ...options, weekday: 'long' }).format(now)
+  const time = new Intl.DateTimeFormat('pt-BR', { ...options, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)
+  return { dateParts, weekday, time }
+}
+
+function isTodayDateQuestion(text) {
+  const normalized = normalizeText(text)
+  return /\b(que dia e hoje|qual (o )?dia de hoje|hoje e (domingo|segunda|terca|quarta|quinta|sexta|sabado))\b/.test(normalized)
+}
+
+function isHoursQuestion(text) {
+  return /\b(horario|horarios|abre|aberto|aberta|fecha|fechado|fechada|funciona|funcionamento)\b/.test(normalizeText(text))
+}
+
 function humanHelpMessage(restaurant, reason) {
   const digits = String(restaurant?.whatsapp_contato || '').replace(/\D/g, '')
   const phone = digits ? (digits.length <= 11 ? '55' + digits : digits) : ''
@@ -164,7 +187,7 @@ function formatBusinessHours(restaurant) {
 async function buildIntelligentReply(restaurantId, text, config) {
   const normalized = normalizeText(text)
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
-    admin.from('empresas').select('nome,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual').eq('id', Number(restaurantId)).maybeSingle(),
+    admin.from('empresas').select('nome,slug,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual').eq('id', Number(restaurantId)).maybeSingle(),
     admin.from('produtos').select('id,nome,preco,descricao,categoria_id,disponivel,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome'),
     admin.from('categorias').select('id,nome,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome')
   ])
@@ -176,6 +199,22 @@ async function buildIntelligentReply(restaurantId, text, config) {
   const categories = categoriesResult.data || []
   const available = products.filter(product => product.disponivel === true)
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  // Respostas objetivas são resolvidas no backend, nunca por inferência da IA.
+  if (isMenuLinkRequest(text)) {
+    const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://menuhub-one.vercel.app').replace(/\/$/, '')
+    if (restaurant?.slug) return 'Claro! Aqui está o link do nosso cardápio 🍣\n' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug)
+    return humanHelpMessage(restaurant, 'Não consegui localizar o endereço público do cardápio.')
+  }
+
+  if (isTodayDateQuestion(text)) {
+    const current = currentFortalezaDate()
+    return 'Hoje é ' + current.weekday + ', ' + current.dateParts + '.'
+  }
+
+  if (isHoursQuestion(text)) {
+    return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
+  }
 
   const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log })
   if (aiReply) return aiReply
