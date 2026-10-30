@@ -577,7 +577,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
     const w=useQzTray?null:window.open('','_blank','width=420,height=720');
     if(!useQzTray&&!w){notify('Permita pop-ups para imprimir a comanda.',true);return}
     if(w)w.document.title='Preparando nota';
-    let itemLines:{nome:string;quantidade:number;preco?:number;categoria:string}[]=[];
+    let itemLines:{nome:string;quantidade:number;preco?:number;categoria:string;complements?:string[]}[]=[];
     const {data}=await supabase.from('itens_pedido').select('quantidade,preco_unitario,nome_produto').eq('pedido_id',o.id);
     if(data)itemLines=(data as any[]).map(x=>({nome:x.nome_produto??'Produto',quantidade:Number(x.quantidade),preco:Number(x.preco_unitario??0),categoria:'Outros'}));
     const storeName=(selected?.nome||cfg.name||'Restaurante').replace(/[<>]/g,'');
