@@ -101,7 +101,7 @@ function reserveAiUsage(restaurantId, senderKey, restaurant) {
   const today = fortalezaDayKey()
   if (aiUsageState.date !== today) aiUsageState = { date: today, restaurants: {}, contacts: {} }
   const restaurantKey = String(restaurantId)
-  const contactKey = restaurantKey + ':' + senderKey
+  const contactKey = senderKey
   const restaurantCount = Number(aiUsageState.restaurants[restaurantKey] || 0)
   const contactCount = Number(aiUsageState.contacts[contactKey] || 0)
   if (restaurantCount >= AI_DAILY_RESTAURANT_LIMIT) return { allowed: false, reason: 'restaurant_limit' }
@@ -350,10 +350,10 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     if (aiReply) return aiReply
   } else if (aiPermission.reason === 'closed') {
     const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
-    const menuLink = restaurant?.slug ? '\\nCardápio: ' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : ''
+    const menuLink = restaurant?.slug ? '\nCardápio: ' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : ''
     return 'No momento estamos fora do horário de funcionamento. Confira nosso cardápio.' + menuLink
   } else if (aiPermission.reason === 'restaurant_limit' || aiPermission.reason === 'contact_limit') {
-    const digits = String(restaurant?.whatsapp_contato || '').replace(/\\D/g, '')
+    const digits = String(restaurant?.whatsapp_contato || '').replace(/\D/g, '')
     const phone = digits ? (digits.length <= 11 ? '55' + digits : digits) : ''
     return 'Atingimos o limite diário do atendimento inteligente. ' + (phone ? 'Nossa equipe pode continuar por aqui: https://wa.me/' + phone : 'Nossa equipe poderá continuar o atendimento durante o expediente.')
   }
