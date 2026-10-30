@@ -48,12 +48,45 @@ import PrivacyPolicy from './PrivacyPolicy'
 declare global {
   interface Window {
     qz?: {
+      security: {
+        setCertificatePromise: (callback: (resolve: (certificate: string) => void, reject: (error: Error) => void) => void) => void
+        setSignatureAlgorithm: (algorithm: string) => void
+        setSignaturePromise: (callback: (toSign: string) => (resolve: (signature: string) => void, reject: (error: Error) => void) => void) => void
+      }
       websocket: { isActive: () => boolean; connect: (options?: { retries?: number; delay?: number }) => Promise<void> }
       printers: { find: () => Promise<string[]> }
       configs: { create: (printer: string, options?: Record<string, unknown>) => unknown }
       print: (config: unknown, data: Array<string | Record<string, unknown>>) => Promise<void>
     }
   }
+}
+
+let qzSecurityConfigured = false
+function configureQzSecurity() {
+  const qz = window.qz
+  if (!qz) throw new Error('A biblioteca QZ Tray não carregou. Atualize a página.')
+  if (qzSecurityConfigured) return
+
+  qz.security.setCertificatePromise((resolve, reject) => {
+    fetch('/qz/digital-certificate.txt', { cache: 'no-store' })
+      .then(response => {
+        if (!response.ok) throw new Error('Não foi possível carregar o certificado QZ.')
+        return response.text()
+      })
+      .then(resolve)
+      .catch(reject)
+  })
+  qz.security.setSignatureAlgorithm('SHA512')
+  qz.security.setSignaturePromise(toSign => (resolve, reject) => {
+    fetch('/api/qz-sign?request=' + encodeURIComponent(toSign), { cache: 'no-store' })
+      .then(response => {
+        if (!response.ok) throw new Error('Não foi possível assinar a solicitação QZ.')
+        return response.text()
+      })
+      .then(resolve)
+      .catch(reject)
+  })
+  qzSecurityConfigured = true
 }
 
 type CartLine = {
@@ -501,8 +534,8 @@ function AdminView({ onBack }: { onBack: () => void }) {
   useEffect(()=>{if(!selectedId)return;const saved=window.localStorage.getItem('menuhub-print-'+selectedId);if(saved){try{const cfg=JSON.parse(saved) as {name?:string;qzPrinterName?:string;autoPrint?:boolean};setPrinterName(cfg.name??'');setQzPrinterName(cfg.qzPrinterName??'');setAutoPrint(cfg.autoPrint===true)}catch{setPrinterName('');setQzPrinterName('');setAutoPrint(false)}}else{setPrinterName('');setQzPrinterName('');setAutoPrint(false)}},[selectedId])
   useEffect(()=>{if(!keepScreenOn)return;let active=true;const requestLock=async()=>{try{if(!active||document.visibilityState!=='visible'||!('wakeLock' in navigator))return;const lock=await (navigator as any).wakeLock.request('screen');if(!active){await lock.release();return}setWakeLock(lock);lock.addEventListener('release',()=>setWakeLock(null),{once:true})}catch{setWakeLock(null)}};const onVisibility=()=>{if(document.visibilityState==='visible')void requestLock()};void requestLock();document.addEventListener('visibilitychange',onVisibility);return()=>{active=false;document.removeEventListener('visibilitychange',onVisibility);setWakeLock(null)}},[keepScreenOn])
   useEffect(()=>()=>{if(wakeLock)void wakeLock.release?.()},[wakeLock])
-  const connectQzTray=async()=>{try{setQzStatus('Conectando…');if(!window.qz)throw new Error('A biblioteca QZ Tray não carregou. Atualize a página.');if(!window.qz.websocket.isActive())await window.qz.websocket.connect({retries:3,delay:1});const found=await window.qz.printers.find();setQzPrinters(found);setQzPrinterName(old=>old&&found.includes(old)?old:(found[0]??''));setQzStatus(found.length?'Conectado':'Nenhuma impressora encontrada');notify(found.length?'QZ Tray conectado. Selecione a impressora.':'QZ Tray conectado, mas nenhuma impressora foi encontrada.',!found.length)}catch(err){setQzStatus('Falha na conexão');notify(err instanceof Error?err.message:'Não foi possível conectar ao QZ Tray.',true)}}
-  const printQzText=async(printer:string,content:string)=>{if(!window.qz)throw new Error('QZ Tray não está disponível nesta página.');if(!window.qz.websocket.isActive())await window.qz.websocket.connect({retries:3,delay:1});const config=window.qz.configs.create(printer,{encoding:'CP860',jobName:'FB3d2y Menu'});await window.qz.print(config,[content])}
+  const connectQzTray=async()=>{try{setQzStatus('Conectando…');configureQzSecurity();if(!window.qz)throw new Error('A biblioteca QZ Tray não carregou. Atualize a página.');if(!window.qz.websocket.isActive())await window.qz.websocket.connect({retries:3,delay:1});const found=await window.qz.printers.find();setQzPrinters(found);setQzPrinterName(old=>old&&found.includes(old)?old:(found[0]??''));setQzStatus(found.length?'Conectado':'Nenhuma impressora encontrada');notify(found.length?'QZ Tray conectado. Selecione a impressora.':'QZ Tray conectado, mas nenhuma impressora foi encontrada.',!found.length)}catch(err){setQzStatus('Falha na conexão');notify(err instanceof Error?err.message:'Não foi possível conectar ao QZ Tray.',true)}}
+  const printQzText=async(printer:string,content:string)=>{if(!window.qz)throw new Error('QZ Tray não está disponível nesta página.');configureQzSecurity();if(!window.qz.websocket.isActive())await window.qz.websocket.connect({retries:3,delay:1});const config=window.qz.configs.create(printer,{encoding:'CP860',jobName:'FB3d2y Menu'});await window.qz.print(config,[content])}
   const buildTestReceipt=(storeName:string)=>'\x1B\x40'+'\x1B\x61\x01'+'\x1B\x45\x01'+'\x1B\x21\x30'+storeName.slice(0,24)+'\n\n'+'\x1B\x21\x00'+'\x1B\x45\x00'+'\x1B\x61\x00'+'TESTE DE IMPRESSAO\n'+'QZ TRAY - FB3d2y MENU\n'+'Papel: 50 mm\n'+'--------------------------------\n'+'Conexao funcionando!\n'+'\n'.repeat(4)+'\x1D\x56\x00'
   const testQzPrinter=async()=>{try{if(!qzPrinterName)throw new Error('Selecione uma impressora primeiro.');setQzStatus('Enviando teste…');await printQzText(qzPrinterName,buildTestReceipt(printerName.trim()||selected?.nome||'FB3d2y Menu'));setQzStatus('Conectado');notify('Teste enviado para '+qzPrinterName+'.')}catch(err){setQzStatus('Erro no teste');notify(err instanceof Error?err.message:'Falha ao imprimir o teste.',true)}}
   const savePrinterSettings=()=>{if(!selectedId||!qzPrinterName){notify('Conecte o QZ Tray e selecione uma impressora.',true);return}window.localStorage.setItem('menuhub-print-'+selectedId,JSON.stringify({name:printerName.trim()||selected?.nome||'Restaurante',qzPrinterName,autoPrint}));notify(autoPrint?'Configurações salvas. Impressão automática ativada neste computador.':'Configurações da impressora salvas neste dispositivo.')}
