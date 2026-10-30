@@ -41,6 +41,7 @@ export type Restaurant = {
   coverUrl?: string
   coverTone: string
   accent: string
+  deliveryRegions?: { name: string; fee: number; places: string[]; negotiate?: boolean }[]
 }
 
 export const demoRestaurant: Restaurant = {
