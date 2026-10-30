@@ -324,7 +324,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       const botName = String(config.botName || '').trim() || 'assistente virtual'
       const restaurantName = restaurantData?.nome || 'nosso estabelecimento'
       const greeting = 'Olá! Sou ' + botName + ', atendente do ' + restaurantName + '. Vou te atender por aqui. 😊'
-      const isGreeting = /^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)[!.?,\\s]*$/.test(normalizeText(text))
+      const isGreeting = /^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)[!.,? ]*$/.test(normalizeText(text))
       const isPresentation = /(se apresente|quem e voce|qual seu nome|como voce se chama)/.test(normalizeText(text))
       if (isGreeting) reply = greeting + ' O que posso fazer por você hoje?'
       else if (isPresentation) reply = greeting
