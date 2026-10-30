@@ -137,7 +137,7 @@ function currentFortalezaDate() {
 
 function isTodayDateQuestion(text) {
   const normalized = normalizeText(text)
-  return /\b(que dia e hoje|qual (o )?dia de hoje|hoje e (domingo|segunda|terca|quarta|quinta|sexta|sabado))\b/.test(normalized)
+  return /\b(que dia e hoje|qual (o )?dia de hoje|hoje (e|nao e) (domingo|segunda|terca|quarta|quinta|sexta|sabado))\b/.test(normalized)
 }
 
 function isHoursQuestion(text) {
