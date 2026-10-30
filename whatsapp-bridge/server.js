@@ -393,12 +393,38 @@ async function ownerFor(req, restaurantId) {
 }
 function sessionPath(id) { return path.join(AUTH_DIR, id) }
 function stateFor(id) {
-  if (!sessions.has(id)) sessions.set(id, { status: 'disconnected', qr: null, qrDataUrl: null, phone: null, socket: null, starting: false, lastError: null })
+  if (!sessions.has(id)) {
+    sessions.set(id, {
+      status: 'disconnected', qr: null, qrDataUrl: null, phone: null,
+      socket: null, starting: false, lastError: null,
+      reconnectTimer: null, reconnectAttempts: 0, lastDisconnectCode: null
+    })
+  }
   return sessions.get(id)
 }
+
+function scheduleReconnect(id, reason) {
+  const state = stateFor(id)
+  if (state.status === 'logged_out' || state.reconnectTimer) return
+  state.reconnectAttempts = Math.min((state.reconnectAttempts || 0) + 1, 6)
+  const delay = Math.min(2000 * (2 ** (state.reconnectAttempts - 1)), 60000)
+  log.warn({ restaurantId: id, reason, attempt: state.reconnectAttempts, retryInMs: delay }, 'WhatsApp reconnect scheduled')
+  state.reconnectTimer = setTimeout(() => {
+    state.reconnectTimer = null
+    if (state.status === 'disconnected' || state.status === 'error') {
+      void startSession(id)
+    }
+  }, delay)
+}
+
 async function startSession(id) {
   const state = stateFor(id)
-  if (state.starting || state.status === 'connected') return state
+  // A socket in QR, connecting, or connected state is already an active attempt.
+  if (state.starting || state.socket || state.status === 'connected') return state
+  if (state.reconnectTimer) {
+    clearTimeout(state.reconnectTimer)
+    state.reconnectTimer = null
+  }
   state.starting = true
   state.status = 'connecting'
   state.qr = null
@@ -437,28 +463,57 @@ async function startSession(id) {
         state.qr = null
         state.qrDataUrl = null
         state.starting = false
+        state.reconnectAttempts = 0
+        state.lastDisconnectCode = null
         state.lastError = null
+        log.info({ restaurantId: id, phone: state.phone }, 'WhatsApp session connected')
       }
       if (update.connection === 'close') {
+        // Ignore late close events from sockets that have already been replaced.
+        if (state.socket !== sock) return
         state.starting = false
         state.socket = null
-        const code = update.lastDisconnect?.error?.output?.statusCode
+        const code = update.lastDisconnect?.error?.output?.statusCode ?? null
+        state.lastDisconnectCode = code
         state.status = code === DisconnectReason.loggedOut ? 'logged_out' : 'disconnected'
         state.qr = null
         state.qrDataUrl = null
-        if (code !== DisconnectReason.loggedOut) {
-          setTimeout(() => { if (state.status === 'disconnected') void startSession(id).catch(err => log.error({ err }, 'Reconnect failed')) }, 3000)
-        }
+        log.warn({ restaurantId: id, code, loggedOut: code === DisconnectReason.loggedOut }, 'WhatsApp connection closed')
+        if (code !== DisconnectReason.loggedOut) scheduleReconnect(id, code ?? 'connection_closed')
       }
     })
-    state.starting = false
   } catch (err) {
     state.starting = false
+    state.socket = null
     state.status = 'error'
     state.lastError = 'Não foi possível iniciar a sessão.'
     log.error({ err, restaurantId: id }, 'WhatsApp session start failed')
+    scheduleReconnect(id, 'session_start_failed')
   }
   return state
+}
+
+function restoreSavedSessions() {
+  let entries
+  try {
+    entries = fs.readdirSync(AUTH_DIR, { withFileTypes: true })
+  } catch (err) {
+    log.error({ err, authDir: AUTH_DIR }, 'Could not inspect WhatsApp session directory')
+    return
+  }
+  const saved = entries
+    .filter(entry => entry.isDirectory() && safeId(entry.name) && fs.existsSync(path.join(AUTH_DIR, entry.name, 'creds.json')))
+    .map(entry => entry.name)
+  if (!saved.length) {
+    log.info({ authDir: AUTH_DIR }, 'No saved WhatsApp sessions to restore')
+    return
+  }
+  log.info({ count: saved.length }, 'Restoring saved WhatsApp sessions')
+  saved.forEach((id, index) => {
+    setTimeout(() => {
+      void startSession(id)
+    }, index * 1500)
+  })
 }
 app.get('/health', (_req, res) => res.json({ ok: true, service: 'menuhub-whatsapp-bridge' }))
 app.use('/api/whatsapp/:restaurantId', async (req, res, next) => {
@@ -503,4 +558,7 @@ app.post('/api/whatsapp/:restaurantId/logout', async (req, res) => {
   res.json({ status: 'disconnected' })
 })
 startOrderStatusRealtime()
-app.listen(PORT, '0.0.0.0', () => log.info({ port: PORT }, 'Menuhub WhatsApp bridge listening'))
+app.listen(PORT, '0.0.0.0', () => {
+  log.info({ port: PORT, authDir: AUTH_DIR }, 'Menuhub WhatsApp bridge listening')
+  restoreSavedSessions()
+})
