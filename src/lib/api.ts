@@ -5,7 +5,6 @@ export type MenuData = {
   restaurant: Restaurant
   categories: Category[]
   products: Product[]
-  deliveryRegions: { name: string; fee: number; places: string[]; negotiate?: boolean }[]
 }
 
 export type OrderForm = {
