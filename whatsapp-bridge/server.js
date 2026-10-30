@@ -4,6 +4,7 @@ import path from 'node:path'
 import pino from 'pino'
 import QRCode from 'qrcode'
 import { createClient } from '@supabase/supabase-js'
+import { generateAiReply } from './openai-replies.js'
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
 
 const app = express()
@@ -176,6 +177,9 @@ async function buildIntelligentReply(restaurantId, text, config) {
   const available = products.filter(product => product.disponivel === true)
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
+  const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log })
+  if (aiReply) return aiReply
+
   if (/\b(falar com (alguem|atendente|pessoa)|atendente|atendimento humano|pessoa real|quero falar|chamar alguem)\b/.test(normalized)) {
     return humanHelpMessage(restaurant, 'Claro! Nossa equipe pode continuar o atendimento com você.')
   }
@@ -260,7 +264,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     if (typeof reply !== 'string' || !reply.trim()) return
     senderReplyTimes.set(senderKey, now)
     await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
-    log.info({ restaurantId, messageId, topic: menuRequested ? 'menu' : reply === config.faqHours ? 'hours' : reply === config.faqPayment ? 'payment' : 'welcome' }, 'Automatic WhatsApp reply sent')
+    log.info({ restaurantId, messageId, aiEnabled: Boolean(process.env.OPENAI_API_KEY) }, 'Automatic WhatsApp reply sent')
   } catch (err) {
     log.error({ err, restaurantId, messageId }, 'Automatic WhatsApp reply failed')
   }
