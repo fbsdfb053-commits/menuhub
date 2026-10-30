@@ -691,7 +691,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
     try{
       const result=await bridgeRequest('status')
       setBridgeStatus(result.status??'disconnected')
-      setBridgeError('')
+      setBridgeError(result.error??'')
       setQrDataUrl(result.qrDataUrl??'')
       setLinkedPhone(result.phone??'')
       if(showFeedback)notify(result.status==='qr'?'QR Code disponível para leitura.':result.status==='connected'?'WhatsApp conectado.':'Servidor respondeu; situação atual: '+(result.status??'desconectado')+'.')
@@ -775,7 +775,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
     {!restaurantId?<section className="admin-panel"><h2>Primeiro, crie um restaurante</h2><p>O bot e suas mensagens são configurados separadamente para cada estabelecimento.</p></section>:<>
       {tableMissing&&<section className="whatsapp-notice"><strong>Falta preparar o banco de dados</strong><p>As configurações precisam da tabela nova. Execute <code>supabase/08_whatsapp_bot.sql</code> no SQL Editor do projeto Supabase de teste; depois volte aqui e atualize a página.</p></section>}
       <section className="admin-panel whatsapp-connect-panel">
-        <div className="whatsapp-connect-icon"><MessageCircle size={25}/></div><div className="whatsapp-connect-copy"><span className="eyebrow">etapa 1 · conexão de teste</span><h2>Vincular pelo QR Code</h2><p>Use um número de teste. No celular, abra WhatsApp → Dispositivos conectados → Conectar dispositivo e leia o QR exibido aqui.</p><div className="whatsapp-connection-status"><span className={bridgeStatus==='connected'?'whatsapp-status-dot whatsapp-status-dot--connected':'whatsapp-status-dot'}/><span>{statusLabel}{bridgeStatus==='connected'&&linkedPhone?' · +'+linkedPhone:''}</span></div></div>
+        <div className="whatsapp-connect-icon"><MessageCircle size={25}/></div><div className="whatsapp-connect-copy"><span className="eyebrow">etapa 1 · conexão de teste</span><h2>Vincular pelo QR Code</h2><p>Esta conexão pertence exclusivamente a {restaurantName||'este restaurante'}. No celular, abra WhatsApp → Dispositivos conectados → Conectar dispositivo e leia o QR Code. O mesmo número não pode ser usado em outro restaurante.</p><div className="whatsapp-connection-status"><span className={bridgeStatus==='connected'?'whatsapp-status-dot whatsapp-status-dot--connected':'whatsapp-status-dot'}/><span>{statusLabel}{bridgeStatus==='connected'&&linkedPhone?' · +'+linkedPhone:''}</span></div></div>
         {bridgeStatus==='qr'&&qrDataUrl&&<div className="whatsapp-qr-wrap"><img src={qrDataUrl} alt="QR Code temporário para vincular WhatsApp" /><p>O QR Code expira rapidamente. Se não funcionar, clique em atualizar conexão.</p></div>}
         {bridgeStatus==='unconfigured'&&<div className="whatsapp-notice"><strong>Falta publicar o servidor persistente</strong><p>O painel já está preparado para mostrar o QR, mas o serviço precisa ser hospedado com armazenamento persistente. Siga <code>whatsapp-bridge/README.md</code> e configure <code>VITE_WHATSAPP_BRIDGE_URL</code> no ambiente de teste da Vercel.</p></div>}
         {bridgeStatus==='error'&&<div className="whatsapp-notice"><strong>Falha na conexão com o servidor de QR</strong><p>{bridgeError||'Não foi possível acessar o servidor. Clique em atualizar conexão para tentar novamente.'}</p><small>Essa mensagem ajuda a identificar se o problema é de rede, autorização ou configuração.</small></div>}
