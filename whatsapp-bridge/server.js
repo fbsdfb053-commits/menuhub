@@ -540,6 +540,37 @@ async function ownerFor(req, restaurantId) {
   return { ok: true, user: userData }
 }
 function sessionPath(id) { return path.join(AUTH_DIR, id) }
+async function registerWhatsAppConnection(restaurantId, rawJid) {
+  const phone = String(rawJid || '').split('@')[0].split(':')[0].replace(/\\D/g, '')
+  if (!/^\\d{8,15}$/.test(phone)) {
+    throw new Error('O WhatsApp conectou, mas o servidor não conseguiu identificar o número da conta.')
+  }
+
+  const { error } = await admin
+    .from('whatsapp_bot_connections')
+    .upsert({
+      empresa_id: Number(restaurantId),
+      whatsapp_phone: phone,
+      connected_at: new Date().toISOString()
+    }, { onConflict: 'empresa_id' })
+
+  if (error?.code === '23505') {
+    const conflict = new Error('Este número de WhatsApp já está vinculado a outro restaurante. Desconecte-o da outra conta antes de continuar.')
+    conflict.code = 'WHATSAPP_NUMBER_IN_USE'
+    throw conflict
+  }
+  if (error) throw error
+  return phone
+}
+
+async function releaseWhatsAppConnection(restaurantId) {
+  const { error } = await admin
+    .from('whatsapp_bot_connections')
+    .delete()
+    .eq('empresa_id', Number(restaurantId))
+  if (error) log.error({ err: error, restaurantId }, 'Could not release WhatsApp restaurant binding')
+}
+
 function stateFor(id) {
   if (!sessions.has(id)) {
     sessions.set(id, {
@@ -606,15 +637,33 @@ async function startSession(id) {
         state.status = 'qr'
       }
       if (update.connection === 'open') {
-        state.status = 'connected'
-        state.phone = sock.user?.id?.split(':')[0] || null
-        state.qr = null
-        state.qrDataUrl = null
-        state.starting = false
-        state.reconnectAttempts = 0
-        state.lastDisconnectCode = null
-        state.lastError = null
-        log.info({ restaurantId: id, phone: state.phone }, 'WhatsApp session connected')
+        try {
+          const phone = await registerWhatsAppConnection(id, sock.user?.id)
+          if (state.socket !== sock) return
+          state.status = 'connected'
+          state.phone = phone
+          state.qr = null
+          state.qrDataUrl = null
+          state.starting = false
+          state.reconnectAttempts = 0
+          state.lastDisconnectCode = null
+          state.lastError = null
+          log.info({ restaurantId: id, phone }, 'WhatsApp session connected and bound to restaurant')
+        } catch (err) {
+          if (state.socket !== sock) return
+          state.starting = false
+          state.socket = null
+          state.status = 'error'
+          state.phone = null
+          state.qr = null
+          state.qrDataUrl = null
+          state.lastError = err?.message || 'Não foi possível registrar o número deste WhatsApp.'
+          try { sock.end(undefined) } catch {}
+          if (err?.code === 'WHATSAPP_NUMBER_IN_USE') {
+            fs.rmSync(sessionPath(id), { recursive: true, force: true })
+          }
+          log.error({ err, restaurantId: id }, 'WhatsApp connection could not be bound to restaurant')
+        }
       }
       if (update.connection === 'close') {
         // Ignore late close events from sockets that have already been replaced.
@@ -626,6 +675,10 @@ async function startSession(id) {
         state.status = code === DisconnectReason.loggedOut ? 'logged_out' : 'disconnected'
         state.qr = null
         state.qrDataUrl = null
+        if (code === DisconnectReason.loggedOut) {
+          state.phone = null
+          void releaseWhatsAppConnection(id)
+        }
         log.warn({ restaurantId: id, code, loggedOut: code === DisconnectReason.loggedOut }, 'WhatsApp connection closed')
         if (code !== DisconnectReason.loggedOut) scheduleReconnect(id, code ?? 'connection_closed')
       }
@@ -702,6 +755,7 @@ app.post('/api/whatsapp/:restaurantId/logout', async (req, res) => {
   try { await state.socket?.logout() } catch (err) { log.warn({ err }, 'WhatsApp logout failed') }
   try { state.socket?.end(undefined) } catch {}
   fs.rmSync(sessionPath(id), { recursive: true, force: true })
+  await releaseWhatsAppConnection(id)
   sessions.set(id, { status: 'disconnected', qr: null, qrDataUrl: null, phone: null, socket: null, starting: false, lastError: null })
   res.json({ status: 'disconnected' })
 })
