@@ -5,6 +5,7 @@ export type MenuData = {
   restaurant: Restaurant
   categories: Category[]
   products: Product[]
+  deliveryRegions: { name: string; fee: number; places: string[]; negotiate?: boolean }[]
 }
 
 export type OrderForm = {
@@ -16,6 +17,8 @@ export type OrderForm = {
   observations: string
   needsChange: boolean
   changeFor: number | null
+  deliveryRegion: string
+  deliveryFee: number
 }
 
 export type OrderItem = { productId: number; quantity: number; complementIds?: number[] }
@@ -95,6 +98,7 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     coverUrl: safeImageUrl(e.capa_url),
     coverTone: `linear-gradient(120deg, color-mix(in srgb, ${accent} 40%, #000) 0%, ${accent} 100%)`,
     accent,
+    deliveryRegions: Array.isArray(e.config_entrega) ? e.config_entrega : [],
   }
 
   const rawProducts: any[] = raw.produtos ?? []
@@ -141,6 +145,8 @@ export async function createOrder(slug: string, form: OrderForm, items: OrderIte
     p_observacoes: form.observations,
     p_precisa_troco: form.needsChange,
     p_troco_para: form.changeFor,
+    p_regiao_entrega: form.deliveryType === 'Entrega' ? form.deliveryRegion : null,
+    p_taxa_entrega: form.deliveryType === 'Entrega' ? form.deliveryFee : 0,
     p_itens: items.map((i) => ({ produto_id: i.productId, quantidade: i.quantity, complementos: (i.complementIds ?? []).map(id => ({ id })) })),
   })
   if (error) throw new Error(error.message)
