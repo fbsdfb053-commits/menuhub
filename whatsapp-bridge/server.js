@@ -47,8 +47,8 @@ const senderReplyTimes = new Map()
 const welcomedContacts = new Map()
 const welcomeStateFile = path.join(AUTH_DIR, 'welcomed-contacts.json')
 const aiUsageFile = path.join(AUTH_DIR, 'ai-usage.json')
-const AI_DAILY_CONTACT_LIMIT = 5
-const AI_DAILY_RESTAURANT_LIMIT = 50
+const AI_DAILY_CONTACT_LIMIT = 15
+const AI_DAILY_RESTAURANT_LIMIT = 200
 function fortalezaDayKey() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Fortaleza', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 }
