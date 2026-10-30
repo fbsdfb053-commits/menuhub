@@ -501,7 +501,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
     const useQz=Boolean(activeQzPrinter);
     const usePrintNode=Boolean(activePrintNodeId)&&!useQz;
     const w=(usePrintNode||useQz)?null:window.open('','_blank','width=420,height=720');
-    if(!usePrintNode&&!w){notify('Permita pop-ups para imprimir a comanda.',true);return}
+    if(!usePrintNode&&!useQz&&!w){notify('Permita pop-ups para imprimir a comanda.',true);return}
     if(w)w.document.title='Preparando nota';
     let itemLines:{nome:string;quantidade:number;preco?:number;categoria:string}[]=[];
     const {data}=await supabase.from('itens_pedido').select('quantidade,preco_unitario,nome_produto').eq('pedido_id',o.id);
