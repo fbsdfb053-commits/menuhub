@@ -168,7 +168,7 @@ function isMenuLinkRequest(text) {
   return isMenuRequest(text) && /\b(link|url|endereco)\b/.test(normalized)
 }
 
-async function buildMenuReply(restaurantId) {
+async function buildMenuReply(restaurantId, full = false) {
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
     admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle(),
     admin.from('produtos').select('nome,preco,descricao,categoria_id,ordem').eq('empresa_id', Number(restaurantId)).eq('disponivel', true).order('ordem').order('nome'),
@@ -188,6 +188,13 @@ async function buildMenuReply(restaurantId) {
     const groupName = categoryNames.get(product.categoria_id) || 'Outros itens'
     if (!groups.has(groupName)) groups.set(groupName, [])
     groups.get(groupName).push(product)
+  }
+
+  if (!full) {
+    const summary = [...groups.entries()].map(([name, items]) =>
+      `• ${name} (${items.length} ${items.length === 1 ? 'opção' : 'opções'})`
+    ).join('\n')
+    return `Temos estas categorias no cardápio:\n${summary}\n\nQual delas você gostaria de conhecer?`
   }
 
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -319,6 +326,11 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   if (/\b(horario|horarios|abre|aberto|aberta|fecha|fechado|fechada|funciona|funcionamento)\b/.test(normalized)) {
     return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
   }
+  if (/\b(como faco|onde faco|fazer meu pedido|fazer pedido|realizar pedido|pedir pelo site|pedir pelo link)\b/.test(normalized)) {
+    const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
+    if (restaurant?.slug) return 'É só acessar nosso cardápio, escolher o que deseja e finalizar o pedido por lá.\n' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug)
+    return 'Você pode fazer seu pedido diretamente com nossa equipe por aqui.'
+  }
   if (/\b(pagamento|pagar|pix|cartao|dinheiro|credito|debito|vale|forma de pagamento)\b/.test(normalized)) {
     return config.faqPayment?.trim() || humanHelpMessage(restaurant, 'Não encontrei as formas de pagamento cadastradas.')
   }
@@ -377,9 +389,12 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     return lines.join('\n')
   }
 
-  if (isMenuRequest(text)) return buildMenuReply(restaurantId)
+  if (isMenuRequest(text)) {
+    const asksFullMenu = /\b(completo|completa|todos os itens|lista completa|cardapio inteiro|menu inteiro)\b/.test(normalized)
+    return buildMenuReply(restaurantId, asksFullMenu)
+  }
 
-  const restaurantTopic = /\b(cardapio|menu|comida|prato|produto|item|preco|valor|ingrediente|sabor|opcao|pedido|entrega|frete|taxa|bairro|regiao|retirada|pagamento|pix|cartao|dinheiro|horario|abre|fecha|funciona|endereco|localizacao|onde fica|telefone|contato|promocao|desconto|cupom|reserva|mesa|restaurante|loja|aberto|fechado|disponivel|disponibilidade|temaki|sushi|sashimi|combo|bebida|sobremesa|yakisoba|yakissoba|pizza|hamburguer|hamburg|lasanha|pastel|sanduiche|macarrao|risoto|tempero|porcao|acai|tapioca|calzone|esfiha|sopa|salada|churrasco)\b/.test(normalized)
+  const restaurantTopic = /\b(cardapio|menu|comida|prato|produto|item|preco|valor|ingrediente|sabor|opcao|pedido|entrega|frete|taxa|bairro|regiao|retirada|pagamento|pix|cartao|dinheiro|horario|abre|fecha|funciona|endereco|localizacao|onde fica|telefone|contato|promocao|desconto|cupom|reserva|mesa|restaurante|loja|aberto|fechado|disponivel|disponibilidade|temaki|sushi|sashimi|combo|bebida|sobremesa|yakisoba|yakissoba|pizza|hamburguer|hamburg|lasanha|pastel|sanduiche|macarrao|risoto|tempero|porcao|acai|tapioca|calzone|esfiha|sopa|salada|churrasco|carne|porco|frango|peixe|camarao|salmao|atum|legumes|arroz|massa|fritura|rolinho|onigiri|hot)\b/.test(normalized)
   const likelyOrderRequest = /\b(queria|quero|gostaria de|tem|nao tem|voces tem|vocês têm|vende|faz|prepara|aceita|pedido de|pedir)\s+(?:um|uma|o|a|algum|alguma)?\s*[a-z]{3,}/.test(normalized)
   if (!restaurantTopic && !likelyOrderRequest) {
     return 'Consigo ajudar com o cardápio, pedidos, entrega e informações do restaurante. Sobre outros assuntos, não consigo orientar por aqui.'
