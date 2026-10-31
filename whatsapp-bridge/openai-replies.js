@@ -13,7 +13,7 @@ export async function generateAiReply({ text, restaurant, products, categories, 
   const timezone = 'America/Fortaleza'
   const currentDate = new Intl.DateTimeFormat('pt-BR', { timeZone: timezone, weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }).format(now)
   const currentTime = new Intl.DateTimeFormat('pt-BR', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)
-  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://menuhub-one.vercel.app').replace(/\/$/, '')
+  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
   const businessContext = {
     nome: restaurant?.nome || 'Restaurante',
     descricao_restaurante: restaurant?.descricao || null,
