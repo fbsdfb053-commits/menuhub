@@ -480,7 +480,8 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       : await buildIntelligentReply(restaurantId, text, config, senderKey)
     if (typeof reply !== 'string' || !reply.trim()) return
 
-    if (reply.includes(HANDOFF_MARKER)) {
+    const isHandoff = reply.includes(HANDOFF_MARKER)
+    if (isHandoff) {
       reply = reply.replaceAll(HANDOFF_MARKER, '').trim()
       await notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log })
     }
@@ -497,7 +498,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       const isPresentation = /(se apresente|quem e voce|qual seu nome|como voce se chama)/.test(normalizeText(text))
       if (isGreeting) reply = greeting + ' O que você gostaria de saber?'
       else if (isPresentation) reply = greeting
-      else if (!reply.includes(HANDOFF_MARKER)) reply = greeting + String.fromCharCode(10) + reply.trim()
+      else if (!isHandoff) reply = greeting + String.fromCharCode(10) + reply.trim()
     }
 
     senderReplyTimes.set(senderKey, now)
