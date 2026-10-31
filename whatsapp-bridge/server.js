@@ -170,7 +170,7 @@ function isMenuLinkRequest(text) {
 
 async function buildMenuReply(restaurantId, full = false) {
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
-    admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle(),
+    admin.from('empresas').select('nome,slug').eq('id', Number(restaurantId)).maybeSingle(),
     admin.from('produtos').select('nome,preco,descricao,categoria_id,ordem').eq('empresa_id', Number(restaurantId)).eq('disponivel', true).order('ordem').order('nome'),
     admin.from('categorias').select('id,nome,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome')
   ])
@@ -179,8 +179,11 @@ async function buildMenuReply(restaurantId, full = false) {
   if (categoriesResult.error) throw categoriesResult.error
 
   const restaurantName = restaurantResult.data?.nome || 'Cardápio'
+  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
+  const menuLink = restaurantResult.data?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurantResult.data.slug) : null
+  const withMenuLink = reply => menuLink ? reply + '\nCardápio: ' + menuLink : reply
   const availableProducts = productsResult.data || []
-  if (!availableProducts.length) return `*${restaurantName}*\nNo momento, não há itens disponíveis no cardápio.`
+  if (!availableProducts.length) return withMenuLink(`*${restaurantName}*\nNo momento, não há itens disponíveis no cardápio.`)
 
   const categoryNames = new Map((categoriesResult.data || []).map(category => [category.id, category.nome]))
   const groups = new Map()
@@ -194,7 +197,7 @@ async function buildMenuReply(restaurantId, full = false) {
     const summary = [...groups.entries()].map(([name, items]) =>
       `• ${name} (${items.length} ${items.length === 1 ? 'opção' : 'opções'})`
     ).join('\n')
-    return `Temos estas categorias no cardápio:\n${summary}\n\nQual delas você gostaria de conhecer?`
+    return withMenuLink(`Temos estas categorias no cardápio:\n${summary}\n\nQual delas você gostaria de conhecer?`)
   }
 
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -216,7 +219,7 @@ async function buildMenuReply(restaurantId, full = false) {
     lines.push(...groupLines, '')
   }
   if (truncated) log.info({ restaurantId }, 'Menu WhatsApp reply shortened to fit message limit')
-  return lines.join('\n').trim().slice(0, 3900)
+  return withMenuLink(lines.join('\n').trim().slice(0, 3700))
 }
 
 
