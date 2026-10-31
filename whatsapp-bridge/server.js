@@ -278,7 +278,7 @@ function formatBusinessHours(restaurant) {
 async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const normalized = normalizeText(text)
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
-    admin.from('empresas').select('nome,slug,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual,config_entrega').eq('id', Number(restaurantId)).maybeSingle(),
+    admin.from('empresas').select('nome,slug,descricao,localizacao,endereco,cidade,estado,telefone_contato,instagram,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual,config_entrega').eq('id', Number(restaurantId)).maybeSingle(),
     admin.from('produtos').select('id,nome,preco,descricao,categoria_id,disponivel,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome'),
     admin.from('categorias').select('id,nome,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome')
   ])
