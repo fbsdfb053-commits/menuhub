@@ -46,6 +46,7 @@ const processedMessages = new Map()
 const senderReplyTimes = new Map()
 const welcomedContacts = new Map()
 const humanHandoffTimes = new Map()
+const conversationHistory = new Map()
 const HANDOFF_MARKER = '\u2063HANDOFF\u2063'
 const welcomeStateFile = path.join(AUTH_DIR, 'welcomed-contacts.json')
 const aiUsageFile = path.join(AUTH_DIR, 'ai-usage.json')
@@ -99,7 +100,6 @@ function restaurantIsOpenForAi(restaurant) {
 
 function reserveAiUsage(restaurantId, senderKey, restaurant) {
   if (!process.env.OPENAI_API_KEY) return { allowed: false, reason: 'unavailable' }
-  if (!restaurantIsOpenForAi(restaurant)) return { allowed: false, reason: 'closed' }
   const today = fortalezaDayKey()
   if (aiUsageState.date !== today) aiUsageState = { date: today, restaurants: {}, contacts: {} }
   const restaurantKey = String(restaurantId)
@@ -312,7 +312,7 @@ async function buildWelcomeMessage(restaurantId, config) {
   return lines.join('\n')
 }
 
-async function buildIntelligentReply(restaurantId, text, config, senderKey) {
+async function buildIntelligentReply(restaurantId, text, config, senderKey, conversation = []) {
   const normalized = normalizeText(text)
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
     admin.from('empresas').select('nome,slug,descricao,localizacao,endereco,cidade,estado,telefone_contato,instagram,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual,config_entrega').eq('id', Number(restaurantId)).maybeSingle(),
@@ -461,15 +461,9 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     return buildMenuReply(restaurantId, asksFullMenu)
   }
 
-  const restaurantTopic = /\b(cardapio|menu|comida|prato|produto|item|preco|valor|ingrediente|sabor|opcao|pedido|entrega|frete|taxa|bairro|regiao|retirada|pagamento|pix|cartao|dinheiro|horario|abre|fecha|funciona|endereco|localizacao|onde fica|telefone|contato|promocao|desconto|cupom|reserva|mesa|restaurante|loja|aberto|fechado|disponivel|disponibilidade|temaki|sushi|sashimi|combo|bebida|sobremesa|yakisoba|yakissoba|pizza|hamburguer|hamburg|lasanha|pastel|sanduiche|macarrao|risoto|tempero|porcao|acai|tapioca|calzone|esfiha|sopa|salada|churrasco|carne|porco|frango|peixe|camarao|salmao|atum|legumes|arroz|massa|fritura|rolinho|onigiri|hot)\b/.test(normalized)
-  const likelyOrderRequest = /\b(queria|quero|gostaria de|tem|nao tem|voces tem|vocês têm|vende|faz|prepara|aceita|pedido de|pedir)\s+(?:um|uma|o|a|algum|alguma)?\s*[a-z]{3,}/.test(normalized)
-  if (!restaurantTopic && !likelyOrderRequest) {
-    return 'Consigo ajudar com o cardápio, pedidos, entrega e informações do restaurante. Sobre outros assuntos, não consigo orientar por aqui.'
-  }
-
   const aiPermission = reserveAiUsage(restaurantId, senderKey, restaurant)
   if (aiPermission.allowed) {
-    const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log })
+    const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log, conversation })
     if (aiReply) return withMenuLink(aiReply)
   } else if (aiPermission.reason === 'closed') {
     const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
@@ -479,10 +473,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     return humanHelpMessage(restaurant, 'Atingimos o limite diário do atendimento automático. Vou chamar alguém da equipe para continuar com você.')
   }
 
-  if (/\b(tem|possui|vende|disponivel|disponibilidade|ainda tem)\b/.test(normalized)) {
-    return humanHelpMessage(restaurant, 'Não consegui identificar com segurança qual item você procura.')
-  }
-  return humanHelpMessage(restaurant, 'Posso ajudar com cardápio, preços, descrições, horários e formas de pagamento. Para outras dúvidas, nossa equipe pode atender você.')
+  return humanHelpMessage(restaurant, 'Vou chamar alguém da nossa equipe para confirmar e continuar seu atendimento por aqui.')
 }
 
 function chooseReply(text, config) {
@@ -557,9 +548,10 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     const config = data?.config
     if (!config || config.enabled !== true) return
 
+    const history = conversationHistory.get(senderKey) || []
     let reply = audioMessage
       ? 'No momento não consigo ouvir áudios. Pode me enviar sua mensagem por escrito?'
-      : await buildIntelligentReply(restaurantId, text, config, senderKey)
+      : await buildIntelligentReply(restaurantId, text, config, senderKey, history)
     if (typeof reply !== 'string' || !reply.trim()) return
 
     const isHandoff = reply.includes(HANDOFF_MARKER)
@@ -579,6 +571,10 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     }
     senderReplyTimes.set(senderKey, now)
     await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
+    if (!audioMessage) {
+      const updatedHistory = [...history, { role: 'user', content: text.slice(0, 700) }, { role: 'assistant', content: reply.trim().slice(0, 700) }].slice(-12)
+      conversationHistory.set(senderKey, updatedHistory)
+    }
     if (shouldIntroduce) {
       welcomedContacts.set(senderKey, now)
       const cutoff = now - 30 * 24 * 60 * 60 * 1000
