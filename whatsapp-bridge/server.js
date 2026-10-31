@@ -198,9 +198,6 @@ async function buildMenuReply(restaurantId, full = false) {
   }
 
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
-  const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
-  const withMenuLink = reply => menuLink ? reply + '\nCardápio: ' + menuLink : reply
   const lines = [`*${restaurantName}*`, '*Itens disponíveis no momento:*', '']
   let truncated = false
   for (const [groupName, products] of groups) {
@@ -219,7 +216,7 @@ async function buildMenuReply(restaurantId, full = false) {
     lines.push(...groupLines, '')
   }
   if (truncated) log.info({ restaurantId }, 'Menu WhatsApp reply shortened to fit message limit')
-  return withMenuLink(lines.join('\n')).trim().slice(0, 3900)
+  return lines.join('\n').trim().slice(0, 3900)
 }
 
 
@@ -300,6 +297,9 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     return 'Olá! 😊 O que posso fazer por você hoje?'
   }
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
+  const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
+  const withMenuLink = reply => menuLink ? reply + '\nCardápio: ' + menuLink : reply
 
   // A apresentação é determinística para preservar o nome configurado, inclusive kanji.
   if (/(se apresente|quem e voce|qual seu nome|como voce se chama)/.test(normalized)) {
@@ -411,7 +411,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     if (product.descricao?.trim()) lines.push('Descrição: ' + product.descricao.trim())
     else if (asksDescription) lines.push('A descrição e os ingredientes não estão cadastrados. Nossa equipe pode confirmar para você.')
     if (!asksPrice && !asksDescription && product.descricao?.trim()) lines.push('Quer saber o preço, os detalhes ou ver outras opções?')
-    return lines.join('\n')
+    return withMenuLink(lines.join('\n'))
   }
 
   if (isMenuRequest(text)) {
