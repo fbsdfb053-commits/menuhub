@@ -672,6 +672,7 @@ type SalesPeriod = 1 | 7 | 30 | 90
 type WhatsAppBotConfig = {
   botName: string
   personality: string
+  humanSupportPhone: string
   enabled: boolean
   welcomeMessage: string
   faqMenu: string
@@ -693,6 +694,7 @@ type WhatsAppBotConfig = {
 const defaultWhatsAppBotConfig: WhatsAppBotConfig = {
   botName: '',
   personality: 'Seja cordial, prestativo e objetivo. Responda em português brasileiro. Use emojis com moderação e adapte o vocabulário ao tipo de restaurante.',
+  humanSupportPhone: '',
   enabled: false,
   welcomeMessage: 'Olá! 👋 Seja bem-vindo(a)! Como podemos ajudar?',
   faqMenu: 'Você pode consultar nosso cardápio e fazer seu pedido pelo link do nosso menu.',
@@ -844,6 +846,8 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
           <label>Nome do seu bot<input type="text" maxLength={40} value={config.botName} onChange={e=>update({botName:e.target.value})} placeholder="Ex.: Yama"/></label>
           <label>Personalidade e estilo de atendimento<textarea rows={3} maxLength={1200} value={config.personality} onChange={e=>update({personality:e.target.value})} placeholder="Ex.: descontraído, educado, usa emojis de sushi e respostas curtas."/></label>
         </div>
+        <label>WhatsApp do atendente para receber solicitações de atendimento humano<input type="tel" inputMode="tel" autoComplete="tel" maxLength={20} value={config.humanSupportPhone} onChange={e=>update({humanSupportPhone:e.target.value})} placeholder="Ex.: (88) 99999-9999"/></label>
+        <p className="printer-help">Esse número é privado: os clientes não terão acesso a ele. Quando alguém pedir uma pessoa da equipe ou o bot não conseguir resolver uma dúvida, o WhatsApp conectado ao restaurante avisará esse atendente.</p>
         <label>Mensagem de boas-vindas<textarea rows={2} maxLength={1000} value={config.welcomeMessage} onChange={e=>update({welcomeMessage:e.target.value})}/></label>
         <div className="whatsapp-faq-grid">
           <label>Resposta sobre cardápio<textarea rows={3} maxLength={1000} value={config.faqMenu} onChange={e=>update({faqMenu:e.target.value})}/></label>
