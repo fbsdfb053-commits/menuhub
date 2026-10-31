@@ -16,6 +16,13 @@ export async function generateAiReply({ text, restaurant, products, categories, 
   const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://menuhub-one.vercel.app').replace(/\/$/, '')
   const businessContext = {
     nome: restaurant?.nome || 'Restaurante',
+    descricao_restaurante: restaurant?.descricao || null,
+    localizacao: restaurant?.localizacao || null,
+    endereco: restaurant?.endereco || null,
+    cidade: restaurant?.cidade || null,
+    estado: restaurant?.estado || null,
+    telefone_contato: restaurant?.telefone_contato || null,
+    instagram: restaurant?.instagram || null,
     link_cardapio: restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null,
     data_atual: currentDate,
     hora_atual: currentTime,
