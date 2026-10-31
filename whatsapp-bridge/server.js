@@ -293,7 +293,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const products = productsResult.data || []
   const categories = categoriesResult.data || []
   const available = products.filter(product => product.disponivel === true)
-  if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)[!.,? ]*$/.test(normalized)) {
+  if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)(?:\\s+(?:hikari|yama|novamente|de novo|tudo bem))*[!.,? ]*$/.test(normalized)) {
     return 'Olá! 😊 O que posso fazer por você hoje?'
   }
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -367,11 +367,33 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     return humanHelpMessage(restaurant, 'Não encontrei uma lista de promoções atualizada para consultar.')
   }
 
-  const category = categories.find(item => normalized.includes(normalizeText(item.nome)))
-  if (category && /\b(categoria|opcoes|itens|tem|quais|mostrar|ver)\b/.test(normalized)) {
+  // Reconhece a categoria mesmo quando o cliente responde apenas com seu nome.
+  const categoryAliases = {
+    sushi: ['combinad', 'pecas', 'sushi'],
+    combinados: ['combinad'],
+    combinado: ['combinad'],
+    bebidas: ['bebida'],
+    bebida: ['bebida'],
+    adicionais: ['adicion'],
+    adicional: ['adicion']
+  }
+  const category = categories.find(item => {
+    const name = normalizeText(item.nome)
+    const words = name.split(/\s+/).filter(word => !['de', 'da', 'do', 'das', 'dos'].includes(word))
+    if (normalized === name || normalized.includes(name)) return true
+    if (words.some(word => word.length >= 4 && new RegExp('\\b' + word + '\\b').test(normalized))) return true
+    return Object.entries(categoryAliases).some(([alias, fragments]) =>
+      new RegExp('\\b' + alias + '\\b').test(normalized) &&
+      fragments.some(fragment => name.includes(fragment))
+    )
+  })
+  if (category) {
     const items = available.filter(product => product.categoria_id === category.id)
-    if (!items.length) return 'No momento, não encontrei itens disponíveis na categoria ' + category.nome + '.'
-    return '*' + category.nome + '*\n' + items.map(product => '• ' + product.nome + ' — ' + currency.format(Number(product.preco) || 0) + (product.descricao?.trim() ? '\n  ' + product.descricao.trim().slice(0, 140) : '')).join('\n')
+    if (!items.length) return 'No momento, não encontrei itens disponíveis em ' + category.nome + '.'
+    const itemLines = items.map(product =>
+      '• ' + product.nome + ' — ' + currency.format(Number(product.preco) || 0)
+    )
+    return 'Temos estas opções de ' + category.nome + ':\n' + itemLines.join('\n')
   }
 
   const productMatches = products.map(product => ({ product, name: normalizeText(product.nome) }))
