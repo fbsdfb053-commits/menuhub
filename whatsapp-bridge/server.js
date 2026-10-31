@@ -235,11 +235,8 @@ function isHoursQuestion(text) {
   return /\b(horario|horarios|abre|aberto|aberta|fecha|fechado|fechada|funciona|funcionamento)\b/.test(normalizeText(text))
 }
 
-function humanHelpMessage(restaurant, reason) {
-  const digits = String(restaurant?.whatsapp_contato || '').replace(/\D/g, '')
-  const phone = digits ? (digits.length <= 11 ? '55' + digits : digits) : ''
-  const contact = phone ? '\nFale diretamente com nossa equipe: https://wa.me/' + phone : '\nNossa equipe pode confirmar essa informação diretamente com você.'
-  return HANDOFF_MARKER + reason + '\nNão quero passar uma informação incorreta. ' + contact
+function humanHelpMessage(_restaurant, reason) {
+  return HANDOFF_MARKER + reason
 }
 
 function formatBusinessHours(restaurant) {
@@ -317,7 +314,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   }
 
   if (/\b(atendente|atendimento humano|pessoa real|quero falar|falar com|recepcionista|gerente|responsavel|humano|uma pessoa|alguem da equipe|chamar a equipe)\b/.test(normalized)) {
-    return humanHelpMessage(restaurant, 'Claro! Vou chamar alguém da nossa equipe para continuar o atendimento com você. 😊')
+    return humanHelpMessage(restaurant, 'Claro. Vou avisar nossa equipe para continuar o atendimento com você por aqui.')
   }
   if (/\b(horario|horarios|abre|aberto|aberta|fecha|fechado|fechada|funciona|funcionamento)\b/.test(normalized)) {
     return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
@@ -382,9 +379,10 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
 
   if (isMenuRequest(text)) return buildMenuReply(restaurantId)
 
-  const restaurantTopic = /\b(cardapio|menu|comida|prato|produto|item|preco|valor|ingrediente|sabor|opcao|pedido|entrega|frete|taxa|bairro|regiao|retirada|pagamento|pix|cartao|dinheiro|horario|abre|fecha|funciona|endereco|localizacao|onde fica|telefone|contato|promocao|desconto|cupom|reserva|mesa|restaurante|loja|aberto|fechado|disponivel|disponibilidade|temaki|sushi|sashimi|combo|bebida|sobremesa)\b/.test(normalized)
-  if (!restaurantTopic) {
-    return 'Posso ajudar apenas com informações deste restaurante: cardápio, produtos, preços, entrega, pedidos, horários e pagamentos. 😊'
+  const restaurantTopic = /\b(cardapio|menu|comida|prato|produto|item|preco|valor|ingrediente|sabor|opcao|pedido|entrega|frete|taxa|bairro|regiao|retirada|pagamento|pix|cartao|dinheiro|horario|abre|fecha|funciona|endereco|localizacao|onde fica|telefone|contato|promocao|desconto|cupom|reserva|mesa|restaurante|loja|aberto|fechado|disponivel|disponibilidade|temaki|sushi|sashimi|combo|bebida|sobremesa|yakisoba|yakissoba|pizza|hamburguer|hamburg|lasanha|pastel|sanduiche|macarrao|risoto|tempero|porcao|acai|tapioca|calzone|esfiha|sopa|salada|churrasco)\b/.test(normalized)
+  const likelyOrderRequest = /\b(queria|quero|gostaria de|tem|nao tem|voces tem|vocês têm|vende|faz|prepara|aceita|pedido de|pedir)\s+(?:um|uma|o|a|algum|alguma)?\s*[a-z]{3,}/.test(normalized)
+  if (!restaurantTopic && !likelyOrderRequest) {
+    return 'Consigo ajudar com o cardápio, pedidos, entrega e informações do restaurante. Sobre outros assuntos, não consigo orientar por aqui.'
   }
 
   const aiPermission = reserveAiUsage(restaurantId, senderKey, restaurant)
@@ -478,7 +476,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     if (!config || config.enabled !== true) return
 
     let reply = audioMessage
-      ? 'Olá! 😊 Sou o assistente virtual e ainda não consigo escutar áudios. Poderia escrever sua mensagem?'
+      ? 'No momento não consigo ouvir áudios. Pode me enviar sua mensagem por escrito?'
       : await buildIntelligentReply(restaurantId, text, config, senderKey)
     if (typeof reply !== 'string' || !reply.trim()) return
 
@@ -494,12 +492,12 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       const { data: restaurantData } = await admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle()
       const botName = String(config.botName || '').trim() || 'assistente virtual'
       const restaurantName = restaurantData?.nome || 'nosso estabelecimento'
-      const greeting = 'Olá! Sou ' + botName + ', atendente do ' + restaurantName + '. Vou te atender por aqui. 😊'
+      const greeting = 'Olá! Sou ' + botName + ', atendente do ' + restaurantName + '. Vou te atender por aqui.'
       const isGreeting = /^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)[!.,? ]*$/.test(normalizeText(text))
       const isPresentation = /(se apresente|quem e voce|qual seu nome|como voce se chama)/.test(normalizeText(text))
-      if (isGreeting) reply = greeting + ' O que posso fazer por você hoje?'
+      if (isGreeting) reply = greeting + ' O que você gostaria de saber?'
       else if (isPresentation) reply = greeting
-      else reply = greeting + String.fromCharCode(10) + reply.trim()
+      else if (!reply.includes(HANDOFF_MARKER)) reply = greeting + String.fromCharCode(10) + reply.trim()
     }
 
     senderReplyTimes.set(senderKey, now)
