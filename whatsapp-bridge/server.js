@@ -282,6 +282,36 @@ function formatBusinessHours(restaurant) {
   return null
 }
 
+async function buildWelcomeMessage(restaurantId, config) {
+  const { data: restaurant, error } = await admin
+    .from('empresas')
+    .select('nome,slug,horario,horario_funcionamento,aceita_pedidos,status_loja_manual')
+    .eq('id', Number(restaurantId))
+    .maybeSingle()
+  if (error) throw error
+
+  const restaurantName = restaurant?.nome || 'nosso estabelecimento'
+  const botName = String(config?.botName || '').trim() || 'assistente virtual'
+  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
+  const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
+  const hours = formatBusinessHours(restaurant)
+  const lines = [
+    'Olá! 😊 Sou ' + botName + ', atendente do *' + restaurantName + '*.',
+    '',
+    '*🍣 Acesse nosso cardápio e faça seu pedido:*',
+    menuLink || 'O link do cardápio não está disponível no momento. Nossa equipe pode ajudar por aqui.',
+    '',
+    '*🕒 Horário de funcionamento:*',
+    hours ? hours.replace(/^Nosso funcionamento:\n/, '') : 'Horário ainda não cadastrado. Consulte nossa equipe.'
+  ]
+  if (restaurant?.aceita_pedidos === false) lines.push('', 'No momento, não estamos aceitando pedidos.')
+  if (typeof restaurant?.status_loja_manual === 'boolean') {
+    lines.push('', restaurant.status_loja_manual ? 'A loja está marcada como aberta no momento.' : 'A loja está marcada como fechada no momento.')
+  }
+  lines.push('', 'Como podemos ajudar você? 😊')
+  return lines.join('\n')
+}
+
 async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const normalized = normalizeText(text)
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
@@ -538,21 +568,15 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       await notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log })
     }
 
-    // Apresenta o bot na primeira interação com cada contato (e novamente após 24 horas).
+    // A primeira resposta (e a apresentação após 24h) sempre entrega link e horário.
     const lastWelcome = welcomedContacts.get(senderKey) || 0
     const shouldIntroduce = now - lastWelcome >= 24 * 60 * 60 * 1000
     if (shouldIntroduce) {
-      const { data: restaurantData } = await admin.from('empresas').select('nome').eq('id', Number(restaurantId)).maybeSingle()
-      const botName = String(config.botName || '').trim() || 'assistente virtual'
-      const restaurantName = restaurantData?.nome || 'nosso estabelecimento'
-      const greeting = 'Olá! Sou ' + botName + ', atendente do ' + restaurantName + '. Vou te atender por aqui.'
-      const isGreeting = /^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)[!.,? ]*$/.test(normalizeText(text))
-      const isPresentation = /(se apresente|quem e voce|qual seu nome|como voce se chama)/.test(normalizeText(text))
-      if (isGreeting) reply = greeting + ' O que você gostaria de saber?'
-      else if (isPresentation) reply = greeting
-      else if (!isHandoff) reply = greeting + String.fromCharCode(10) + reply.trim()
+      const welcome = await buildWelcomeMessage(restaurantId, config)
+      const normalizedIncoming = normalizeText(text)
+      const isGreeting = /^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)([!.,? ]|$)/.test(normalizedIncoming)
+      reply = isGreeting ? welcome : welcome + '\n\n' + reply.trim()
     }
-
     senderReplyTimes.set(senderKey, now)
     await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
     if (shouldIntroduce) {
