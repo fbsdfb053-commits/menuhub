@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import pino from 'pino'
 import QRCode from 'qrcode'
+import NodeCache from 'node-cache'
 import { createClient } from '@supabase/supabase-js'
 import { generateAiReply } from './openai-replies.js'
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
@@ -42,6 +43,7 @@ fs.mkdirSync(AUTH_DIR, { recursive: true })
 // This avoids a second, potentially mismatched anon key causing false session failures.
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
 const sessions = new Map()
+const messageStores = new Map()
 const processedMessages = new Map()
 const senderReplyTimes = new Map()
 const welcomedContacts = new Map()
@@ -126,6 +128,52 @@ try {
   }
 } catch {}
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
+
+// Keep recent outgoing message payloads so Baileys can re-encrypt them when
+// WhatsApp requests a retry. Files live beside each restaurant's existing
+// auth state; existing credentials and session files are never modified.
+function messageStoreFor(restaurantId) {
+  const id = String(restaurantId)
+  if (!messageStores.has(id)) {
+    const file = path.join(sessionPath(id), 'sent-messages.json')
+    let saved = {}
+    try { saved = JSON.parse(fs.readFileSync(file, 'utf8')) } catch {}
+    const store = new Map(Object.entries(saved))
+    while (store.size > 300) store.delete(store.keys().next().value)
+    messageStores.set(id, store)
+  }
+  return messageStores.get(id)
+}
+
+function getStoredMessage(restaurantId, messageId) {
+  if (!messageId) return undefined
+  return messageStoreFor(restaurantId).get(String(messageId))
+}
+
+function rememberSentMessage(restaurantId, sent) {
+  const messageId = sent?.key?.id
+  if (!messageId || !sent?.message) return
+  const id = String(restaurantId)
+  const store = messageStoreFor(id)
+  store.set(String(messageId), sent.message)
+  while (store.size > 300) store.delete(store.keys().next().value)
+  try {
+    const directory = sessionPath(id)
+    fs.mkdirSync(directory, { recursive: true })
+    const file = path.join(directory, 'sent-messages.json')
+    const temporaryFile = file + '.tmp'
+    fs.writeFileSync(temporaryFile, JSON.stringify(Object.fromEntries(store)), { mode: 0o600 })
+    fs.renameSync(temporaryFile, file)
+  } catch (err) {
+    log.warn({ err, restaurantId: id, messageId }, 'Could not persist outgoing WhatsApp message for retry recovery')
+  }
+}
+
+async function sendAndStoreMessage(sock, restaurantId, jid, content, options) {
+  const sent = await sock.sendMessage(jid, content, options)
+  rememberSentMessage(restaurantId, sent)
+  return sent
+}
 
 function unwrapMessageContent(message) {
   let content = message
@@ -510,7 +558,7 @@ async function notifyHumanAttendant({ restaurantId, sock, config, message, remot
       log.warn({ restaurantId }, 'Human handoff skipped: attendant number was not resolved by WhatsApp')
       return
     }
-    const sent = await sock.sendMessage(recipient.jid, { text })
+    const sent = await sendAndStoreMessage(sock, restaurantId, recipient.jid, { text })
     if (sent?.key?.id) {
       humanHandoffTimes.set(customerKey, now)
       log.info({ restaurantId, messageId: sent.key.id }, 'Human attendant notification sent')
@@ -570,7 +618,7 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       reply = isGreeting ? welcome : welcome + '\n\n' + reply.trim()
     }
     senderReplyTimes.set(senderKey, now)
-    await sock.sendMessage(remoteJid, { text: reply.trim().slice(0, 4000) })
+    await sendAndStoreMessage(sock, restaurantId, remoteJid, { text: reply.trim().slice(0, 4000) })
     if (!audioMessage) {
       const updatedHistory = [...history, { role: 'user', content: text.slice(0, 700) }, { role: 'assistant', content: reply.trim().slice(0, 700) }].slice(-12)
       conversationHistory.set(senderKey, updatedHistory)
@@ -759,7 +807,7 @@ async function handleOrderStatusEvent(payload) {
     const text = isInsert
       ? await buildOrderReceiptMessage(order)
       : formatOrderStatusMessage(notification.text, order)
-    const sent = await state.socket.sendMessage(recipient.jid, { text })
+    const sent = await sendAndStoreMessage(state.socket, String(order.empresa_id), recipient.jid, { text })
     if (!sent?.key?.id) throw new Error('WhatsApp did not return a message ID')
     log.info({ orderId: order.id, restaurantId: order.empresa_id, status: order.status, event: isInsert ? 'receipt' : 'status', messageId: sent.key.id }, 'Order WhatsApp notification accepted by WhatsApp')
   } catch (err) {
@@ -899,7 +947,9 @@ async function startSession(id) {
       printQRInTerminal: false,
       browser: ['Menuhub', 'Chrome', '1.0.0'],
       syncFullHistory: false,
-      markOnlineOnConnect: false
+      markOnlineOnConnect: false,
+      msgRetryCounterCache: new NodeCache({ stdTTL: 300, checkperiod: 60 }),
+      getMessage: async key => getStoredMessage(id, key?.id)
     })
     state.socket = sock
     sock.ev.on('creds.update', saveCreds)
