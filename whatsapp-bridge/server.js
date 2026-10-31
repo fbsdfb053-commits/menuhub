@@ -53,10 +53,11 @@ const welcomedContacts = new Map()
 const humanHandoffTimes = new Map()
 const conversationHistory = new Map()
 const HANDOFF_MARKER = '\u2063HANDOFF\u2063'
+const SILENT_HANDOFF_MARKER = '\u2063SILENT_HANDOFF\u2063'
 const welcomeStateFile = path.join(AUTH_DIR, 'welcomed-contacts.json')
 const aiUsageFile = path.join(AUTH_DIR, 'ai-usage.json')
 const AI_DAILY_CONTACT_LIMIT = 15
-const AI_DAILY_RESTAURANT_LIMIT = 200
+const AI_DAILY_RESTAURANT_LIMIT = 1000
 function fortalezaDayKey() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Fortaleza', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 }
@@ -537,7 +538,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
     const menuLink = restaurant?.slug ? '\nCardápio: ' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : ''
     return 'No momento estamos fora do horário de funcionamento. Confira nosso cardápio.' + menuLink
   } else if (aiPermission.reason === 'restaurant_limit' || aiPermission.reason === 'contact_limit') {
-    return humanHelpMessage(restaurant, 'Atingimos o limite diário do atendimento automático. Vou chamar alguém da equipe para continuar com você.')
+    return SILENT_HANDOFF_MARKER
   }
 
   return humanHelpMessage(restaurant, 'Vou chamar alguém da nossa equipe para confirmar e continuar seu atendimento por aqui.')
@@ -551,7 +552,7 @@ function chooseReply(text, config) {
   return config.welcomeMessage
 }
 
-async function notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log }) {
+async function notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log, reason = null }) {
   const phone = String(config?.humanSupportPhone || '').replace(/\D/g, '')
   if (!phone) {
     log.info({ restaurantId }, 'Human handoff requested but no attendant WhatsApp is configured')
@@ -569,7 +570,10 @@ async function notifyHumanAttendant({ restaurantId, sock, config, message, remot
   const customerPhone = String(customerJid).replace(/@s\.whatsapp\.net$|@c\.us$|@lid$/g, '').replace(/\D/g, '')
   const customerName = String(message?.pushName || 'Cliente').trim().slice(0, 80)
   const customerContact = customerPhone ? (customerPhone.startsWith('55') ? customerPhone : '55' + customerPhone) : 'Número não identificado'
-  const text = 'Olá! Um cliente precisa do seu suporte.\n\nCliente: *' + customerName + '*\nWhatsApp: *' + customerContact + '*\n\nEntre em contato para continuar o atendimento.'
+  const customerMessage = messageText(message?.message).slice(0, 500)
+  const reasonLine = reason ? '\nMotivo: ' + reason : ''
+  const customerMessageLine = customerMessage ? '\nMensagem: ' + customerMessage : ''
+  const text = 'Olá! Um cliente precisa do seu suporte.\n\nCliente: *' + customerName + '*\nWhatsApp: *' + customerContact + '*' + reasonLine + customerMessageLine + '\n\nEntre em contato para continuar o atendimento.'
   try {
     const matches = await sock.onWhatsApp(attendantJid)
     const recipient = Array.isArray(matches) ? matches.find(item => item?.exists && item?.jid) : null
@@ -623,10 +627,18 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       : await buildIntelligentReply(restaurantId, text, config, senderKey, history)
     if (typeof reply !== 'string' || !reply.trim()) return
 
-    const isHandoff = reply.includes(HANDOFF_MARKER)
+    const isSilentHandoff = reply.includes(SILENT_HANDOFF_MARKER)
+    const isHandoff = isSilentHandoff || reply.includes(HANDOFF_MARKER)
     if (isHandoff) {
-      reply = reply.replaceAll(HANDOFF_MARKER, '').trim()
-      await notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log })
+      reply = reply.replaceAll(HANDOFF_MARKER, '').replaceAll(SILENT_HANDOFF_MARKER, '').trim()
+      await notifyHumanAttendant({
+        restaurantId, sock, config, message, remoteJid, log,
+        reason: isSilentHandoff ? 'Limite de interações automáticas atingido.' : null
+      })
+    }
+    if (isSilentHandoff) {
+      log.info({ restaurantId, messageId }, 'Customer reply suppressed after AI limit; attendant notified')
+      return
     }
 
     // A primeira resposta (e a apresentação após 24h) sempre entrega link e horário.
