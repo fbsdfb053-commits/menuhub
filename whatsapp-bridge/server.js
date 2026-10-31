@@ -304,10 +304,10 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
   const withMenuLink = reply => menuLink ? reply + '\nCardápio: ' + menuLink : reply
 
-  // A apresentação é determinística para preservar o nome configurado, inclusive kanji.
-  if (/(se apresente|quem e voce|qual seu nome|como voce se chama)/.test(normalized)) {
+  // Identificação do assistente: responder também a perguntas curtas.
+  if (/\b(quem (?:ta|esta) falando|quem fala|quem e|quem voce e|qual (?:e )?seu nome|seu nome|teu nome|como voce se chama|com quem (?:eu )?falo|se apresente|se identifica)\b/.test(normalized)) {
     const botName = String(config?.botName || '').trim() || 'assistente virtual'
-    return 'Sou ' + botName + ', atendente do ' + (restaurant?.nome || 'nosso estabelecimento') + '. 🍣'
+    return 'Sou ' + botName + ', assistente virtual do ' + (restaurant?.nome || 'nosso restaurante') + '. 😊'
   }
 
   // Respostas objetivas são resolvidas no backend, nunca por inferência da IA.
