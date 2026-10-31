@@ -296,8 +296,17 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const products = productsResult.data || []
   const categories = categoriesResult.data || []
   const available = products.filter(product => product.disponivel === true)
-  if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)(?:\\s+(?:hikari|yama|novamente|de novo|tudo bem))*[!.,? ]*$/.test(normalized)) {
-    return 'Olá! 😊 O que posso fazer por você hoje?'
+  // Cortesia e despedidas são respondidas localmente, sem consumir créditos da IA.
+  if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)(?:\\s+(?:hikari|yama|novamente|de novo|tudo bem|como vai|tudo certo))*[!.,? ]*$/.test(normalized)) {
+    const greeting = /^(bom dia|boa tarde|boa noite)/.exec(normalized)?.[1]
+    return (greeting ? greeting.charAt(0).toUpperCase() + greeting.slice(1) : 'Olá') + '! 😊 Como podemos ajudar você hoje?'
+  }
+  if (/^(obrigado|obrigada|muito obrigado|muito obrigada|valeu|agradeco|agradecido|agradecida)(?:\\s+(?:pela|por|mesmo|viu|tudo))*[!.,? ]*$/.test(normalized) ||
+      /\\b(obrigado|obrigada|muito obrigado|muito obrigada|valeu demais)\\b/.test(normalized)) {
+    return 'Por nada! 😊 Estamos à disposição. Conte com a gente! 🍣'
+  }
+  if (/^(tchau|ate logo|ate mais|falou|fui|vou nessa)(?:\\s+(?:e obrigado|e obrigada|ate a proxima))*[!.,? ]*$/.test(normalized)) {
+    return 'Até mais! 😊 Será um prazer atender você novamente. 🍣'
   }
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
   const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
