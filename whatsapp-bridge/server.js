@@ -198,6 +198,9 @@ async function buildMenuReply(restaurantId, full = false) {
   }
 
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+  const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
+  const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
+  const withMenuLink = reply => menuLink ? reply + '\nCardápio: ' + menuLink : reply
   const lines = [`*${restaurantName}*`, '*Itens disponíveis no momento:*', '']
   let truncated = false
   for (const [groupName, products] of groups) {
@@ -216,7 +219,7 @@ async function buildMenuReply(restaurantId, full = false) {
     lines.push(...groupLines, '')
   }
   if (truncated) log.info({ restaurantId }, 'Menu WhatsApp reply shortened to fit message limit')
-  return lines.join('\n').trim().slice(0, 3900)
+  return withMenuLink(lines.join('\n')).trim().slice(0, 3900)
 }
 
 
@@ -306,7 +309,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
 
   // Respostas objetivas são resolvidas no backend, nunca por inferência da IA.
   if (isMenuLinkRequest(text)) {
-    const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://menuhub-one.vercel.app').replace(/\/$/, '')
+    const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
     if (restaurant?.slug) return 'Claro! Aqui está o link do nosso cardápio 🍣\n' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug)
     return humanHelpMessage(restaurant, 'Não consegui localizar o endereço público do cardápio.')
   }
@@ -389,11 +392,11 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   })
   if (category) {
     const items = available.filter(product => product.categoria_id === category.id)
-    if (!items.length) return 'No momento, não encontrei itens disponíveis em ' + category.nome + '.'
+    if (!items.length) return withMenuLink('No momento, não encontrei itens disponíveis em ' + category.nome + '.')
     const itemLines = items.map(product =>
       '• ' + product.nome + ' — ' + currency.format(Number(product.preco) || 0)
     )
-    return 'Temos estas opções de ' + category.nome + ':\n' + itemLines.join('\n')
+    return withMenuLink('Temos estas opções de ' + category.nome + ':\n' + itemLines.join('\n'))
   }
 
   const productMatches = products.map(product => ({ product, name: normalizeText(product.nome) }))
@@ -401,7 +404,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     .sort((a, b) => b.name.length - a.name.length)
   if (productMatches.length) {
     const product = productMatches[0].product
-    if (product.disponivel !== true) return 'No momento, *' + product.nome + '* está indisponível. Posso ajudar com outra opção?'
+    if (product.disponivel !== true) return withMenuLink('No momento, *' + product.nome + '* está indisponível. Posso ajudar com outra opção?')
     const asksDescription = /\b(ingrediente|ingredientes|compoe|composicao|vem|acompanha|descricao|o que e|feito de|tem dentro)\b/.test(normalized)
     const asksPrice = /\b(preco|quanto custa|valor|custa|reais)\b/.test(normalized)
     const lines = ['*' + product.nome + '*', 'Preço: ' + currency.format(Number(product.preco) || 0)]
@@ -425,7 +428,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const aiPermission = reserveAiUsage(restaurantId, senderKey, restaurant)
   if (aiPermission.allowed) {
     const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log })
-    if (aiReply) return aiReply
+    if (aiReply) return withMenuLink(aiReply)
   } else if (aiPermission.reason === 'closed') {
     const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
     const menuLink = restaurant?.slug ? '\nCardápio: ' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : ''
