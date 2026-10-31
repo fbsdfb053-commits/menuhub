@@ -45,6 +45,8 @@ const sessions = new Map()
 const processedMessages = new Map()
 const senderReplyTimes = new Map()
 const welcomedContacts = new Map()
+const humanHandoffTimes = new Map()
+const HANDOFF_MARKER = '\u2063HANDOFF\u2063'
 const welcomeStateFile = path.join(AUTH_DIR, 'welcomed-contacts.json')
 const aiUsageFile = path.join(AUTH_DIR, 'ai-usage.json')
 const AI_DAILY_CONTACT_LIMIT = 15
@@ -125,7 +127,7 @@ try {
 } catch {}
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
 
-function messageText(message) {
+function unwrapMessageContent(message) {
   let content = message
   for (let i = 0; i < 4 && content; i++) {
     if (content.ephemeralMessage?.message) content = content.ephemeralMessage.message
@@ -133,6 +135,16 @@ function messageText(message) {
     else if (content.viewOnceMessageV2?.message) content = content.viewOnceMessageV2.message
     else break
   }
+  return content || {}
+}
+
+function isAudioMessage(message) {
+  const content = unwrapMessageContent(message)
+  return Boolean(content?.audioMessage || content?.ptvMessage?.videoMessage?.audioMessage)
+}
+
+function messageText(message) {
+  const content = unwrapMessageContent(message)
   return String(
     content?.conversation ||
     content?.extendedTextMessage?.text ||
@@ -227,7 +239,7 @@ function humanHelpMessage(restaurant, reason) {
   const digits = String(restaurant?.whatsapp_contato || '').replace(/\D/g, '')
   const phone = digits ? (digits.length <= 11 ? '55' + digits : digits) : ''
   const contact = phone ? '\nFale diretamente com nossa equipe: https://wa.me/' + phone : '\nNossa equipe pode confirmar essa informação diretamente com você.'
-  return reason + '\nNão quero passar uma informação incorreta. ' + contact
+  return HANDOFF_MARKER + reason + '\nNão quero passar uma informação incorreta. ' + contact
 }
 
 function formatBusinessHours(restaurant) {
@@ -266,7 +278,7 @@ function formatBusinessHours(restaurant) {
 async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const normalized = normalizeText(text)
   const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
-    admin.from('empresas').select('nome,slug,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual').eq('id', Number(restaurantId)).maybeSingle(),
+    admin.from('empresas').select('nome,slug,whatsapp_contato,horario,horario_funcionamento,aceita_pedidos,status_loja_manual,config_entrega').eq('id', Number(restaurantId)).maybeSingle(),
     admin.from('produtos').select('id,nome,preco,descricao,categoria_id,disponivel,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome'),
     admin.from('categorias').select('id,nome,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome')
   ])
@@ -314,7 +326,33 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     return config.faqPayment?.trim() || humanHelpMessage(restaurant, 'Não encontrei as formas de pagamento cadastradas.')
   }
   if (/\b(taxa|frete|entrega|entregam|bairro|regiao|distancia|delivery)\b/.test(normalized)) {
-    return humanHelpMessage(restaurant, 'Sobre taxa e disponibilidade de entrega, nossa equipe precisa confirmar sua região.')
+    const options = Array.isArray(restaurant?.config_entrega) ? restaurant.config_entrega : []
+    const regions = options.filter(option => !option.negotiate && Array.isArray(option.places) && option.places.length)
+    const matched = regions.filter(option => option.places.some(place => {
+      const normalizedPlace = normalizeText(place)
+      return normalizedPlace.length >= 3 && (normalized.includes(normalizedPlace) || normalizedPlace.includes(normalized))
+    }))
+    if (matched.length) {
+      const lines = matched.map(option => {
+        const fee = currency.format(Number(option.fee) || 0)
+        return '• ' + (option.name || 'Entrega') + ': ' + fee
+      })
+      return 'Atendemos sua região! Estas são as opções cadastradas:\n' + lines.join('\n') + '\nA taxa será confirmada no fechamento do pedido. 🍣'
+    }
+    if (regions.length) {
+      const lines = regions.map(option => {
+        const places = option.places.join(', ')
+        return '• ' + (option.name || 'Região') + ' — ' + currency.format(Number(option.fee) || 0) + ': ' + places
+      })
+      const negotiated = options.find(option => option.negotiate)
+      if (negotiated) lines.push('• ' + (negotiated.name || 'Outras regiões') + ': taxa a combinar')
+      const asksList = /\b(quais|opcoes|opcao|regioes|bairros|localidades|onde|lista)\b/.test(normalized)
+      if (asksList || !/\b(centro|bairro|rua|localidade|regiao|moro|fica|para)\b/.test(normalized)) {
+        return 'Estas são nossas opções de entrega e respectivas taxas:\n' + lines.join('\n')
+      }
+      return humanHelpMessage(restaurant, 'Não identifiquei sua localidade nas regiões cadastradas. Vou chamar alguém da equipe para confirmar.')
+    }
+    return humanHelpMessage(restaurant, 'As opções de entrega ainda não estão cadastradas. Vou chamar alguém da equipe para confirmar.')
   }
   if (/\b(promocao|promocoes|oferta|ofertas|desconto|cupom|combo do dia)\b/.test(normalized)) {
     return humanHelpMessage(restaurant, 'Não encontrei uma lista de promoções atualizada para consultar.')
@@ -344,6 +382,11 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
 
   if (isMenuRequest(text)) return buildMenuReply(restaurantId)
 
+  const restaurantTopic = /\b(cardapio|menu|comida|prato|produto|item|preco|valor|ingrediente|sabor|opcao|pedido|entrega|frete|taxa|bairro|regiao|retirada|pagamento|pix|cartao|dinheiro|horario|abre|fecha|funciona|endereco|localizacao|onde fica|telefone|contato|promocao|desconto|cupom|reserva|mesa|restaurante|loja|aberto|fechado|disponivel|disponibilidade|temaki|sushi|sashimi|combo|bebida|sobremesa)\b/.test(normalized)
+  if (!restaurantTopic) {
+    return 'Posso ajudar apenas com informações deste restaurante: cardápio, produtos, preços, entrega, pedidos, horários e pagamentos. 😊'
+  }
+
   const aiPermission = reserveAiUsage(restaurantId, senderKey, restaurant)
   if (aiPermission.allowed) {
     const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log })
@@ -372,14 +415,51 @@ function chooseReply(text, config) {
   return config.welcomeMessage
 }
 
+async function notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log }) {
+  const phone = String(config?.humanSupportPhone || '').replace(/\D/g, '')
+  if (!phone) {
+    log.info({ restaurantId }, 'Human handoff requested but no attendant WhatsApp is configured')
+    return
+  }
+  const customerKey = restaurantId + ':' + remoteJid
+  const now = Date.now()
+  if (now - (humanHandoffTimes.get(customerKey) || 0) < 15 * 60 * 1000) return
+  const attendantJid = whatsappJid(phone)
+  if (!attendantJid) {
+    log.warn({ restaurantId }, 'Human handoff skipped: invalid attendant WhatsApp number')
+    return
+  }
+  const customerJid = message?.key?.remoteJidPn || remoteJid
+  const customerPhone = String(customerJid).replace(/@s\.whatsapp\.net$|@c\.us$|@lid$/g, '').replace(/\D/g, '')
+  const customerName = String(message?.pushName || 'Cliente').trim().slice(0, 80)
+  const customerContact = customerPhone ? (customerPhone.startsWith('55') ? customerPhone : '55' + customerPhone) : 'Número não identificado'
+  const text = 'Olá! Um cliente precisa do seu suporte.\n\nCliente: *' + customerName + '*\nWhatsApp: *' + customerContact + '*\n\nEntre em contato para continuar o atendimento.'
+  try {
+    const matches = await sock.onWhatsApp(attendantJid)
+    const recipient = Array.isArray(matches) ? matches.find(item => item?.exists && item?.jid) : null
+    if (!recipient) {
+      log.warn({ restaurantId }, 'Human handoff skipped: attendant number was not resolved by WhatsApp')
+      return
+    }
+    const sent = await sock.sendMessage(recipient.jid, { text })
+    if (sent?.key?.id) {
+      humanHandoffTimes.set(customerKey, now)
+      log.info({ restaurantId, messageId: sent.key.id }, 'Human attendant notification sent')
+    }
+  } catch (err) {
+    log.error({ err, restaurantId }, 'Human attendant notification failed')
+  }
+}
+
 async function handleIncomingMessage(restaurantId, sock, message) {
   const key = message?.key
   const remoteJid = key?.remoteJid
   const messageId = key?.id
   if (!remoteJid || !messageId || key.fromMe || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast' || remoteJid.endsWith('@broadcast')) return
 
+  const audioMessage = isAudioMessage(message.message)
   const text = messageText(message.message)
-  if (!text) return
+  if (!text && !audioMessage) return
 
   const now = Date.now()
   for (const [id, timestamp] of processedMessages) if (now - timestamp > 10 * 60 * 1000) processedMessages.delete(id)
@@ -399,8 +479,15 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     const config = data?.config
     if (!config || config.enabled !== true) return
 
-    let reply = await buildIntelligentReply(restaurantId, text, config, senderKey)
+    let reply = audioMessage
+      ? 'Olá! 😊 Sou o assistente virtual e ainda não consigo escutar áudios. Poderia escrever sua mensagem?'
+      : await buildIntelligentReply(restaurantId, text, config, senderKey)
     if (typeof reply !== 'string' || !reply.trim()) return
+
+    if (reply.includes(HANDOFF_MARKER)) {
+      reply = reply.replaceAll(HANDOFF_MARKER, '').trim()
+      await notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log })
+    }
 
     // Apresenta o bot na primeira interação com cada contato (e novamente após 24 horas).
     const lastWelcome = welcomedContacts.get(senderKey) || 0
