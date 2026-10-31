@@ -181,7 +181,7 @@ async function buildMenuReply(restaurantId, full = false) {
   const restaurantName = restaurantResult.data?.nome || 'Cardápio'
   const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
   const menuLink = restaurantResult.data?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurantResult.data.slug) : null
-  const withMenuLink = reply => menuLink ? reply + '\nCardápio: ' + menuLink : reply
+  const withMenuLink = reply => menuLink ? reply + '\n\n*Link do nosso cardápio:*\n' + menuLink : reply
   const availableProducts = productsResult.data || []
   if (!availableProducts.length) return withMenuLink(`*${restaurantName}*\nNo momento, não há itens disponíveis no cardápio.`)
 
@@ -201,7 +201,7 @@ async function buildMenuReply(restaurantId, full = false) {
   }
 
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-  const lines = [`*${restaurantName}*`, '*Itens disponíveis no momento:*', '']
+  const lines = [`*${restaurantName}*`, '', '*Itens disponíveis no momento:*', '']
   let truncated = false
   for (const [groupName, products] of groups) {
     const groupLines = [`*${groupName}*`]
@@ -302,7 +302,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
   const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
   const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
-  const withMenuLink = reply => menuLink ? reply + '\nCardápio: ' + menuLink : reply
+  const withMenuLink = reply => menuLink ? reply + '\n\n*Link do nosso cardápio:*\n' + menuLink : reply
 
   // Identificação do assistente: responder também a perguntas curtas.
   if (/\b(quem (?:ta|esta) falando|quem fala|quem e|quem voce e|qual (?:e )?seu nome|seu nome|teu nome|como voce se chama|com quem (?:eu )?falo|se apresente|se identifica)\b/.test(normalized)) {
@@ -399,7 +399,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     const itemLines = items.map(product =>
       '• ' + product.nome + ' — ' + currency.format(Number(product.preco) || 0)
     )
-    return withMenuLink('Temos estas opções de ' + category.nome + ':\n' + itemLines.join('\n'))
+    return withMenuLink('*Temos estas opções de ' + category.nome + ' disponíveis:*\n\n' + itemLines.join('\n'))
   }
 
   const productMatches = products.map(product => ({ product, name: normalizeText(product.nome) }))
