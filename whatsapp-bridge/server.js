@@ -6,7 +6,7 @@ import QRCode from 'qrcode'
 import NodeCache from 'node-cache'
 import { createClient } from '@supabase/supabase-js'
 import { generateAiReply } from './openai-replies.js'
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
+import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, BufferJSON } from '@whiskeysockets/baileys'
 
 const app = express()
 
@@ -140,7 +140,7 @@ function messageStoreFor(restaurantId) {
   if (!messageStores.has(id)) {
     const file = path.join(sessionPath(id), 'sent-messages.json')
     let saved = {}
-    try { saved = JSON.parse(fs.readFileSync(file, 'utf8')) } catch {}
+    try { saved = JSON.parse(fs.readFileSync(file, 'utf8'), BufferJSON.reviver) } catch {}
     const store = new Map(Object.entries(saved))
     while (store.size > 300) store.delete(store.keys().next().value)
     messageStores.set(id, store)
@@ -181,7 +181,7 @@ function rememberSentMessage(restaurantId, sent) {
     fs.mkdirSync(directory, { recursive: true })
     const file = path.join(directory, 'sent-messages.json')
     const temporaryFile = file + '.tmp'
-    fs.writeFileSync(temporaryFile, JSON.stringify(Object.fromEntries(store)), { mode: 0o600 })
+    fs.writeFileSync(temporaryFile, JSON.stringify(Object.fromEntries(store), BufferJSON.replacer), { mode: 0o600 })
     fs.renameSync(temporaryFile, file)
   } catch (err) {
     log.warn({ err, restaurantId: id, messageId }, 'Could not persist outgoing WhatsApp message for retry recovery')
