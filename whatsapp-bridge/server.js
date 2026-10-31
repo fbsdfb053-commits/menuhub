@@ -44,6 +44,9 @@ fs.mkdirSync(AUTH_DIR, { recursive: true })
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
 const sessions = new Map()
 const messageStores = new Map()
+// Keep retry counters per restaurant across socket reconnects. Baileys' retry
+// protocol window is one hour; a per-socket cache would reset on reconnect.
+const messageRetryCaches = new Map()
 const processedMessages = new Map()
 const senderReplyTimes = new Map()
 const welcomedContacts = new Map()
@@ -148,6 +151,22 @@ function messageStoreFor(restaurantId) {
 function getStoredMessage(restaurantId, messageId) {
   if (!messageId) return undefined
   return messageStoreFor(restaurantId).get(String(messageId))
+}
+
+function retryCounterCacheFor(restaurantId) {
+  const id = String(restaurantId)
+  if (!messageRetryCaches.has(id)) {
+    messageRetryCaches.set(id, new NodeCache({ stdTTL: 3600, checkperiod: 120 }))
+  }
+  return messageRetryCaches.get(id)
+}
+
+function getMessageForRetry(restaurantId, key) {
+  const messageId = key?.id
+  const message = getStoredMessage(restaurantId, messageId)
+  const chatType = String(key?.remoteJid || '').split('@')[1] || 'unknown'
+  log.info({ restaurantId: String(restaurantId), messageId: messageId || null, chatType, served: Boolean(message) }, 'WhatsApp retry request received')
+  return message
 }
 
 function rememberSentMessage(restaurantId, sent) {
@@ -558,6 +577,8 @@ async function notifyHumanAttendant({ restaurantId, sock, config, message, remot
       log.warn({ restaurantId }, 'Human handoff skipped: attendant number was not resolved by WhatsApp')
       return
     }
+    const recipientType = String(recipient.jid).split('@')[1] || 'unknown'
+    log.info({ restaurantId, recipientType }, 'Resolved WhatsApp attendant recipient')
     const sent = await sendAndStoreMessage(sock, restaurantId, recipient.jid, { text })
     if (sent?.key?.id) {
       humanHandoffTimes.set(customerKey, now)
@@ -807,6 +828,8 @@ async function handleOrderStatusEvent(payload) {
     const text = isInsert
       ? await buildOrderReceiptMessage(order)
       : formatOrderStatusMessage(notification.text, order)
+    const recipientType = String(recipient.jid).split('@')[1] || 'unknown'
+    log.info({ orderId: order.id, restaurantId: order.empresa_id, recipientType }, 'Resolved WhatsApp order recipient')
     const sent = await sendAndStoreMessage(state.socket, String(order.empresa_id), recipient.jid, { text })
     if (!sent?.key?.id) throw new Error('WhatsApp did not return a message ID')
     log.info({ orderId: order.id, restaurantId: order.empresa_id, status: order.status, event: isInsert ? 'receipt' : 'status', messageId: sent.key.id }, 'Order WhatsApp notification accepted by WhatsApp')
@@ -948,8 +971,8 @@ async function startSession(id) {
       browser: ['Menuhub', 'Chrome', '1.0.0'],
       syncFullHistory: false,
       markOnlineOnConnect: false,
-      msgRetryCounterCache: new NodeCache({ stdTTL: 300, checkperiod: 60 }),
-      getMessage: async key => getStoredMessage(id, key?.id)
+      msgRetryCounterCache: retryCounterCacheFor(id),
+      getMessage: async key => getMessageForRetry(id, key)
     })
     state.socket = sock
     sock.ev.on('creds.update', saveCreds)
