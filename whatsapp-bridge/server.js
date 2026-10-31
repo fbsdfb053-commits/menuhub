@@ -316,8 +316,8 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
   }
 
-  if (/\b(falar com (alguem|atendente|pessoa)|atendente|atendimento humano|pessoa real|quero falar|chamar alguem)\b/.test(normalized)) {
-    return humanHelpMessage(restaurant, 'Claro! Nossa equipe pode continuar o atendimento com você.')
+  if (/\b(atendente|atendimento humano|pessoa real|quero falar|falar com|recepcionista|gerente|responsavel|humano|uma pessoa|alguem da equipe|chamar a equipe)\b/.test(normalized)) {
+    return humanHelpMessage(restaurant, 'Claro! Vou chamar alguém da nossa equipe para continuar o atendimento com você. 😊')
   }
   if (/\b(horario|horarios|abre|aberto|aberta|fecha|fechado|fechada|funciona|funcionamento)\b/.test(normalized)) {
     return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
@@ -396,9 +396,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey) {
     const menuLink = restaurant?.slug ? '\nCardápio: ' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : ''
     return 'No momento estamos fora do horário de funcionamento. Confira nosso cardápio.' + menuLink
   } else if (aiPermission.reason === 'restaurant_limit' || aiPermission.reason === 'contact_limit') {
-    const digits = String(restaurant?.whatsapp_contato || '').replace(/\D/g, '')
-    const phone = digits ? (digits.length <= 11 ? '55' + digits : digits) : ''
-    return 'Atingimos o limite diário do atendimento inteligente. ' + (phone ? 'Nossa equipe pode continuar por aqui: https://wa.me/' + phone : 'Nossa equipe poderá continuar o atendimento durante o expediente.')
+    return humanHelpMessage(restaurant, 'Atingimos o limite diário do atendimento automático. Vou chamar alguém da equipe para continuar com você.')
   }
 
   if (/\b(tem|possui|vende|disponivel|disponibilidade|ainda tem)\b/.test(normalized)) {
