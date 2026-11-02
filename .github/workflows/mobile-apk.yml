@@ -42,7 +42,7 @@ jobs:
 
       - name: Garantir módulos nativos usados pelo app
         working-directory: mobile
-        run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech
+        run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech expo-print expo-sharing
 
       - name: Gerar projeto Android nativo
         working-directory: mobile
