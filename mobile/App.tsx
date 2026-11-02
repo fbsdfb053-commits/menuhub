@@ -2,7 +2,7 @@ import 'react-native-url-polyfill/auto';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Platform,
-  Pressable, RefreshControl, StatusBar, StyleSheet, Linking,
+  Pressable, RefreshControl, StatusBar, StyleSheet, Linking, Share,
   Text, TextInput, View, ScrollView, Modal
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -53,6 +53,8 @@ function AppContent() {
   const [categories,setCategories]=useState<Category[]>([]);
   const [tab,setTab]=useState<'inicio'|'pedidos'|'cardapio'|'relatorios'>('inicio');
   const [settingsOpen,setSettingsOpen]=useState(false);
+  const [previewOpen,setPreviewOpen]=useState(false);
+  const [reportPeriod,setReportPeriod]=useState<1|7|30|90>(30);
   const [keepAwake,setKeepAwake]=useState(false);
   const [editorOpen,setEditorOpen]=useState(false);
   const [editingProduct,setEditingProduct]=useState<Product|null>(null);
@@ -94,7 +96,7 @@ function AppContent() {
       .select('id,cliente_nome,total,status,tipo_entrega,forma_pagamento,taxa_entrega,criado_em,observacoes,itens_pedido(id,nome_produto,quantidade,preco_unitario)')
       .eq('empresa_id', chosen.id)
       .order('criado_em', { ascending: false })
-      .limit(30);
+      .limit(1000);
     if (ordersError) { setError(ordersError.message); return; }
     setOrders((data ?? []) as Order[]);
   }, [session]);
@@ -152,11 +154,12 @@ function AppContent() {
     Speech.stop();
     Speech.speak('Teste de áudio do Fb3d2y Menu. Tudo certo!', { language: 'pt-BR', rate: 0.95 });
   };
-  const openWebSettings = async (section: string) => {
-    setSettingsOpen(false);
-    Alert.alert(section, 'Esta área será aberta no painel completo do Fb3d2y Menu.');
-    try { await Linking.openURL('https://fb3d2ymenu.com.br/admin'); } catch {}
+  const menuUrl = restaurant ? 'https://fb3d2ymenu.com.br/menu/' + encodeURIComponent(restaurant.slug) : 'https://fb3d2ymenu.com.br';
+  const shareMenu = async () => {
+    try { await Share.share({ title: restaurant?.nome ?? 'Cardápio', message: menuUrl, url: menuUrl }); }
+    catch { Alert.alert('Compartilhar cardápio', menuUrl); }
   };
+  const openMenuPreview = () => setPreviewOpen(true);
 
   const openProductEditor=(product:Product|null)=>{setEditingProduct(product);setProductName(product?.nome??'');setProductPrice(product?String(product.preco).replace('.',','):'');setProductDescription(product?.descricao??'');setProductCategory(product?.categoria_id??null);setEditorOpen(true);};
   const saveProduct=async()=>{if(!supabase||!restaurant||!productName.trim()||!productPrice.trim())return;const price=Number(productPrice.replace(',','.'));if(!Number.isFinite(price)||price<0){Alert.alert('Preço inválido','Informe um preço válido.');return;}setSaving(true);const payload={empresa_id:restaurant.id,nome:productName.trim(),preco:price,descricao:productDescription.trim()||null,categoria_id:productCategory,disponivel:editingProduct?.disponivel??true};const q=editingProduct?supabase.from('produtos').update(payload).eq('id',editingProduct.id):supabase.from('produtos').insert(payload);const {error:e}=await q;if(e)Alert.alert('Não foi possível salvar',e.message);else{setEditorOpen(false);await loadDashboard();}setSaving(false);};
@@ -182,6 +185,18 @@ function AppContent() {
   const refresh = async () => { setRefreshing(true); await loadDashboard(); setRefreshing(false); };
 
   const pending = useMemo(() => orders.filter(o => ['novo', 'recebido', 'pendente'].includes((o.status ?? '').toLocaleLowerCase('pt-BR'))).length, [orders]);
+  const reportOrders = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0,0,0,0);
+    start.setDate(start.getDate() - (reportPeriod - 1));
+    return orders.filter(o => {
+      if (!o.criado_em) return false;
+      const date = new Date(o.criado_em);
+      return date >= start && date <= now;
+    });
+  }, [orders, reportPeriod]);
+  const reportTotal = useMemo(() => reportOrders.reduce((sum,o)=>sum+Number(o.total||0),0),[reportOrders]);
   const todayTotal = useMemo(() => {
     const today = new Date().toDateString();
     return orders.filter(o => o.criado_em && new Date(o.criado_em).toDateString() === today)
@@ -225,14 +240,14 @@ function AppContent() {
           {products.map(p=><Pressable key={p.id} style={styles.productCard} onPress={()=>openProductEditor(p)}><View style={{flex:1}}><Text style={styles.customer}>{p.nome}</Text><Text style={styles.orderMeta}>{p.descricao||'Sem descrição'} · {money(Number(p.preco))}</Text></View><Pressable style={[styles.statusPill,{backgroundColor:p.disponivel?'#E8F7EF':'#FCE9E6'}]} onPress={()=>toggleProduct(p)}><Text style={[styles.statusText,{color:p.disponivel?'#247A4B':'#B42318'}]}>{p.disponivel?'Disponível':'Pausado'}</Text></Pressable></Pressable>)}
           {!products.length&&<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
           <Pressable style={styles.secondaryButton} onPress={addCategory}><Text style={styles.secondaryButtonText}>Gerenciar categorias</Text></Pressable>
-        </ScrollView> : tab==='relatorios' ? <ScrollView contentContainerStyle={styles.listContent}><Text style={styles.sectionTitle}>Relatórios</Text><View style={styles.revenueCard}><Text style={styles.revenueLabel}>VENDAS NOS ÚLTIMOS 30 DIAS</Text><Text style={styles.revenueValue}>{money(orders.filter(o=>o.criado_em&&Date.now()-new Date(o.criado_em).getTime()<=30*86400000).reduce((a,o)=>a+Number(o.total||0),0))}</Text></View><Text style={styles.orderMeta}>{orders.length} pedidos carregados. Para consultar períodos maiores, use o painel web.</Text></ScrollView> : <FlatList
-          data={tab==='pedidos'?orders:orders.slice(0,8)}
+        </ScrollView> : tab==='relatorios' ? <ScrollView contentContainerStyle={styles.listContent}><Text style={styles.sectionTitle}>Relatórios</Text><View style={styles.periodRow}>{([1,7,30,90] as const).map(value=><Pressable key={value} onPress={()=>setReportPeriod(value)} style={[styles.periodChip,reportPeriod===value&&styles.periodChipActive]}><Text style={[styles.periodChipText,reportPeriod===value&&styles.periodChipTextActive]}>{value===1?'Hoje':value+' dias'}</Text></Pressable>)}</View><View style={styles.revenueCard}><Text style={styles.revenueLabel}>VENDAS · {reportPeriod===1?'HOJE':`ÚLTIMOS ${reportPeriod} DIAS`}</Text><Text style={styles.revenueValue}>{money(reportTotal)}</Text></View><View style={styles.statsRow}><View style={styles.statCard}><Text style={styles.statLabel}>PEDIDOS NO PERÍODO</Text><Text style={styles.statValue}>{reportOrders.length}</Text></View><View style={styles.statCard}><Text style={styles.statLabel}>TICKET MÉDIO</Text><Text style={styles.statValue}>{money(reportOrders.length?reportTotal/reportOrders.length:0)}</Text></View></View><Text style={styles.orderMeta}>Valores calculados com os pedidos registrados no período selecionado.</Text></ScrollView> : <FlatList
+          data={tab==='pedidos'?orders:[]}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#E67E45" />}
           ListHeaderComponent={
             <View>
-              <View style={styles.restaurantCard}>
+              <View style={[styles.restaurantCard,styles.restaurantCardCompact]}>
                 <View style={styles.restaurantTop}><View style={styles.liveDot} /><Text style={styles.restaurantLabel}>{restaurant.aceita_pedidos ? 'RESTAURANTE CONECTADO' : 'PEDIDOS PAUSADOS'}</Text></View>
                 <Text style={styles.restaurantName}>{restaurant.nome}</Text>
                 <Text style={styles.restaurantSlug}>/{restaurant.slug}</Text>
@@ -241,8 +256,12 @@ function AppContent() {
                 <View style={styles.statCard}><Text style={styles.statLabel}>PEDIDOS RECENTES</Text><Text style={styles.statValue}>{orders.length}</Text></View>
                 <View style={styles.statCard}><Text style={styles.statLabel}>AGUARDANDO</Text><Text style={[styles.statValue, { color: '#D97742' }]}>{pending}</Text></View>
               </View>
-              <View style={styles.revenueCard}><Text style={styles.revenueLabel}>VENDAS DE HOJE · PEDIDOS CARREGADOS</Text><Text style={styles.revenueValue}>{money(todayTotal)}</Text></View>
-              <View style={styles.sectionHead}><Text style={styles.sectionTitle}>{tab==='pedidos'?'Todos os pedidos':'Pedidos recentes'}</Text><Text style={styles.sectionHint}>Atualiza em tempo real</Text></View>
+              <View style={styles.revenueCard}><Text style={styles.revenueLabel}>VENDAS DE HOJE</Text><Text style={styles.revenueValue}>{money(todayTotal)}</Text></View>
+              {tab==='inicio' ? <View style={styles.quickActions}>
+                <Pressable style={styles.quickAction} onPress={openMenuPreview}><Text style={styles.quickActionIcon}>👁️</Text><Text style={styles.quickActionText}>Ver menu</Text></Pressable>
+                <Pressable style={styles.quickAction} onPress={()=>void shareMenu()}><Text style={styles.quickActionIcon}>↗️</Text><Text style={styles.quickActionText}>Compartilhar</Text></Pressable>
+                <Pressable style={styles.quickAction} onPress={()=>setTab('cardapio')}><Text style={styles.quickActionIcon}>✏️</Text><Text style={styles.quickActionText}>Editar</Text></Pressable>
+              </View> : <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Todos os pedidos</Text><Text style={styles.sectionHint}>Atualiza em tempo real</Text></View>}
               {!!error && <Text style={styles.error}>{error}</Text>}
             </View>
           }
@@ -280,15 +299,16 @@ function AppContent() {
               <Pressable style={styles.settingsRow} onPress={testAudio}><Text style={styles.settingsIcon}>🔊</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Testar áudio</Text><Text style={styles.settingsHint}>Reproduzir uma mensagem de teste</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
               <Pressable style={styles.settingsRow} onPress={()=>void toggleKeepAwake()}><Text style={styles.settingsIcon}>☀️</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Manter tela ligada</Text><Text style={styles.settingsHint}>Evita que a tela apague durante o uso</Text></View><Text style={[styles.settingsSwitch,keepAwake&&styles.settingsSwitchOn]}>{keepAwake?'Ligado':'Desligado'}</Text></Pressable>
               <Text style={styles.settingsGroup}>RESTAURANTE</Text>
-              <Pressable style={styles.settingsRow} onPress={()=>void openWebSettings('Horário de funcionamento')}><Text style={styles.settingsIcon}>🕒</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Horário de funcionamento</Text><Text style={styles.settingsHint}>Dias e horários de atendimento</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
-              <Pressable style={styles.settingsRow} onPress={()=>void openWebSettings('Impressora')}><Text style={styles.settingsIcon}>🖨️</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Impressora</Text><Text style={styles.settingsHint}>Configuração e impressão de pedidos</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
-              <Pressable style={styles.settingsRow} onPress={()=>void openWebSettings('Dados do restaurante')}><Text style={styles.settingsIcon}>🏪</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Dados do restaurante</Text><Text style={styles.settingsHint}>Informações e preferências da loja</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
+              <Pressable style={styles.settingsRow} onPress={()=>{setSettingsOpen(false);Alert.alert('Horário de funcionamento','A configuração nativa do horário será adicionada nesta etapa.');}}><Text style={styles.settingsIcon}>🕒</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Horário de funcionamento</Text><Text style={styles.settingsHint}>Dias e horários de atendimento</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
+              <Pressable style={styles.settingsRow} onPress={()=>{setSettingsOpen(false);Alert.alert('Impressora','A configuração nativa da impressora será adicionada nesta etapa.');}}><Text style={styles.settingsIcon}>🖨️</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Impressora</Text><Text style={styles.settingsHint}>Configuração e impressão de pedidos</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
+              <Pressable style={styles.settingsRow} onPress={()=>{setSettingsOpen(false);Alert.alert('Dados do restaurante','A edição nativa dos dados do restaurante será adicionada nesta etapa.');}}><Text style={styles.settingsIcon}>🏪</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Dados do restaurante</Text><Text style={styles.settingsHint}>Informações e preferências da loja</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
               <Text style={styles.settingsGroup}>CONTA</Text>
-              <Pressable style={styles.settingsRow} onPress={()=>void openWebSettings('Gerenciamento da conta')}><Text style={styles.settingsIcon}>👤</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Gerenciamento da conta</Text><Text style={styles.settingsHint}>Acesso, assinatura e dados da conta</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
+              <Pressable style={styles.settingsRow} onPress={()=>{setSettingsOpen(false);Alert.alert('Gerenciamento da conta','O gerenciamento nativo da conta será adicionado nesta etapa.');}}><Text style={styles.settingsIcon}>👤</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Gerenciamento da conta</Text><Text style={styles.settingsHint}>Acesso, assinatura e dados da conta</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
               <Pressable style={[styles.settingsRow,styles.signOutRow]} onPress={()=>void signOut()}><Text style={styles.settingsIcon}>↪</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,{color:'#B42318'}]}>Sair da conta</Text></View></Pressable>
             </Pressable>
           </Pressable>
         </Modal>
+        <Modal visible={previewOpen} transparent animationType="slide" onRequestClose={()=>setPreviewOpen(false)}><View style={styles.modalShade}><View style={[styles.modalCard,{maxHeight:'85%'}]}><View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Text style={styles.sectionTitle}>Cardápio · {restaurant.nome}</Text><Pressable onPress={()=>setPreviewOpen(false)}><Text style={styles.settingsClose}>✕</Text></Pressable></View><ScrollView>{categories.map(c=><View key={c.id}><Text style={styles.categoryTitle}>{c.nome}</Text>{products.filter(p=>p.categoria_id===c.id).map(p=><View key={p.id} style={styles.productCard}><View style={{flex:1}}><Text style={styles.customer}>{p.nome}</Text><Text style={styles.orderMeta}>{p.descricao||''}</Text></View><Text style={styles.orderTotal}>{money(Number(p.preco))}</Text></View>)}</View>)}{products.filter(p=>!p.categoria_id).map(p=><View key={p.id} style={styles.productCard}><View style={{flex:1}}><Text style={styles.customer}>{p.nome}</Text><Text style={styles.orderMeta}>{p.descricao||''}</Text></View><Text style={styles.orderTotal}>{money(Number(p.preco))}</Text></View>)}</ScrollView><Pressable style={styles.advanceButton} onPress={()=>{setPreviewOpen(false);setTab('cardapio')}}><Text style={styles.advanceButtonText}>Editar cardápio</Text></Pressable><Pressable style={styles.cancelButton} onPress={()=>void shareMenu()}><Text style={styles.cancelButtonText}>Compartilhar link do menu</Text></Pressable></View></View></Modal>
         <Modal visible={editorOpen} transparent animationType="slide" onRequestClose={()=>setEditorOpen(false)}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={styles.modalShade}><View style={styles.modalCard}><Text style={styles.sectionTitle}>{editingProduct?'Editar produto':'Novo produto'}</Text><TextInput value={productName} onChangeText={setProductName} placeholder="Nome do produto" style={styles.input}/><TextInput value={productPrice} onChangeText={setProductPrice} placeholder="Preço (ex.: 15,00)" keyboardType="decimal-pad" style={styles.input}/><TextInput value={productDescription} onChangeText={setProductDescription} placeholder="Descrição (opcional)" multiline style={[styles.input,{height:80}]}/><Text style={styles.orderMeta}>Categoria</Text><ScrollView horizontal>{categories.map(c=><Pressable key={c.id} onPress={()=>setProductCategory(c.id)} style={[styles.categoryChip,productCategory===c.id&&styles.categoryChipActive]}><Text style={{color:productCategory===c.id?'#fff':'#52616B'}}>{c.nome}</Text></Pressable>)}</ScrollView><Pressable style={styles.advanceButton} onPress={()=>void saveProduct()} disabled={saving}><Text style={styles.advanceButtonText}>{saving?'Salvando...':'Salvar produto'}</Text></Pressable><Pressable style={styles.cancelButton} onPress={()=>setEditorOpen(false)}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable></View></KeyboardAvoidingView></Modal>
         </View>
       ) : (
@@ -338,12 +358,20 @@ const styles = StyleSheet.create({
   settingsSwitchOn:{color:'#247A4B',backgroundColor:'#E8F7EF'},signOutRow:{borderBottomWidth:0,marginTop:5},
   listContent: { paddingHorizontal: 18, paddingBottom: 30 },
   restaurantCard: { backgroundColor: '#20333B', borderRadius: 22, padding: 20, marginBottom: 13 },
+  restaurantCardCompact:{padding:12,borderRadius:15,marginBottom:10},
   restaurantTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#63D6A1' },
-  restaurantLabel: { color: '#B9C8CD', fontSize: 9, letterSpacing: 1.2, fontWeight: '900' },
-  restaurantName: { color: '#fff', fontSize: 23, fontWeight: '900', marginTop: 15 },
-  restaurantSlug: { color: '#A9BCC2', fontSize: 12, marginTop: 4 },
+  restaurantLabel: { color: '#B9C8CD', fontSize: 8, letterSpacing: 1, fontWeight: '900' },
+  restaurantName: { color: '#fff', fontSize: 19, fontWeight: '900', marginTop: 7 },
+  restaurantSlug: { color: '#A9BCC2', fontSize: 10, marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  quickActions:{flexDirection:'row',gap:9,marginBottom:22},
+  quickAction:{flex:1,backgroundColor:'#fff',borderRadius:15,paddingVertical:15,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#E9EDF0'},
+  quickActionIcon:{fontSize:20,marginBottom:6},quickActionText:{fontSize:11,fontWeight:'800',color:'#263740'},
+  periodRow:{flexDirection:'row',gap:8,marginTop:16,marginBottom:14},
+  periodChip:{paddingHorizontal:16,paddingVertical:9,borderRadius:20,backgroundColor:'#fff',borderWidth:1,borderColor:'#E2E7EA'},
+  periodChipActive:{backgroundColor:'#20333B',borderColor:'#20333B'},
+  periodChipText:{fontSize:11,fontWeight:'800',color:'#65727A'},periodChipTextActive:{color:'#fff'},
   statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#E9EDF0' },
   statLabel: { color: '#929DA4', fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
   statValue: { color: '#24343C', fontSize: 27, fontWeight: '900', marginTop: 7 },
