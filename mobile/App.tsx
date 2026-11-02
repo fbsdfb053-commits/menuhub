@@ -2,9 +2,10 @@ import 'react-native-url-polyfill/auto';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Platform,
-  Pressable, RefreshControl, SafeAreaView, StatusBar, StyleSheet,
+  Pressable, RefreshControl, StatusBar, StyleSheet,
   Text, TextInput, View, ScrollView, Modal
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, Session } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
@@ -38,7 +39,9 @@ const dateTime = (value: string | null) => value
   ? new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
   : '—';
 
-export default function App() {
+export default function App() { return <SafeAreaProvider><AppContent /></SafeAreaProvider>; }
+
+function AppContent() {
   const [session, setSession] = useState<Session | null>(null);
   const [booting, setBooting] = useState(true);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -167,7 +170,7 @@ export default function App() {
 
   if (booting) return <Splash />;
   if (!session) return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView style={styles.loginWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Image source={{ uri: BRAND_LOGO }} style={styles.brandLogo} resizeMode="contain" />
@@ -260,7 +263,7 @@ function Splash() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7F8FA', paddingTop: Platform.OS==='android'?(StatusBar.currentHeight??0):0, paddingBottom: Platform.OS==='android'?8:0 },
+  safe: { flex: 1, backgroundColor: '#F7F8FA' },
   splash: { flex: 1, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center', gap: 14 },
   splashText: { color: '#52616B', fontSize: 15, fontWeight: '700' },
   loginWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 26 },
@@ -318,7 +321,7 @@ const styles = StyleSheet.create({
   cancelButton: { alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 9, marginTop: 2 },
   cancelButtonText: { color: '#A65A50', fontSize: 10, fontWeight: '800' },
   notes: { color: '#7C878D', fontSize: 11, marginTop: 9 },
-  bottomNav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:'#E9EDF0',paddingTop:7,paddingBottom:Platform.OS==='android'?5:18},navItem:{flex:1,alignItems:'center',gap:3},navIcon:{fontSize:19,fontWeight:'800'},navLabel:{fontSize:9,fontWeight:'800'},addButton:{backgroundColor:'#E67E45',paddingHorizontal:13,paddingVertical:9,borderRadius:10},addButtonText:{color:'#fff',fontWeight:'800',fontSize:12},productCard:{backgroundColor:'#fff',borderRadius:15,padding:14,marginBottom:8,borderWidth:1,borderColor:'#E9EDF0',flexDirection:'row',alignItems:'center',gap:10},categoryTitle:{fontSize:14,fontWeight:'900',color:'#26343C',marginTop:16,marginBottom:8},modalShade:{flex:1,backgroundColor:'rgba(0,0,0,.35)',justifyContent:'flex-end'},modalCard:{backgroundColor:'#fff',padding:22,borderTopLeftRadius:24,borderTopRightRadius:24,gap:12},input:{borderWidth:1,borderColor:'#DCE2E6',borderRadius:11,padding:12,color:'#26343C'},categoryChip:{padding:9,borderRadius:10,backgroundColor:'#F0F2F4',marginRight:7},categoryChipActive:{backgroundColor:'#D66F3C'},
+  bottomNav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:'#E9EDF0',paddingTop:7,paddingBottom:Platform.OS==='android'?12:18},navItem:{flex:1,alignItems:'center',gap:3},navIcon:{fontSize:19,fontWeight:'800'},navLabel:{fontSize:9,fontWeight:'800'},addButton:{backgroundColor:'#E67E45',paddingHorizontal:13,paddingVertical:9,borderRadius:10},addButtonText:{color:'#fff',fontWeight:'800',fontSize:12},productCard:{backgroundColor:'#fff',borderRadius:15,padding:14,marginBottom:8,borderWidth:1,borderColor:'#E9EDF0',flexDirection:'row',alignItems:'center',gap:10},categoryTitle:{fontSize:14,fontWeight:'900',color:'#26343C',marginTop:16,marginBottom:8},modalShade:{flex:1,backgroundColor:'rgba(0,0,0,.35)',justifyContent:'flex-end'},modalCard:{backgroundColor:'#fff',padding:22,borderTopLeftRadius:24,borderTopRightRadius:24,gap:12},input:{borderWidth:1,borderColor:'#DCE2E6',borderRadius:11,padding:12,color:'#26343C'},categoryChip:{padding:9,borderRadius:10,backgroundColor:'#F0F2F4',marginRight:7},categoryChipActive:{backgroundColor:'#D66F3C'},
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyIcon: { fontSize: 38, marginBottom: 13 },
   emptyTitle: { color: '#26343C', fontSize: 17, fontWeight: '900', textAlign: 'center' },
