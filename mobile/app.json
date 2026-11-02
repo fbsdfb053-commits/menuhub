@@ -9,13 +9,11 @@
     "android": {
       "package": "com.fb3d2y.menu",
       "versionCode": 1,
-      "permissions": ["INTERNET", "VIBRATE"]
+      "permissions": [
+        "INTERNET",
+        "VIBRATE"
+      ]
     },
-    "plugins": [],
-    "extra": {
-      "eas": {
-        "projectId": "PREENCHER_APOS_VINCULAR_EXPO"
-      }
-    }
+    "plugins": []
   }
 }
