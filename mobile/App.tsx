@@ -30,6 +30,8 @@ type Restaurant = { id: number; nome: string; slug: string; aceita_pedidos: bool
 type OrderLine = { id: number; nome_produto: string | null; quantidade: number; preco_unitario: number };
 type Product = { id:number; nome:string; descricao:string|null; preco:number; disponivel:boolean|null; categoria_id:number|null; imagem_url?:string|null };
 type Category = { id:number; nome:string; ordem:number };
+type ComplementGroup = { id:number; nome:string; descricao:string|null; ordem:number; ativo:boolean };
+type ComplementOption = { id:number; grupo_id:number; nome:string; preco_adicional:number; ordem:number; ativo:boolean };
 type Order = {
   id: number; cliente_nome: string; cliente_whatsapp?: string|null; endereco_entrega?:string|null; total: number; status: string | null;
   tipo_entrega: string; forma_pagamento: string; taxa_entrega: number;
@@ -37,7 +39,7 @@ type Order = {
 };
 
 WebBrowser.maybeCompleteAuthSession();
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.2.2';
 const UPDATED_AT = '02/11/2026';
 function formatOrderCode(id:number,createdAt:string|null){const date=createdAt?new Date(createdAt):new Date();const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'short'}).formatToParts(date);const day=parts.find(p=>p.type==='day')?.value??'01';const month=(parts.find(p=>p.type==='month')?.value??'jan').toLowerCase();let hash=(Number(id)^0x9e3779b9)>>>0;hash=Math.imul(hash^(hash>>>16),0x7feb352d);hash=Math.imul(hash^(hash>>>15),0x846ca68b);hash=(hash^(hash>>>16))>>>0;const suffix=(hash%46656).toString(36).toLowerCase().padStart(3,'0');return 'D'+day+month+'-'+suffix;}
 const GOOGLE_REDIRECT = 'fb3d2ymenu://auth/callback';
@@ -57,6 +59,16 @@ function AppContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products,setProducts]=useState<Product[]>([]);
   const [categories,setCategories]=useState<Category[]>([]);
+  const [groups,setGroups]=useState<ComplementGroup[]>([]);
+  const [options,setOptions]=useState<ComplementOption[]>([]);
+  const [categoryModal,setCategoryModal]=useState(false);
+  const [categoryDraft,setCategoryDraft]=useState('');
+  const [editingCategory,setEditingCategory]=useState<Category|null>(null);
+  const [complementsModal,setComplementsModal]=useState(false);
+  const [groupDraft,setGroupDraft]=useState('');
+  const [optionDraft,setOptionDraft]=useState('');
+  const [optionPriceDraft,setOptionPriceDraft]=useState('0');
+  const [selectedGroup,setSelectedGroup]=useState<number|null>(null);
   const [tab,setTab]=useState<'inicio'|'pedidos'|'cardapio'|'relatorios'>('inicio');
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [darkMode,setDarkMode]=useState(false);
@@ -115,12 +127,14 @@ function AppContent() {
     const chosen = (companies ?? [])[0] as Restaurant | undefined;
     setRestaurant(chosen ?? null);
     if (!chosen) { setOrders([]); setProducts([]); setCategories([]); return; }
-    const [{data:productRows,error:productError},{data:categoryRows,error:categoryError}] = await Promise.all([
+    const [{data:productRows,error:productError},{data:categoryRows,error:categoryError},{data:groupRows,error:groupError}] = await Promise.all([
       supabase.from('produtos').select('id,nome,descricao,preco,disponivel,categoria_id,imagem_url').eq('empresa_id',chosen.id).order('ordem'),
-      supabase.from('categorias').select('id,nome,ordem').eq('empresa_id',chosen.id).order('ordem')
+      supabase.from('categorias').select('id,nome,ordem').eq('empresa_id',chosen.id).order('ordem'),
+      supabase.from('grupos_complementos').select('id,nome,descricao,ordem,ativo').eq('empresa_id',chosen.id).order('ordem')
     ]);
     if(productError) setError(productError.message); else setProducts((productRows??[]) as Product[]);
     if(categoryError) setError(categoryError.message); else setCategories((categoryRows??[]) as Category[]);
+    if(groupError) setError(groupError.message); else {const gs=(groupRows??[]) as ComplementGroup[];setGroups(gs);if(gs.length){const {data:opts}=await supabase.from('opcoes_complementos').select('id,grupo_id,nome,preco_adicional,ordem,ativo').in('grupo_id',gs.map(g=>g.id)).order('ordem');setOptions((opts??[]) as ComplementOption[]);}else setOptions([]);}
     const { data, error: ordersError } = await supabase
       .from('pedidos')
       .select('id,cliente_nome,cliente_whatsapp,endereco_entrega,total,status,tipo_entrega,forma_pagamento,taxa_entrega,criado_em,observacoes,origem,precisa_troco,troco_para,itens_pedido(id,nome_produto,quantidade,preco_unitario)')
@@ -130,7 +144,7 @@ function AppContent() {
     if (ordersError) { setError(ordersError.message); return; }
     const incoming=(data??[]) as Order[];
     if(knownOrderIds.current===null){knownOrderIds.current=new Set(incoming.map(order=>order.id));}
-    else {const fresh=incoming.filter(order=>!knownOrderIds.current!.has(order.id));fresh.forEach(order=>knownOrderIds.current!.add(order.id));if(fresh.length){Speech.stop();Speech.speak((fresh.length===1?'Chegou um novo pedido':'Chegaram '+fresh.length+' novos pedidos')+' para '+(chosen.nome||'seu restaurante')+'.', {language:'pt-BR',rate:0.95});}}
+    else {const fresh=incoming.filter(order=>!knownOrderIds.current!.has(order.id));fresh.forEach(order=>knownOrderIds.current!.add(order.id));if(fresh.length){void playOrderBeep();Speech.stop();Speech.speak((fresh.length===1?'Chegou um novo pedido':'Chegaram '+fresh.length+' novos pedidos')+' para '+(chosen.nome||'seu restaurante')+'.', {language:'pt-BR',rate:0.95});}}
     setOrders(incoming);
   }, [session]);
 
@@ -229,6 +243,7 @@ function AppContent() {
       else { await activateKeepAwakeAsync('fb3d2y-menu'); setKeepAwake(true); }
     } catch { Alert.alert('Não foi possível alterar', 'Tente novamente.'); }
   };
+  const playOrderBeep=async()=>{try{Speech.speak('Bip bip',{language:'pt-BR',rate:1.25,pitch:1.8});}catch{}};
   const testAudio = () => {
     setSettingsOpen(false);
     Speech.stop();
@@ -244,13 +259,19 @@ function AppContent() {
   const weekDays=[{id:'1',label:'Segunda-feira'},{id:'2',label:'Terça-feira'},{id:'3',label:'Quarta-feira'},{id:'4',label:'Quinta-feira'},{id:'5',label:'Sexta-feira'},{id:'6',label:'Sábado'},{id:'0',label:'Domingo'}];
   const openHoursEditor=()=>{const d:Record<string,OpeningDay>={};for(let i=0;i<7;i++)d[String(i)]={closed:i===0,open:'18:00',close:'22:00'};setHoursDraft({...d,...(restaurant?.horario_funcionamento??{})});setSettingsOpen(false);setHoursOpen(true);};
   const saveOpeningHours=async()=>{if(!supabase||!restaurant)return;for(const h of Object.values(hoursDraft)){if(!h.closed&&(!h.open||!h.close||h.close<=h.open)){Alert.alert('Horário inválido','O fechamento deve ser depois da abertura.');return;}}const {error:e}=await supabase.from('empresas').update({horario_funcionamento:hoursDraft,status_loja_manual:null,aceita_pedidos:true}).eq('id',restaurant.id);if(e){Alert.alert('Não foi possível salvar',e.message);return;}setRestaurant({...restaurant,horario_funcionamento:hoursDraft,status_loja_manual:null,aceita_pedidos:true});setHoursOpen(false);Alert.alert('Horários salvos','A loja seguirá a programação automaticamente.');};
-  const exportOrderPdf=async(order:Order)=>{try{const rows=(order.itens_pedido??[]).map(i=>'<tr><td>'+i.quantidade+'x '+(i.nome_produto??'Produto')+'</td><td>'+money(Number(i.preco_unitario)*Number(i.quantidade))+'</td></tr>').join('');const html='<html><head><style>body{font-family:Arial;color:#222;padding:18px;font-size:12px}h1{font-size:19px;color:#d66f3c}table{width:100%;border-collapse:collapse}td{padding:8px 2px;border-bottom:1px solid #ddd}td:last-child{text-align:right}</style></head><body><h1>'+(restaurant?.nome??'Fb3d2y Menu')+'</h1><p>COMANDA - PEDIDO '+formatOrderCode(order.id,order.criado_em)+'</p><p>'+dateTime(order.criado_em)+'</p><h2>'+order.cliente_nome+'</h2><p>'+order.tipo_entrega+' - '+order.forma_pagamento+'</p><table>'+rows+'</table><p>Taxa de entrega: '+money(Number(order.taxa_entrega||0))+'</p><h2>Total: '+money(Number(order.total))+'</h2><p>'+(order.observacoes??'')+'</p></body></html>';const pdf=await Print.printToFileAsync({html,width:paperWidth==='58'?220:302});if(await Sharing.isAvailableAsync())await Sharing.shareAsync(pdf.uri,{mimeType:'application/pdf',dialogTitle:'Comanda em PDF'});else Alert.alert('PDF criado',pdf.uri);}catch(e){Alert.alert('Erro ao gerar PDF',e instanceof Error?e.message:'Tente novamente.');}};
+  const exportOrderPdf=async(order:Order)=>{try{const rows=(order.itens_pedido??[]).map(i=>'<tr><td>'+i.quantidade+'x '+(i.nome_produto??'Produto')+'</td><td>'+money(Number(i.preco_unitario)*Number(i.quantidade))+'</td></tr>').join('');const html='<html><head><style>body{font-family:Arial;color:#222;padding:18px;font-size:12px}h1{font-size:19px;color:#d66f3c}table{width:100%;border-collapse:collapse}td{padding:8px 2px;border-bottom:1px solid #ddd}td:last-child{text-align:right}</style></head><body><h1>'+(restaurant?.nome??'Fb3d2y Menu')+'</h1><p>COMANDA - PEDIDO '+formatOrderCode(order.id,order.criado_em)+'</p><p>'+dateTime(order.criado_em)+'</p><h2>'+order.cliente_nome+'</h2><p>'+order.tipo_entrega+' - '+order.forma_pagamento+'</p><table>'+rows+'</table><p>Taxa de entrega: '+money(Number(order.taxa_entrega||0))+'</p><h2>Total: '+money(Number(order.total))+'</h2><p>'+(order.observacoes??'')+'</p></body></html>';const pdf=await Print.printToFileAsync({html,width:paperWidth==='58'?220:302});if(await Sharing.isAvailableAsync())await Sharing.shareAsync(pdf.uri,{mimeType:'application/pdf',dialogTitle:'Pedido: '+(order.cliente_nome||'Cliente')});else Alert.alert('PDF criado',pdf.uri);}catch(e){Alert.alert('Erro ao gerar PDF',e instanceof Error?e.message:'Tente novamente.');}};
 
 
   const openProductEditor=(product:Product|null)=>{setEditingProduct(product);setProductName(product?.nome??'');setProductPrice(product?String(product.preco).replace('.',','):'');setProductDescription(product?.descricao??'');setProductCategory(product?.categoria_id??null);setEditorOpen(true);};
   const saveProduct=async()=>{if(!supabase||!restaurant||!productName.trim()||!productPrice.trim())return;const price=Number(productPrice.replace(',','.'));if(!Number.isFinite(price)||price<0){Alert.alert('Preço inválido','Informe um preço válido.');return;}setSaving(true);const payload={empresa_id:restaurant.id,nome:productName.trim(),preco:price,descricao:productDescription.trim()||null,categoria_id:productCategory,disponivel:editingProduct?.disponivel??true};const q=editingProduct?supabase.from('produtos').update(payload).eq('id',editingProduct.id):supabase.from('produtos').insert(payload);const {error:e}=await q;if(e)Alert.alert('Não foi possível salvar',e.message);else{setEditorOpen(false);await loadDashboard();}setSaving(false);};
   const toggleProduct=async(p:Product)=>{if(!supabase)return;const {error:e}=await supabase.from('produtos').update({disponivel:!(p.disponivel??true)}).eq('id',p.id);if(e)Alert.alert('Erro',e.message);else setProducts(list=>list.map(x=>x.id===p.id?{...x,disponivel:!(p.disponivel??true)}:x));};
-  const addCategory=()=>Alert.alert('Nova categoria','Para evitar cadastrar com nome errado, a criação de categorias ficará disponível no próximo ajuste.');
+  const openCategory=(category:Category|null)=>{setEditingCategory(category);setCategoryDraft(category?.nome??'');setCategoryModal(true);};
+  const saveCategory=async()=>{if(!supabase||!restaurant||!categoryDraft.trim())return;const query=editingCategory?supabase.from('categorias').update({nome:categoryDraft.trim()}).eq('id',editingCategory.id):supabase.from('categorias').insert({empresa_id:restaurant.id,nome:categoryDraft.trim(),ordem:categories.length});const {error:e}=await query;if(e){Alert.alert('Não foi possível salvar',e.message);return;}setCategoryModal(false);await loadDashboard();};
+  const deleteCategory=(category:Category)=>Alert.alert('Excluir categoria?','Os produtos ficarão sem categoria.',[{text:'Cancelar',style:'cancel'},{text:'Excluir',style:'destructive',onPress:async()=>{const {error:e}=await supabase!.from('categorias').delete().eq('id',category.id);if(e)Alert.alert('Erro',e.message);else{setCategoryModal(false);await loadDashboard();}}}]);
+  const saveGroup=async()=>{if(!supabase||!restaurant||!groupDraft.trim())return;const {error:e}=await supabase.from('grupos_complementos').insert({empresa_id:restaurant.id,nome:groupDraft.trim(),ordem:groups.length});if(e)Alert.alert('Erro ao salvar grupo',e.message);else{setGroupDraft('');await loadDashboard();}};
+  const saveOption=async()=>{if(!supabase||!selectedGroup||!optionDraft.trim())return;const price=Number(optionPriceDraft.replace(',','.'));if(!Number.isFinite(price)||price<0){Alert.alert('Preço inválido','Informe um adicional válido.');return;}const {error:e}=await supabase.from('opcoes_complementos').insert({grupo_id:selectedGroup,nome:optionDraft.trim(),preco_adicional:price,ordem:options.filter(o=>o.grupo_id===selectedGroup).length});if(e)Alert.alert('Erro ao salvar opção',e.message);else{setOptionDraft('');setOptionPriceDraft('0');await loadDashboard();}};
+  const deleteGroup=(g:ComplementGroup)=>Alert.alert('Excluir grupo?','Excluir '+g.nome+' e suas opções?',[{text:'Cancelar',style:'cancel'},{text:'Excluir',style:'destructive',onPress:async()=>{const {error:e}=await supabase!.from('grupos_complementos').delete().eq('id',g.id);if(e)Alert.alert('Erro',e.message);else{if(selectedGroup===g.id)setSelectedGroup(null);await loadDashboard();}}}]);
+  const deleteOption=(o:ComplementOption)=>Alert.alert('Excluir opção?',o.nome,[{text:'Cancelar',style:'cancel'},{text:'Excluir',style:'destructive',onPress:async()=>{const {error:e}=await supabase!.from('opcoes_complementos').delete().eq('id',o.id);if(e)Alert.alert('Erro',e.message);else await loadDashboard();}}]);
 
   const changeOrderStatus = async (order: Order, nextStatus: string) => {
     if (!supabase) return;
@@ -322,10 +343,10 @@ function AppContent() {
         {tab==='cardapio' ? <ScrollView contentContainerStyle={styles.listContent}>
           <View style={styles.sectionHead}><Text style={[styles.sectionTitle,darkMode&&styles.darkText]}>Cardápio</Text><Pressable style={styles.addButton} onPress={()=>openProductEditor(null)}><Text style={styles.addButtonText}>+ Produto</Text></Pressable></View>
           <Text style={[styles.sectionHint,darkMode&&styles.darkMuted]}>Toque em um produto para editar. Use o botão para pausar ou reativar.</Text>
-          {categories.map(c=><Text key={c.id} style={styles.categoryTitle}>{c.nome}</Text>)}
+          {categories.map(c=><Pressable key={c.id} onPress={()=>openCategory(c)}><Text style={styles.categoryTitle}>{c.nome}  ✎</Text></Pressable>)}
           {products.map(p=><Pressable key={p.id} style={styles.productCard} onPress={()=>openProductEditor(p)}><View style={{flex:1}}><Text style={[styles.customer,darkMode&&styles.darkText]}>{p.nome}</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{p.descricao||'Sem descrição'} · {money(Number(p.preco))}</Text></View><Pressable style={[styles.statusPill,{backgroundColor:p.disponivel?'#E8F7EF':'#FCE9E6'}]} onPress={()=>toggleProduct(p)}><Text style={[styles.statusText,{color:p.disponivel?'#247A4B':'#B42318'}]}>{p.disponivel?'Disponível':'Pausado'}</Text></Pressable></Pressable>)}
           {!products.length&&<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
-          <Pressable style={styles.secondaryButton} onPress={addCategory}><Text style={styles.secondaryButtonText}>Gerenciar categorias</Text></Pressable>
+          <View style={{flexDirection:'row',gap:8}}><Pressable style={[styles.secondaryButton,{flex:1}]} onPress={()=>openCategory(null)}><Text style={styles.secondaryButtonText}>+ Categoria</Text></Pressable><Pressable style={[styles.secondaryButton,{flex:1}]} onPress={()=>setComplementsModal(true)}><Text style={styles.secondaryButtonText}>Complementos</Text></Pressable></View>
         </ScrollView> : tab==='relatorios' ? <ScrollView contentContainerStyle={styles.listContent}><Text style={styles.sectionTitle}>Relatórios</Text><View style={styles.periodRow}>{([1,7,30,90] as const).map(value=><Pressable key={value} onPress={()=>setReportPeriod(value)} style={[styles.periodChip,reportPeriod===value&&styles.periodChipActive]}><Text style={[styles.periodChipText,reportPeriod===value&&styles.periodChipTextActive]}>{value===1?'Hoje':value+' dias'}</Text></Pressable>)}</View><View style={[styles.revenueCard,darkMode&&styles.darkRevenue]}><Text style={[styles.revenueLabel,darkMode&&styles.darkMuted]}>VENDAS · {reportPeriod===1?'HOJE':`ÚLTIMOS ${reportPeriod} DIAS`}</Text><Text style={[styles.revenueValue,darkMode&&styles.darkText]}>{money(reportTotal)}</Text></View><View style={styles.statsRow}><View style={[styles.statCard,darkMode&&styles.darkCard]}><Text style={[styles.statLabel,darkMode&&styles.darkMuted]}>PEDIDOS NO PERÍODO</Text><Text style={[styles.statValue,darkMode&&styles.darkText]}>{reportOrders.length}</Text></View><View style={styles.statCard}><Text style={styles.statLabel}>TICKET MÉDIO</Text><Text style={styles.statValue}>{money(reportOrders.length?reportTotal/reportOrders.length:0)}</Text></View></View><Text style={styles.orderMeta}>Valores calculados com os pedidos registrados no período selecionado.</Text></ScrollView> : <FlatList
           data={tab==='pedidos'?orders:[]}
           keyExtractor={item => String(item.id)}
