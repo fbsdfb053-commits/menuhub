@@ -12,8 +12,13 @@
       "permissions": [
         "INTERNET",
         "VIBRATE"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
-    "plugins": []
+    "plugins": [],
+    "icon": "./assets/icon.png"
   }
 }
