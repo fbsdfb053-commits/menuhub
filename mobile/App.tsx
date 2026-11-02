@@ -8,8 +8,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, Session } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
+// Chave publishable: própria para uso em aplicativos públicos. Nunca usar service_role aqui.
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://yfurhiyyknmikqeomfab.supabase.co';
+const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_Fl5ojNdUXqvYmreb6nVL5g_ZBRy93ky';
 const supabase = SUPABASE_URL && SUPABASE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
