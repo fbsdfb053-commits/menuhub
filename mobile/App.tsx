@@ -187,7 +187,7 @@ export default function App() {
   );
 
   return (
-    <SafeAreaView style={[styles.safe,{paddingTop:Platform.OS==='android'?(StatusBar.currentHeight??0):0,paddingBottom:Platform.OS==='android'?8:0}]}>
+    <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#F7F8FA" translucent={false} />
       <View style={styles.header}>
         <View><Text style={styles.eyebrow}>PAINEL DO RESTAURANTE</Text><Text style={styles.headerTitle}>Olá! 👋</Text></View>
@@ -260,7 +260,7 @@ function Splash() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7F8FA' },
+  safe: { flex: 1, backgroundColor: '#F7F8FA', paddingTop: Platform.OS==='android'?(StatusBar.currentHeight??0):0, paddingBottom: Platform.OS==='android'?8:0 },
   splash: { flex: 1, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center', gap: 14 },
   splashText: { color: '#52616B', fontSize: 15, fontWeight: '700' },
   loginWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 26 },
