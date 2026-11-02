@@ -38,6 +38,7 @@ type Order = {
   criado_em: string | null; observacoes: string | null; origem?:string|null; precisa_troco?:boolean|null; troco_para?:number|null; itens_pedido?: OrderLine[];
 };
 
+const StatusBarCompat = StatusBar as any;
 WebBrowser.maybeCompleteAuthSession();
 const APP_VERSION = '1.2.2';
 const UPDATED_AT = '02/11/2026';
@@ -314,7 +315,7 @@ function AppContent() {
   if (booting) return <Splash />;
   if (!session) return (
     <SafeAreaView style={[styles.safe,darkMode&&{backgroundColor:'#1B222C'}]} edges={['top','bottom']}>
-      <StatusBar barStyle={darkMode?'light-content':'dark-content'} backgroundColor={darkMode?'#111A20':'#FFFFFF'} />
+      <StatusBarCompat barStyle={darkMode?'light-content':'dark-content'} backgroundColor={darkMode?'#111A20':'#FFFFFF'} />
       <KeyboardAvoidingView style={styles.loginWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Image source={{ uri: BRAND_LOGO }} style={styles.brandLogo} resizeMode="contain" />
         <Text style={styles.brand}>Fb3d2y <Text style={styles.brandAccent}>Menu</Text></Text>
