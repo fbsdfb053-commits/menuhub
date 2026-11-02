@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   emptyTitle: { color: '#26343C', fontSize: 17, fontWeight: '900', textAlign: 'center' },
   emptyText: { color: '#8B969D', fontSize: 13, textAlign: 'center', lineHeight: 20, marginTop: 7 },
   emptyTextHome:{fontSize:17,lineHeight:25,fontWeight:'700',color:'#66747C',marginTop:0},
-  darkPanel:{backgroundColor:'#20262B',borderColor:'#343C42'},darkText:{color:'#F1E8E2'},darkHeader:{backgroundColor:'#15191D'},darkCard:{backgroundColor:'#20262B',borderColor:'#343C42'},darkRevenue:{backgroundColor:'#34251F'},
+  darkPanel:{backgroundColor:'#20262B',borderColor:'#343C42'},darkText:{color:'#F1E8E2'},darkMuted:{color:'#B7A79D'},darkHeader:{backgroundColor:'#15191D'},darkCard:{backgroundColor:'#20262B',borderColor:'#343C42'},darkRevenue:{backgroundColor:'#34251F'},
   secondaryButton: { backgroundColor: '#E67E45', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, marginTop: 18 },
   secondaryButtonText: { color: '#fff', fontWeight: '800' }
 });
