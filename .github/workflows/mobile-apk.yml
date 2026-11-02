@@ -9,7 +9,7 @@ on:
       - '.github/workflows/mobile-apk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android-apk:
@@ -59,3 +59,19 @@ jobs:
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 7
+
+      - name: Ler versão do aplicativo
+        id: app
+        working-directory: mobile
+        run: echo "version=$(node -p \"require('./app.json').expo.version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Publicar APK para atualização pelo aplicativo
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.app.outputs.version }}
+          name: Fb3d2y Menu v${{ steps.app.outputs.version }}
+          target_commitish: app-android
+          files: mobile/android/app/build/outputs/apk/release/app-release.apk
+          make_latest: true
+          fail_on_unmatched_files: true
+

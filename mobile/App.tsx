@@ -13,6 +13,8 @@ import { createClient, Session } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 // Chave publishable: própria para uso em aplicativos públicos. Nunca usar service_role aqui.
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://yfurhiyyknmikqeomfab.supabase.co';
@@ -35,7 +37,7 @@ type Order = {
 };
 
 WebBrowser.maybeCompleteAuthSession();
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const UPDATED_AT = '02/11/2026';
 function formatOrderCode(id:number,createdAt:string|null){const date=createdAt?new Date(createdAt):new Date();const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'short'}).formatToParts(date);const day=parts.find(p=>p.type==='day')?.value??'01';const month=(parts.find(p=>p.type==='month')?.value??'jan').toLowerCase();let hash=(Number(id)^0x9e3779b9)>>>0;hash=Math.imul(hash^(hash>>>16),0x7feb352d);hash=Math.imul(hash^(hash>>>15),0x846ca68b);hash=(hash^(hash>>>16))>>>0;const suffix=(hash%46656).toString(36).toLowerCase().padStart(3,'0');return 'D'+day+month+'-'+suffix;}
 const GOOGLE_REDIRECT = 'fb3d2ymenu://auth/callback';
@@ -87,6 +89,8 @@ function AppContent() {
   const [saving,setSaving]=useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
 
   useEffect(() => { void AsyncStorage.getItem('fb3d2y-paper-width').then(v=>{if(v==='58'||v==='80')setPaperWidth(v);}); void AsyncStorage.getItem('fb3d2y-dark-mode').then(v=>setDarkMode(v==='1')); }, []);
 
@@ -169,6 +173,53 @@ function AppContent() {
     } finally {
       setGoogleBusy(false);
     }
+  };
+
+  const checkForUpdates = async () => {
+    if (Platform.OS !== 'android') { Alert.alert('Atualização', 'A instalação pelo aplicativo está disponível no Android.'); return; }
+    setUpdateBusy(true); setUpdateProgress(0);
+    try {
+      const response = await fetch('https://api.github.com/repos/fbsdfb053-commits/menuhub/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+      if (!response.ok) throw new Error(response.status === 404 ? 'Ainda não há uma versão publicada para atualização.' : 'Não foi possível consultar as atualizações. Tente novamente.');
+      const release = await response.json();
+      const latest = String(release.tag_name || '').replace(/^v/i, '');
+      const currentParts = APP_VERSION.split('.').map(Number);
+      const latestParts = latest.split('.').map(Number);
+      const newer = latestParts.some((n:number, i:number) => n > (currentParts[i] || 0) && latestParts.slice(0,i).every((v:number,j:number)=>v===(currentParts[j]||0)));
+      if (!newer) { Alert.alert('Tudo atualizado', 'Você já está usando a versão mais recente do Fb3d2y Menu (v' + APP_VERSION + ').'); return; }
+      const apk = (release.assets || []).find((asset:any) => String(asset.name).toLowerCase().endsWith('.apk'));
+      if (!apk?.browser_download_url) throw new Error('A nova versão foi encontrada, mas o arquivo de instalação ainda não está disponível.');
+      Alert.alert('Atualização disponível', 'Versão ' + latest + ' disponível. O app vai baixar o arquivo e abrir o instalador do Android.', [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Baixar e instalar', onPress: () => { void downloadAndInstallUpdate(apk.browser_download_url, latest); } }
+      ]);
+    } catch (err) {
+      Alert.alert('Verificar atualizações', err instanceof Error ? err.message : 'Não foi possível verificar agora.');
+    } finally { setUpdateBusy(false); }
+  };
+  const downloadAndInstallUpdate = async (url:string, version:string) => {
+    setUpdateBusy(true); setUpdateProgress(0);
+    try {
+      const target = (FileSystem.cacheDirectory || FileSystem.documentDirectory || '') + 'fb3d2y-menu-v' + version + '.apk';
+      if (!target) throw new Error('Não foi possível acessar o armazenamento do aparelho.');
+      const download = FileSystem.createDownloadResumable(url, target, {}, progress => {
+        const total = progress.totalBytesExpectedToWrite || 0;
+        if (total > 0) setUpdateProgress(Math.round(progress.totalBytesWritten / total * 100));
+      });
+      const result = await download.downloadAsync();
+      if (!result?.uri) throw new Error('O download da atualização não foi concluído.');
+      const contentUri = await FileSystem.getContentUriAsync(result.uri);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        type: 'application/vnd.android.package-archive',
+        flags: 1
+      });
+    } catch (err) {
+      Alert.alert('Não foi possível abrir o instalador', (err instanceof Error ? err.message : 'Tente novamente.') + '\\n\\nSe o Android solicitar, permita que o Fb3d2y Menu instale aplicativos desconhecidos nas configurações do aparelho.');
+      try {
+        await IntentLauncher.startActivityAsync('android.settings.MANAGE_UNKNOWN_APP_SOURCES', { data: 'package:com.fb3d2y.menu' });
+      } catch { /* Alguns aparelhos não oferecem essa tela. */ }
+    } finally { setUpdateBusy(false); }
   };
 
   const signOut = async () => { setSettingsOpen(false); await supabase?.auth.signOut(); setRestaurant(null); setOrders([]); setProducts([]); setCategories([]); };
@@ -331,6 +382,15 @@ function AppContent() {
                 <View><Text style={[styles.settingsTitle,darkMode&&styles.darkText]}>Configurações</Text><Text style={[styles.settingsEmail,darkMode&&styles.darkMuted]}>{session.user.email}</Text></View>
                 <Pressable onPress={()=>setSettingsOpen(false)}><Text style={styles.settingsClose}>✕</Text></Pressable>
               </View>
+              <Text style={[styles.settingsGroup,darkMode&&styles.darkMuted]}>APLICATIVO</Text>
+              <Pressable style={styles.settingsRow} onPress={()=>void checkForUpdates()} disabled={updateBusy}>
+                <Text style={styles.settingsIcon}>⟳</Text>
+                <View style={styles.settingsCopy}>
+                  <Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>{updateBusy ? 'Verificando / baixando...' : 'Verificar atualizações'}</Text>
+                  <Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>{updateBusy && updateProgress>0 ? 'Download: '+updateProgress+'%' : 'Versão instalada: '+APP_VERSION}</Text>
+                </View>
+                {updateBusy ? <ActivityIndicator color="#D66F3C"/> : <Text style={styles.settingsArrow}>›</Text>}
+              </Pressable>
               <Text style={[styles.settingsGroup,darkMode&&styles.darkMuted]}>RECURSOS RÁPIDOS</Text>
               <Pressable style={styles.settingsRow} onPress={testAudio}><Text style={styles.settingsIcon}>◖</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>Testar áudio</Text><Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>Reproduzir uma mensagem de teste</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
               <Pressable style={styles.settingsRow} onPress={()=>void toggleKeepAwake()}><Text style={styles.settingsIcon}>◐</Text><View style={styles.settingsCopy}><Text style={styles.settingsLabel}>Manter tela ligada</Text><Text style={styles.settingsHint}>Evita que a tela apague durante o uso</Text></View><Text style={[styles.settingsSwitch,keepAwake&&styles.settingsSwitchOn]}>{keepAwake?'Ligado':'Desligado'}</Text></Pressable>
