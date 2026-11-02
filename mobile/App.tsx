@@ -335,7 +335,7 @@ function AppContent() {
 
   return (
     <SafeAreaView style={[styles.safe,darkMode&&{backgroundColor:'#1B222C'}]}>
-      <StatusBar barStyle={darkMode?"light-content":"dark-content"} backgroundColor={darkMode?"#15191D":"#F7F8FA"} translucent={false} />
+      <StatusBarCompat barStyle={darkMode?"light-content":"dark-content"} backgroundColor={darkMode?"#15191D":"#F7F8FA"} translucent={false} />
       <View style={[styles.header,darkMode&&styles.darkHeader]}>
         <View><Text style={styles.eyebrow}>PAINEL DO RESTAURANTE</Text><Text style={[styles.headerTitle,darkMode&&styles.darkText]}>{tab==='inicio'?'Visão geral':tab==='pedidos'?'Pedidos':tab==='cardapio'?'Cardápio':'Relatórios'}</Text></View>
         <Pressable onPress={()=>setSettingsOpen(true)} style={styles.avatar} accessibilityLabel="Abrir configurações"><Text style={styles.avatarText}>☰</Text></Pressable>
