@@ -44,6 +44,10 @@ jobs:
         working-directory: mobile
         run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech expo-print expo-sharing expo-file-system expo-intent-launcher
 
+      - name: Verificar TypeScript
+        working-directory: mobile
+        run: npm run typecheck
+
       - name: Gerar projeto Android nativo
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
