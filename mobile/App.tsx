@@ -126,7 +126,7 @@ function AppContent() {
     if (ordersError) { setError(ordersError.message); return; }
     const incoming=(data??[]) as Order[];
     if(knownOrderIds.current===null){knownOrderIds.current=new Set(incoming.map(order=>order.id));}
-    else {const fresh=incoming.filter(order=>!knownOrderIds.current!.has(order.id));fresh.forEach(order=>{knownOrderIds.current!.add(order.id);Speech.stop();Speech.speak('Chegou um novo pedido para '+(chosen.nome||'seu restaurante')+'.', {language:'pt-BR',rate:0.95});});}
+    else {const fresh=incoming.filter(order=>!knownOrderIds.current!.has(order.id));fresh.forEach(order=>knownOrderIds.current!.add(order.id));if(fresh.length){Speech.stop();Speech.speak((fresh.length===1?'Chegou um novo pedido':'Chegaram '+fresh.length+' novos pedidos')+' para '+(chosen.nome||'seu restaurante')+'.', {language:'pt-BR',rate:0.95});}}
     setOrders(incoming);
   }, [session]);
 
