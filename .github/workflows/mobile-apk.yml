@@ -40,7 +40,7 @@ jobs:
         working-directory: mobile
         run: npm install
 
-      - name: Gerar projeto Android nativo
+      - name: Garantir módulos nativos usados pelo app\n        working-directory: mobile\n        run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech\n\n      - name: Gerar projeto Android nativo
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
 
