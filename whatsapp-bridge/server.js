@@ -682,27 +682,40 @@ function whatsappJid(value) {
   return digits + '@s.whatsapp.net'
 }
 
+function formatOrderCode(id, createdAt) {
+  const date = new Date(createdAt || Date.now())
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'short' }).formatToParts(date)
+  const day = parts.find(part => part.type === 'day')?.value || '01'
+  const month = (parts.find(part => part.type === 'month')?.value || 'jan').toLowerCase()
+  let hash = (Number(id) ^ 0x9e3779b9) >>> 0
+  hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d)
+  hash = Math.imul(hash ^ (hash >>> 15), 0x846ca68b)
+  hash = (hash ^ (hash >>> 16)) >>> 0
+  const suffix = (hash % 46656).toString(36).toLowerCase().padStart(3, '0')
+  return `D${day}${month}-${suffix}`
+}
+
 function orderStatusSettings(status, config) {
   const key = normalizedStatus(status)
   const settings = {
-    novo: { enabled: 'statusNew', message: 'messageNew', fallback: 'Olá {nome}! Recebemos seu pedido #{pedido}.' },
-    aceito: { enabled: 'statusAccepted', message: 'messageAccepted', fallback: 'Olá {nome}! O restaurante aceitou seu pedido #{pedido}.' },
-    aceita: { enabled: 'statusAccepted', message: 'messageAccepted', fallback: 'Olá {nome}! O restaurante aceitou seu pedido #{pedido}.' },
-    preparando: { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
-    'em preparo': { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido #{pedido} está sendo preparado.' },
-    pronto: { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto.' },
-    'retirada disponivel': { enabled: 'statusPickupReady', message: 'messagePickupReady', fallback: 'Olá {nome}! Seu pedido #{pedido} está pronto para retirada.' },
-    'em entrega': { enabled: 'statusOutForDelivery', message: 'messageOutForDelivery', fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
-    'saiu para entrega': { enabled: 'statusOutForDelivery', message: 'messageOutForDelivery', fallback: 'Olá {nome}! Seu pedido #{pedido} saiu para entrega.' },
+    novo: { enabled: 'statusNew', message: 'messageNew', fallback: 'Olá {nome}! Recebemos seu pedido {pedido}.' },
+    aceito: { enabled: 'statusAccepted', message: 'messageAccepted', fallback: 'Olá {nome}! O restaurante aceitou seu pedido {pedido}.' },
+    aceita: { enabled: 'statusAccepted', message: 'messageAccepted', fallback: 'Olá {nome}! O restaurante aceitou seu pedido {pedido}.' },
+    preparando: { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido {pedido} está sendo preparado.' },
+    'em preparo': { enabled: 'statusPreparing', message: 'messagePreparing', fallback: 'Olá {nome}! Seu pedido {pedido} está sendo preparado.' },
+    pronto: { enabled: 'statusReady', message: 'messageReady', fallback: 'Olá {nome}! Seu pedido {pedido} está pronto.' },
+    'retirada disponivel': { enabled: 'statusPickupReady', message: 'messagePickupReady', fallback: 'Olá {nome}! Seu pedido {pedido} está pronto para retirada.' },
+    'em entrega': { enabled: 'statusOutForDelivery', message: 'messageOutForDelivery', fallback: 'Olá {nome}! Seu pedido {pedido} saiu para entrega.' },
+    'saiu para entrega': { enabled: 'statusOutForDelivery', message: 'messageOutForDelivery', fallback: 'Olá {nome}! Seu pedido {pedido} saiu para entrega.' },
     concluido: null,
-    entregue: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido #{pedido} foi entregue.' },
-    cancelado: { enabled: 'statusCanceled', message: 'messageCanceled', fallback: 'Olá {nome}, seu pedido #{pedido} foi cancelado. Entre em contato com o restaurante se precisar de ajuda.' }
+    entregue: { enabled: 'statusDelivered', message: 'messageDelivered', fallback: 'Olá {nome}! Seu pedido {pedido} foi entregue.' },
+    cancelado: { enabled: 'statusCanceled', message: 'messageCanceled', fallback: 'Olá {nome}, seu pedido {pedido} foi cancelado. Entre em contato com o restaurante se precisar de ajuda.' }
   }
   const setting = settings[key]
   if (setting === null) return null
   if (setting && config?.[setting.enabled] === false) return null
   const configuredMessage = setting?.message ? config?.[setting.message] : null
-  const fallback = setting?.fallback || `Olá {nome}! O status do seu pedido #{pedido} foi atualizado para: {status}.`
+  const fallback = setting?.fallback || `Olá {nome}! O status do seu pedido {pedido} foi atualizado para: {status}.`
   return {
     text: typeof configuredMessage === 'string' && configuredMessage.trim() ? configuredMessage.trim() : fallback
   }
@@ -732,7 +745,7 @@ async function buildOrderReceiptMessage(order) {
   const firstName = String(order.cliente_nome || 'cliente').trim().split(' ').filter(Boolean)[0]
   const restaurantName = restaurantResult.data?.nome || 'nosso restaurante'
   const lines = [
-    `Olá, ${firstName}! Recebemos seu pedido #${order.id} no *${restaurantName}*.`,
+    `Olá, ${firstName}! Recebemos seu pedido ${formatOrderCode(order.id, order.criado_em)} no *${restaurantName}*.`,
     '',
     '*Resumo do pedido*'
   ]
@@ -763,8 +776,8 @@ function formatOrderStatusMessage(template, order) {
   const values = {
     nome: firstName,
     cliente_nome: String(order.cliente_nome || 'cliente'),
-    pedido: String(order.id),
-    pedido_id: String(order.id),
+    pedido: formatOrderCode(order.id, order.criado_em),
+    pedido_id: formatOrderCode(order.id, order.criado_em),
     status: String(order.status || '')
   }
   let message = template
