@@ -14,7 +14,7 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://yfurhiyykn
 const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_Fl5ojNdUXqvYmreb6nVL5g_ZBRy93ky';
 const supabase = SUPABASE_URL && SUPABASE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+      auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: 'pkce' }
     })
   : null;
 
@@ -39,9 +39,6 @@ const dateTime = (value: string | null) => value
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [booting, setBooting] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -86,15 +83,6 @@ export default function App() {
       }).subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [restaurant, loadDashboard]);
-
-  const signIn = async () => {
-    if (!supabase) return;
-    if (!email.trim() || !password) { Alert.alert('Atenção', 'Informe seu e-mail e sua senha.'); return; }
-    setBusy(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setBusy(false);
-    if (authError) Alert.alert('Não foi possível entrar', authError.message);
-  };
 
   const signInWithGoogle = async () => {
     if (!supabase) return;
@@ -164,16 +152,9 @@ export default function App() {
         <Text style={styles.brand}>Fb3d2y <Text style={styles.brandAccent}>Menu</Text></Text>
         <Text style={styles.subtitle}>Seu restaurante na palma da mão.</Text>
         <View style={styles.loginCard}>
-          <Text style={styles.cardTitle}>Acessar sua conta</Text>
-          <Text style={styles.label}>E-mail</Text>
-          <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="seu@email.com" style={styles.input} />
-          <Text style={styles.label}>Senha</Text>
-          <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Sua senha" style={styles.input} onSubmitEditing={signIn} />
-          <Pressable style={[styles.primaryButton, busy && styles.disabled]} onPress={signIn} disabled={busy || googleBusy}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Entrar com e-mail</Text>}
-          </Pressable>
-          <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>OU</Text><View style={styles.dividerLine} /></View>
-          <Pressable style={[styles.googleButton, googleBusy && styles.disabled]} onPress={signInWithGoogle} disabled={busy || googleBusy}>
+          <Text style={styles.cardTitle}>Acesse sua conta</Text>
+          <Text style={styles.loginDescription}>Entre com a mesma conta Google que você usa no Fb3d2y Menu.</Text>
+          <Pressable style={[styles.googleButton, googleBusy && styles.disabled]} onPress={signInWithGoogle} disabled={googleBusy}>
             {googleBusy ? <ActivityIndicator color="#26343C" /> : <><Text style={styles.googleG}>G</Text><Text style={styles.googleButtonText}>Continuar com Google</Text></>}
           </Pressable>
           {!!error && <Text style={styles.error}>{error}</Text>}
@@ -251,9 +232,6 @@ const styles = StyleSheet.create({
   splashText: { color: '#52616B', fontSize: 15, fontWeight: '700' },
   loginWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 26 },
   brandLogo: { width: 112, height: 112, alignSelf: 'center', marginBottom: 18 },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 17 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#E8ECEF' },
-  dividerText: { color: '#A0A9AF', fontSize: 10, fontWeight: '800' },
   googleButton: { height: 52, borderRadius: 14, borderWidth: 1, borderColor: '#DCE2E6', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 11 },
   googleG: { color: '#4285F4', fontSize: 19, fontWeight: '900' },
   googleButtonText: { color: '#26343C', fontSize: 14, fontWeight: '800' },
@@ -263,11 +241,8 @@ const styles = StyleSheet.create({
   brandAccent: { color: '#E67E45' },
   subtitle: { color: '#7A8790', fontSize: 15, marginTop: 7, marginBottom: 34 },
   loginCard: { backgroundColor: '#fff', borderRadius: 22, padding: 22, borderWidth: 1, borderColor: '#E9EDF0' },
-  cardTitle: { fontSize: 19, fontWeight: '800', color: '#202D35', marginBottom: 22 },
-  label: { fontSize: 12, fontWeight: '800', color: '#596872', marginBottom: 8, marginTop: 5 },
-  input: { height: 51, borderRadius: 13, borderWidth: 1, borderColor: '#E2E8EC', paddingHorizontal: 14, fontSize: 15, color: '#1D2930', marginBottom: 13, backgroundColor: '#FBFCFD' },
-  primaryButton: { height: 52, backgroundColor: '#E67E45', borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 7 },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  cardTitle: { fontSize: 19, fontWeight: '800', color: '#202D35', marginBottom: 10 },
+  loginDescription: { color: '#7A8790', fontSize: 13, lineHeight: 20, marginBottom: 20 },
   disabled: { opacity: 0.65 },
   footer: { textAlign: 'center', color: '#A2ABB1', fontSize: 10, letterSpacing: 1.5, fontWeight: '800', marginTop: 34 },
   error: { color: '#B42318', fontSize: 12, marginTop: 12 },
