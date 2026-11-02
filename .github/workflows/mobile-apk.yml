@@ -42,7 +42,7 @@ jobs:
 
       - name: Garantir módulos nativos usados pelo app
         working-directory: mobile
-        run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech expo-print expo-sharing
+        run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech expo-print expo-sharing expo-file-system expo-intent-launcher
 
       - name: Gerar projeto Android nativo
         working-directory: mobile
@@ -63,7 +63,9 @@ jobs:
       - name: Ler versão do aplicativo
         id: app
         working-directory: mobile
-        run: echo "version=$(node -p \"require('./app.json').expo.version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(node -e "console.log(require('./app.json').expo.version)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publicar APK para atualização pelo aplicativo
         uses: softprops/action-gh-release@v2
