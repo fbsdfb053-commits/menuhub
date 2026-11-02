@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Platform,
   Pressable, RefreshControl, SafeAreaView, StatusBar, StyleSheet,
-  Text, TextInput, View
+  Text, View
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, Session } from '@supabase/supabase-js';
