@@ -13,10 +13,8 @@ Desenvolvimento local com Expo é gratuito. Builds EAS podem usar a cota gratuit
 5. Execute `npx expo start` para abrir a interface no ambiente de desenvolvimento.
 
 ## Gerar APK sem contratar serviços
-O repositório tem um workflow manual do GitHub Actions em `.github/workflows/mobile-apk.yml`. Como o repositório é público, ele usa runner Linux padrão sem custo. Antes de executar, cadastre em **Settings → Secrets and variables → Actions → Variables** estas duas variáveis de repositório:
-- `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+O repositório tem um workflow em `.github/workflows/mobile-apk.yml`. Ele compila em runner Linux padrão do GitHub Actions, gratuito para este repositório público. A configuração usa apenas a URL e a chave publishable do Supabase (chave pública própria para apps; nunca usar `service_role`). Não precisa criar conta Expo, informar cartão ou contratar serviço.
 
-Depois me avise que as variáveis foram salvas. Um novo commit na branch `app-android` dispara a compilação automaticamente. O APK de depuração ficará em Artifacts por 7 dias. O workflow não publica nada no site.
+Cada atualização em `mobile/` na branch `app-android` dispara a compilação. O APK de depuração fica disponível em Artifacts por 7 dias. O workflow não publica nada no site.
 
 A chave publishable/anon pode estar no cliente; nunca adicionar service_role ou secret key.
