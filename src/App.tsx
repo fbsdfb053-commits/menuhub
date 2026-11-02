@@ -102,7 +102,7 @@ function formatPrice(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-// Código público estável: mantém o ID sequencial apenas no painel interno.
+// Código único e estável da nota, compartilhado pelo site, app e WhatsApp.
 function formatPublicOrderCode(id: number, createdAt: string | Date) {
   const date = new Date(createdAt)
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -894,7 +894,7 @@ function SalesReport({orders,onRefresh}:{orders:AdminOrder[];onRefresh:()=>void}
   const maxDay = Math.max(1,...days.map(day=>day.total))
   const statuses = ['Novo','Preparando','Pronto','Concluído']
   const exportCsv = () => {
-    const rows = [['Pedido','Data','Cliente','Tipo','Status','Total'],...periodOrders.map(order=>[String(order.id),new Date(order.criado_em).toLocaleString('pt-BR'),order.cliente_nome,order.tipo_entrega,order.status,Number(order.total).toFixed(2).replace('.',',')])]
+    const rows = [['Pedido','Data','Cliente','Tipo','Status','Total'],...periodOrders.map(order=>[formatPublicOrderCode(order.id,order.criado_em),new Date(order.criado_em).toLocaleString('pt-BR'),order.cliente_nome,order.tipo_entrega,order.status,Number(order.total).toFixed(2).replace('.',',')])]
     const csv = '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n')
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}))
     const link=document.createElement('a');link.href=url;link.download='relatorio-vendas-'+period+'-dias.csv';link.click();URL.revokeObjectURL(url)
