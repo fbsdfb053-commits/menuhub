@@ -17,6 +17,6 @@ O repositório tem um workflow manual do GitHub Actions em `.github/workflows/mo
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-Depois abra **Actions → Build Fb3d2y Menu APK → Run workflow**. O APK de depuração ficará em Artifacts por 7 dias. O workflow só roda quando acionado manualmente e não publica nada no site.
+Depois me avise que as variáveis foram salvas. Um novo commit na branch `app-android` dispara a compilação automaticamente. O APK de depuração ficará em Artifacts por 7 dias. O workflow não publica nada no site.
 
 A chave publishable/anon pode estar no cliente; nunca adicionar service_role ou secret key.
