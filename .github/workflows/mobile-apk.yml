@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   android-apk:
-    if: ${{ vars.EXPO_PUBLIC_SUPABASE_URL != '' && vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY != '' }}
     name: Gerar APK Android
     runs-on: ubuntu-24.04
     timeout-minutes: 45
