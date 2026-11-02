@@ -89,6 +89,22 @@ export default function App() {
 
   const signOut = async () => { await supabase?.auth.signOut(); setRestaurant(null); setOrders([]); };
 
+  const changeOrderStatus = async (order: Order, nextStatus: string) => {
+    if (!supabase) return;
+    const { error: updateError } = await supabase.from('pedidos').update({ status: nextStatus }).eq('id', order.id);
+    if (updateError) { Alert.alert('Não foi possível atualizar', updateError.message); return; }
+    setOrders(current => current.map(item => item.id === order.id ? { ...item, status: nextStatus } : item));
+  };
+
+  const nextStatusFor = (order: Order): string | null => {
+    const status = (order.status ?? '').toLocaleLowerCase('pt-BR');
+    if (status === 'novo' || status === 'recebido') return 'Preparando';
+    if (status === 'preparando') return 'Pronto';
+    if (status === 'pronto') return order.tipo_entrega === 'Entrega' ? 'Em entrega' : 'Retirada disponível';
+    if (status === 'em entrega' || status === 'retirada disponível') return 'Concluído';
+    return null;
+  };
+
   const refresh = async () => {
     setRefreshing(true); await loadDashboard(); setRefreshing(false);
   };
@@ -103,7 +119,7 @@ export default function App() {
   if (booting) return <Splash />;
   if (!session) return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F7F8FA" />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView style={styles.loginWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.brandMark}><Text style={styles.brandMarkText}>F</Text></View>
         <Text style={styles.brand}>Fb3d2y <Text style={styles.brandAccent}>Menu</Text></Text>
@@ -161,6 +177,16 @@ export default function App() {
               <View style={styles.orderBottom}><Text style={styles.orderMeta}>{item.tipo_entrega} · {item.forma_pagamento}</Text><Text style={styles.orderTotal}>{money(Number(item.total))}</Text></View>
               <View style={styles.statusPill}><Text style={styles.statusText}>{item.status ?? 'Sem status'}</Text></View>
               {!!item.observacoes && <Text style={styles.notes}>Obs.: {item.observacoes}</Text>}
+              {nextStatusFor(item) && (
+                <Pressable style={styles.advanceButton} onPress={() => void changeOrderStatus(item, nextStatusFor(item)!)}>
+                  <Text style={styles.advanceButtonText}>{nextStatusFor(item) === 'Preparando' ? 'Aceitar e preparar' : nextStatusFor(item) === 'Pronto' ? 'Marcar como pronto' : nextStatusFor(item) === 'Em entrega' ? 'Saiu para entrega' : nextStatusFor(item) === 'Retirada disponível' ? 'Liberar para retirada' : 'Finalizar pedido'}</Text>
+                </Pressable>
+              )}
+              {!['Concluído','Cancelado'].includes(item.status ?? '') && (
+                <Pressable style={styles.cancelButton} onPress={() => Alert.alert('Cancelar pedido?', 'Essa alteração será registrada no sistema.', [{ text: 'Voltar', style: 'cancel' }, { text: 'Cancelar pedido', style: 'destructive', onPress: () => void changeOrderStatus(item, 'Cancelado') }])}>
+                  <Text style={styles.cancelButtonText}>Cancelar pedido</Text>
+                </Pressable>
+              )}
             </View>
           )}
         />
@@ -226,6 +252,10 @@ const styles = StyleSheet.create({
   orderTotal: { color: '#C76535', fontSize: 16, fontWeight: '900' },
   statusPill: { alignSelf: 'flex-start', backgroundColor: '#FFF1E8', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 6, marginTop: 11 },
   statusText: { color: '#B65B31', fontSize: 10, fontWeight: '900' },
+  advanceButton: { backgroundColor: '#20333B', borderRadius: 12, minHeight: 43, alignItems: 'center', justifyContent: 'center', marginTop: 13 },
+  advanceButtonText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  cancelButton: { alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 9, marginTop: 2 },
+  cancelButtonText: { color: '#A65A50', fontSize: 10, fontWeight: '800' },
   notes: { color: '#7C878D', fontSize: 11, marginTop: 9 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyIcon: { fontSize: 38, marginBottom: 13 },
