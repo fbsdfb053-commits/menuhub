@@ -2,13 +2,13 @@
   "expo": {
     "name": "Fb3d2y Menu",
     "slug": "fb3d2y-menu",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "fb3d2ymenu",
     "android": {
       "package": "com.fb3d2y.menu",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "INTERNET",
         "VIBRATE"
