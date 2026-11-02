@@ -75,6 +75,8 @@ function AppContent() {
 
   useEffect(() => { void AsyncStorage.getItem('fb3d2y-paper-width').then(v=>{if(v==='58'||v==='80')setPaperWidth(v);}); }, []);
 
+  useEffect(() => { void AsyncStorage.getItem('fb3d2y-paper-width').then(v=>{if(v==='58'||v==='80')setPaperWidth(v);}); }, []);
+
   useEffect(() => {
     if (!supabase) { setBooting(false); setError('Configure as variáveis do Supabase no arquivo .env.'); return; }
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setBooting(false); });
