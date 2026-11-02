@@ -17,9 +17,6 @@ jobs:
     name: Gerar APK Android
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    env:
-      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
@@ -44,13 +41,6 @@ jobs:
       - name: Instalar dependências
         working-directory: mobile
         run: npm install
-
-      - name: Conferir configuração do Supabase
-        run: |
-          if [ -z "$EXPO_PUBLIC_SUPABASE_URL" ] || [ -z "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" ]; then
-            echo "::error::Configure as variáveis EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY nas configurações do repositório."
-            exit 1
-          fi
 
       - name: Gerar projeto Android nativo
         working-directory: mobile
