@@ -17,10 +17,11 @@ const supabase = SUPABASE_URL && SUPABASE_KEY
   : null;
 
 type Restaurant = { id: number; nome: string; slug: string; aceita_pedidos: boolean; status_loja_manual: boolean | null };
+type OrderLine = { id: number; nome_produto: string | null; quantidade: number; preco_unitario: number };
 type Order = {
   id: number; cliente_nome: string; total: number; status: string | null;
   tipo_entrega: string; forma_pagamento: string; taxa_entrega: number;
-  criado_em: string | null; observacoes: string | null;
+  criado_em: string | null; observacoes: string | null; itens_pedido?: OrderLine[];
 };
 
 const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -59,7 +60,7 @@ export default function App() {
     if (!chosen) { setOrders([]); return; }
     const { data, error: ordersError } = await supabase
       .from('pedidos')
-      .select('id,cliente_nome,total,status,tipo_entrega,forma_pagamento,taxa_entrega,criado_em,observacoes')
+      .select('id,cliente_nome,total,status,tipo_entrega,forma_pagamento,taxa_entrega,criado_em,observacoes,itens_pedido(id,nome_produto,quantidade,preco_unitario)')
       .eq('empresa_id', chosen.id)
       .order('criado_em', { ascending: false })
       .limit(30);
@@ -109,7 +110,7 @@ export default function App() {
     setRefreshing(true); await loadDashboard(); setRefreshing(false);
   };
 
-  const pending = useMemo(() => orders.filter(o => ['Novo', 'Recebido', 'Pendente'].includes(o.status ?? '')).length, [orders]);
+  const pending = useMemo(() => orders.filter(o => ['novo', 'recebido', 'pendente'].includes((o.status ?? '').toLocaleLowerCase('pt-BR'))).length, [orders]);
   const todayTotal = useMemo(() => {
     const today = new Date().toDateString();
     return orders.filter(o => o.criado_em && new Date(o.criado_em).toDateString() === today)
@@ -174,7 +175,8 @@ export default function App() {
             <View style={styles.orderCard}>
               <View style={styles.orderTop}><Text style={styles.orderId}>Pedido #{item.id}</Text><Text style={styles.orderDate}>{dateTime(item.criado_em)}</Text></View>
               <Text style={styles.customer}>{item.cliente_nome}</Text>
-              <View style={styles.orderBottom}><Text style={styles.orderMeta}>{item.tipo_entrega} · {item.forma_pagamento}</Text><Text style={styles.orderTotal}>{money(Number(item.total))}</Text></View>
+              {!!item.itens_pedido?.length && <View style={styles.orderItems}>{item.itens_pedido.map(line => <Text key={line.id} style={styles.orderItemText}>{line.quantidade}× {line.nome_produto ?? 'Produto'}</Text>)}</View>}
+              <View style={styles.orderBottom}><Text style={styles.orderMeta}>{item.tipo_entrega} · {item.forma_pagamento}{Number(item.taxa_entrega) > 0 ? ' · Entrega ' + money(Number(item.taxa_entrega)) : ''}</Text><Text style={styles.orderTotal}>{money(Number(item.total))}</Text></View>
               <View style={styles.statusPill}><Text style={styles.statusText}>{item.status ?? 'Sem status'}</Text></View>
               {!!item.observacoes && <Text style={styles.notes}>Obs.: {item.observacoes}</Text>}
               {nextStatusFor(item) && (
@@ -247,6 +249,8 @@ const styles = StyleSheet.create({
   orderId: { color: '#263740', fontWeight: '900', fontSize: 13 },
   orderDate: { color: '#9AA4AA', fontSize: 10, fontWeight: '700' },
   customer: { color: '#26343C', fontSize: 17, fontWeight: '800', marginTop: 10 },
+  orderItems: { marginTop: 9, gap: 4 },
+  orderItemText: { color: '#66747C', fontSize: 12, lineHeight: 17 },
   orderBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 11 },
   orderMeta: { color: '#89949B', fontSize: 11, flex: 1 },
   orderTotal: { color: '#C76535', fontSize: 16, fontWeight: '900' },
