@@ -26,7 +26,7 @@ const supabase = SUPABASE_URL && SUPABASE_KEY
 type OpeningDay = { closed: boolean; open: string; close: string };
 type Restaurant = { id: number; nome: string; slug: string; aceita_pedidos: boolean; status_loja_manual: boolean | null; horario_funcionamento?: Record<string, OpeningDay> | null };
 type OrderLine = { id: number; nome_produto: string | null; quantidade: number; preco_unitario: number };
-type Product = { id:number; nome:string; descricao:string|null; preco:number; disponivel:boolean|null; categoria_id:number|null };
+type Product = { id:number; nome:string; descricao:string|null; preco:number; disponivel:boolean|null; categoria_id:number|null; imagem_url?:string|null };
 type Category = { id:number; nome:string; ordem:number };
 type Order = {
   id: number; cliente_nome: string; total: number; status: string | null;
@@ -95,7 +95,7 @@ function AppContent() {
     setRestaurant(chosen ?? null);
     if (!chosen) { setOrders([]); setProducts([]); setCategories([]); return; }
     const [{data:productRows,error:productError},{data:categoryRows,error:categoryError}] = await Promise.all([
-      supabase.from('produtos').select('id,nome,descricao,preco,disponivel,categoria_id').eq('empresa_id',chosen.id).order('ordem'),
+      supabase.from('produtos').select('id,nome,descricao,preco,disponivel,categoria_id,imagem_url').eq('empresa_id',chosen.id).order('ordem'),
       supabase.from('categorias').select('id,nome,ordem').eq('empresa_id',chosen.id).order('ordem')
     ]);
     if(productError) setError(productError.message); else setProducts((productRows??[]) as Product[]);
