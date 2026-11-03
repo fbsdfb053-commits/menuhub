@@ -42,7 +42,7 @@ jobs:
 
       - name: Garantir módulos nativos usados pelo app
         working-directory: mobile
-        run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech expo-print expo-sharing expo-file-system expo-intent-launcher expo-av
+        run: npx expo install react-native-safe-area-context expo-keep-awake expo-speech expo-print expo-sharing expo-file-system expo-intent-launcher expo-audio
 
       - name: Verificar TypeScript
         working-directory: mobile
