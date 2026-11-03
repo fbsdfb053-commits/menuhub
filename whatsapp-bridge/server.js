@@ -889,7 +889,7 @@ function startOrderStatusRealtime() {
     if (polling) return
     polling = true
     try {
-      const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+      const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
       const { data: recentOrders, error: ordersError } = await admin
         .from('pedidos')
         .select('*')
