@@ -40,7 +40,7 @@ type Order = {
 
 const StatusBarCompat = StatusBar as any;
 WebBrowser.maybeCompleteAuthSession();
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 const UPDATED_AT = '02/11/2026';
 function formatOrderCode(id:number,createdAt:string|null){const date=createdAt?new Date(createdAt):new Date();const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'short'}).formatToParts(date);const day=parts.find(p=>p.type==='day')?.value??'01';const month=(parts.find(p=>p.type==='month')?.value??'jan').toLowerCase();let hash=(Number(id)^0x9e3779b9)>>>0;hash=Math.imul(hash^(hash>>>16),0x7feb352d);hash=Math.imul(hash^(hash>>>15),0x846ca68b);hash=(hash^(hash>>>16))>>>0;const suffix=(hash%46656).toString(36).toLowerCase().padStart(3,'0');return 'D'+day+month+'-'+suffix;}
 const GOOGLE_REDIRECT = 'fb3d2ymenu://auth/callback';
@@ -74,6 +74,14 @@ function AppContent() {
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [darkMode,setDarkMode]=useState(false);
   const [detailOrder,setDetailOrder]=useState<Order|null>(null);
+  const [editingOrder,setEditingOrder]=useState<Order|null>(null);
+  const [editOrderName,setEditOrderName]=useState('');
+  const [editOrderPhone,setEditOrderPhone]=useState('');
+  const [editOrderAddress,setEditOrderAddress]=useState('');
+  const [editOrderType,setEditOrderType]=useState('Retirada');
+  const [editOrderPayment,setEditOrderPayment]=useState('Pix');
+  const [editOrderNotes,setEditOrderNotes]=useState('');
+  const [orderEditBusy,setOrderEditBusy]=useState(false);
   const [restaurantEditOpen,setRestaurantEditOpen]=useState(false);
   const [counterOpen,setCounterOpen]=useState(false);
   const [counterName,setCounterName]=useState('');
@@ -239,6 +247,24 @@ function AppContent() {
   };
 
   const signOut = async () => { setSettingsOpen(false); await supabase?.auth.signOut(); setRestaurant(null); setOrders([]); setProducts([]); setCategories([]); };
+  const toggleRestaurantOpen = async () => {
+    if (!supabase || !restaurant) return;
+    const nextOpen = !(restaurant.status_loja_manual === true || (restaurant.status_loja_manual === null && restaurant.aceita_pedidos));
+    const { error: updateError } = await supabase.from('empresas').update({ status_loja_manual: nextOpen, aceita_pedidos: nextOpen }).eq('id', restaurant.id);
+    if (updateError) { Alert.alert('Não foi possível alterar a loja', updateError.message); return; }
+    setRestaurant({ ...restaurant, status_loja_manual: nextOpen, aceita_pedidos: nextOpen });
+  };
+  const openOrderEditor = (order:Order) => { setEditingOrder(order); setEditOrderName(order.cliente_nome||''); setEditOrderPhone(order.cliente_whatsapp||''); setEditOrderAddress(order.endereco_entrega||''); setEditOrderType(order.tipo_entrega||'Retirada'); setEditOrderPayment(order.forma_pagamento||'Pix'); setEditOrderNotes(order.observacoes||''); };
+  const saveOrderEdit = async () => {
+    if (!supabase || !editingOrder || !editOrderName.trim()) { Alert.alert('Confira o pedido','Informe o nome do cliente.'); return; }
+    setOrderEditBusy(true);
+    const { error: updateError } = await supabase.from('pedidos').update({ cliente_nome: editOrderName.trim(), cliente_whatsapp: editOrderPhone.trim() || null, endereco_entrega: editOrderAddress.trim() || null, tipo_entrega: editOrderType, forma_pagamento: editOrderPayment, observacoes: editOrderNotes.trim() || null }).eq('id', editingOrder.id);
+    setOrderEditBusy(false);
+    if (updateError) { Alert.alert('Não foi possível salvar', updateError.message); return; }
+    setOrders(list=>list.map(o=>o.id===editingOrder.id?{...o,cliente_nome:editOrderName.trim(),cliente_whatsapp:editOrderPhone.trim()||null,endereco_entrega:editOrderAddress.trim()||null,tipo_entrega:editOrderType,forma_pagamento:editOrderPayment,observacoes:editOrderNotes.trim()||null}:o));
+    setEditingOrder(null); Alert.alert('Pedido atualizado','As alterações foram salvas.');
+  };
+  const shareOrder = async (order:Order) => { const lines=(order.itens_pedido??[]).map(i=>`${i.quantidade}x ${i.nome_produto||'Produto'}`).join('\\n'); const message=`Pedido ${formatOrderCode(order.id,order.criado_em)}\\n${order.cliente_nome}\\n${lines}\\nTotal: ${money(Number(order.total))}`; try { await Share.share({message}); } catch { Alert.alert('Compartilhar pedido',message); } };
   const toggleKeepAwake = async () => {
     try {
       if (keepAwake) { deactivateKeepAwake('fb3d2y-menu'); setKeepAwake(false); }
@@ -249,7 +275,7 @@ function AppContent() {
   const testAudio = () => {
     setSettingsOpen(false);
     Speech.stop();
-    Speech.speak('Teste de áudio do Fb3d2y Menu. Tudo certo!', { language: 'pt-BR', rate: 0.95 });
+    void Linking.openURL('https://raw.githubusercontent.com/fbsdfb053-commits/menuhub/app-android/public/freesound_community-friend-request-14878.mp3').catch(() => Alert.alert('Áudio indisponível','Não foi possível reproduzir o som configurado.'));
   };
   const createCounterOrder=async()=>{if(!supabase||!restaurant)return;const chosen=products.filter(p=>(counterQty[p.id]??0)>0&&p.disponivel);if(!chosen.length){Alert.alert('Pedido vazio','Adicione pelo menos um produto.');return;}if(counterType==='Entrega'&&counterAddress.trim().length<5){Alert.alert('Endereço necessário','Informe o endereço para entrega.');return;}setCounterBusy(true);try{const payload=chosen.map(p=>({produto_id:p.id,quantidade:counterQty[p.id]}));const {data,error:e}=await supabase.rpc('criar_pedido_balcao',{p_empresa_id:restaurant.id,p_nome:counterName.trim()||'Cliente balcão',p_whatsapp:counterPhone.trim(),p_tipo_entrega:counterType,p_endereco:counterAddress.trim(),p_forma_pagamento:counterPayment,p_itens:payload});if(e)throw e;setCounterOpen(false);setCounterName('');setCounterPhone('');setCounterAddress('');setCounterType('Retirada');setCounterPayment('Dinheiro');setCounterQty({});await loadDashboard();Alert.alert('Pedido registrado','Pedido '+formatOrderCode(Number(data),new Date().toISOString())+' registrado com sucesso.');setTab('pedidos');}catch(e){Alert.alert('Não foi possível registrar',e instanceof Error?e.message:'Tente novamente.');}finally{setCounterBusy(false);}};
   const menuUrl = restaurant ? 'https://fb3d2ymenu.com.br/menu/' + encodeURIComponent(restaurant.slug) : 'https://fb3d2ymenu.com.br';
@@ -334,7 +360,7 @@ function AppContent() {
   );
 
   return (
-    <SafeAreaView style={[styles.safe,darkMode&&{backgroundColor:'#1B222C'}]}>
+    <SafeAreaView style={[styles.safe,darkMode&&{backgroundColor:'#1B222C'}]} edges={['top','bottom']}>
       <StatusBarCompat barStyle={darkMode?"light-content":"dark-content"} backgroundColor={darkMode?"#15191D":"#F7F8FA"} translucent={false} />
       <View style={[styles.header,darkMode&&styles.darkHeader]}>
         <View><Text style={styles.eyebrow}>PAINEL DO RESTAURANTE</Text><Text style={[styles.headerTitle,darkMode&&styles.darkText]}>{tab==='inicio'?'Visão geral':tab==='pedidos'?'Pedidos':tab==='cardapio'?'Cardápio':'Relatórios'}</Text></View>
@@ -358,8 +384,8 @@ function AppContent() {
             <View>
               <View style={[styles.restaurantCard,styles.restaurantCardCompact,darkMode&&styles.darkCard]}>
                 <View style={styles.restaurantTop}><View style={styles.liveDot} /><Text style={styles.restaurantLabel}>{restaurant.aceita_pedidos ? 'RESTAURANTE CONECTADO' : 'PEDIDOS PAUSADOS'}</Text></View>
-                <Text style={[styles.restaurantName,darkMode&&styles.darkText]}>{restaurant.nome}</Text>
-                <Text style={[styles.restaurantSlug,darkMode&&styles.darkMuted]}>/{restaurant.slug}</Text>
+                <View style={styles.restaurantNameRow}><Text style={[styles.restaurantName,darkMode&&styles.darkText]} numberOfLines={1}>{restaurant.nome}</Text><Pressable onPress={()=>void toggleRestaurantOpen()} style={[styles.storeSwitch,restaurant.aceita_pedidos&&styles.storeSwitchOn]} accessibilityLabel={restaurant.aceita_pedidos?'Fechar loja':'Abrir loja'}><View style={[styles.storeSwitchKnob,restaurant.aceita_pedidos&&styles.storeSwitchKnobOn]}/></Pressable></View>
+                <Text style={[styles.restaurantSlug,darkMode&&styles.darkMuted]}>{restaurant.aceita_pedidos?'Loja aberta':'Loja fechada'} · /{restaurant.slug}</Text>
               </View>
               <View style={styles.statsRow}>
                 <View style={styles.statCard}><Text style={styles.statLabel}>PEDIDOS RECENTES</Text><Text style={styles.statValue}>{orders.length}</Text></View>
@@ -384,16 +410,12 @@ function AppContent() {
               <View style={styles.statusPill}><Text style={styles.statusText}>{item.status ?? 'Sem status'}</Text></View>
               <Pressable style={styles.pdfButton} onPress={()=>void exportOrderPdf(item)}><Text style={styles.pdfButtonText}>↓ Exportar comanda em PDF</Text></Pressable>
               {!!item.observacoes && <Text style={styles.notes}>Obs.: {item.observacoes}</Text>}
-              {nextStatusFor(item) && (
-                <Pressable style={styles.advanceButton} onPress={() => void changeOrderStatus(item, nextStatusFor(item)!)}>
-                  <Text style={styles.advanceButtonText}>{nextStatusFor(item) === 'Preparando' ? 'Aceitar e preparar' : nextStatusFor(item) === 'Pronto' ? 'Marcar como pronto' : nextStatusFor(item) === 'Em entrega' ? 'Saiu para entrega' : nextStatusFor(item) === 'Retirada disponível' ? 'Liberar para retirada' : 'Finalizar pedido'}</Text>
-                </Pressable>
-              )}
-              {!['Concluído','Cancelado'].includes(item.status ?? '') && (
-                <Pressable style={styles.cancelButton} onPress={() => Alert.alert('Cancelar pedido?', 'Essa alteração será registrada no sistema.', [{ text: 'Voltar', style: 'cancel' }, { text: 'Cancelar pedido', style: 'destructive', onPress: () => void changeOrderStatus(item, 'Cancelado') }])}>
-                  <Text style={styles.cancelButtonText}>Cancelar pedido</Text>
-                </Pressable>
-              )}
+              <View style={styles.orderActions}>
+                <Pressable style={styles.orderIconButton} onPress={()=>void shareOrder(item)} accessibilityLabel="Compartilhar pedido"><Text style={styles.orderActionIcon}>↗</Text></Pressable>
+                {!['Concluído','Cancelado'].includes(item.status ?? '') && <Pressable style={styles.orderIconButton} onPress={() => Alert.alert('Cancelar pedido?', 'Essa alteração será registrada no sistema.', [{ text: 'Voltar', style: 'cancel' }, { text: 'Cancelar', style: 'destructive', onPress: () => void changeOrderStatus(item, 'Cancelado') }])} accessibilityLabel="Cancelar pedido"><Text style={[styles.orderActionIcon,{color:'#C45A50'}>×</Text></Pressable>}
+                <Pressable style={styles.orderIconButton} onPress={()=>openOrderEditor(item)} accessibilityLabel="Editar pedido"><Text style={styles.orderActionIcon}>✎</Text></Pressable>
+                {nextStatusFor(item) && <Pressable style={[styles.advanceButton,styles.advanceButtonInline]} onPress={() => void changeOrderStatus(item, nextStatusFor(item)!)}><Text style={styles.advanceButtonText}>{nextStatusFor(item) === 'Preparando' ? 'Aceitar e preparar' : nextStatusFor(item) === 'Pronto' ? 'Marcar como pronto' : nextStatusFor(item) === 'Em entrega' ? 'Saiu para entrega' : nextStatusFor(item) === 'Retirada disponível' ? 'Liberar para retirada' : 'Finalizar pedido'}</Text></Pressable>}
+              </View>
             </Pressable>
           )}
         />}
@@ -429,6 +451,7 @@ function AppContent() {
             </Pressable>
           </Pressable>
         </Modal>
+        <Modal visible={editingOrder!==null} transparent animationType="slide" onRequestClose={()=>setEditingOrder(null)}><View style={styles.modalShade}><View style={[styles.modalCard,{maxHeight:'92%'},darkMode&&styles.darkPanel]}><ScrollView keyboardShouldPersistTaps="handled"><Text style={[styles.sectionTitle,darkMode&&styles.darkText]}>Editar pedido</Text><Text style={styles.orderMeta}>Atualize os dados antes de salvar.</Text><TextInput value={editOrderName} onChangeText={setEditOrderName} placeholder="Nome do cliente" style={styles.input}/><TextInput value={editOrderPhone} onChangeText={setEditOrderPhone} placeholder="WhatsApp" keyboardType="phone-pad" style={styles.input}/><Text style={styles.settingsGroup}>TIPO DE PEDIDO</Text><View style={{flexDirection:'row',gap:8}}>{(['Retirada','Entrega'] as const).map(v=><Pressable key={v} style={[styles.choiceChip,editOrderType===v&&styles.choiceChipActive]} onPress={()=>setEditOrderType(v)}><Text style={[styles.choiceChipText,editOrderType===v&&styles.choiceChipTextActive]}>{v}</Text></Pressable>)}</View>{editOrderType==='Entrega'&&<TextInput value={editOrderAddress} onChangeText={setEditOrderAddress} placeholder="Endereço de entrega" style={styles.input}/>}<Text style={styles.settingsGroup}>PAGAMENTO</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{['Pix','Dinheiro','Cartão de débito','Cartão de crédito','A combinar'].map(v=><Pressable key={v} style={[styles.choiceChip,editOrderPayment===v&&styles.choiceChipActive]} onPress={()=>setEditOrderPayment(v)}><Text style={[styles.choiceChipText,editOrderPayment===v&&styles.choiceChipTextActive]}>{v}</Text></Pressable>)}</View><TextInput value={editOrderNotes} onChangeText={setEditOrderNotes} placeholder="Observações" multiline style={[styles.input,{minHeight:72,textAlignVertical:'top'}]}/><Pressable style={styles.advanceButton} disabled={orderEditBusy} onPress={()=>void saveOrderEdit()}><Text style={styles.advanceButtonText}>{orderEditBusy?'Salvando...':'Salvar alterações'}</Text></Pressable><Pressable style={styles.cancelButton} onPress={()=>setEditingOrder(null)}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable></ScrollView></View></View></Modal>
         <Modal visible={categoryModal} transparent animationType="slide" onRequestClose={()=>setCategoryModal(false)}><View style={styles.modalShade}><View style={[styles.modalCard,darkMode&&styles.darkPanel]}><Text style={styles.sectionTitle}>{editingCategory?'Editar categoria':'Nova categoria'}</Text><TextInput style={styles.input} value={categoryDraft} onChangeText={setCategoryDraft} placeholder="Nome da categoria"/><Pressable style={styles.advanceButton} onPress={()=>void saveCategory()}><Text style={styles.advanceButtonText}>Salvar categoria</Text></Pressable>{editingCategory&&<Pressable style={styles.cancelButton} onPress={()=>deleteCategory(editingCategory)}><Text style={styles.cancelButtonText}>Excluir categoria</Text></Pressable>}<Pressable style={styles.cancelButton} onPress={()=>setCategoryModal(false)}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable></View></View></Modal>
         <Modal visible={complementsModal} transparent animationType="slide" onRequestClose={()=>setComplementsModal(false)}><View style={styles.modalShade}><View style={[styles.modalCard,{maxHeight:'90%'},darkMode&&styles.darkPanel]}><Text style={styles.sectionTitle}>Complementos do cardápio</Text><Text style={styles.orderMeta}>Crie grupos e opções com preço adicional. Selecione um grupo para administrar as opções.</Text><TextInput style={styles.input} value={groupDraft} onChangeText={setGroupDraft} placeholder="Novo grupo (ex.: Escolha o molho)"/><Pressable style={styles.advanceButton} onPress={()=>void saveGroup()}><Text style={styles.advanceButtonText}>Criar grupo</Text></Pressable><ScrollView>{groups.map(g=><View key={g.id} style={{paddingVertical:9,borderBottomWidth:1,borderColor:'#E6E9EC'}}><View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Pressable style={{flex:1}} onPress={()=>setSelectedGroup(g.id)}><Text style={[styles.customer,darkMode&&styles.darkText]}>{selectedGroup===g.id?'▾':'▸'} {g.nome}</Text></Pressable><Pressable onPress={()=>deleteGroup(g)}><Text style={styles.cancelButtonText}>Excluir</Text></Pressable></View>{selectedGroup===g.id&&<View style={{gap:8,marginTop:8}}>{options.filter(o=>o.grupo_id===g.id).map(o=><View key={o.id} style={{flexDirection:'row',justifyContent:'space-between'}}><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{o.nome} · +{money(Number(o.preco_adicional))}</Text><Pressable onPress={()=>deleteOption(o)}><Text style={styles.cancelButtonText}>Remover</Text></Pressable></View>)}<TextInput style={styles.input} value={optionDraft} onChangeText={setOptionDraft} placeholder="Nome da opção"/><TextInput style={styles.input} value={optionPriceDraft} onChangeText={setOptionPriceDraft} keyboardType="decimal-pad" placeholder="Preço adicional"/><Pressable style={styles.secondaryButton} onPress={()=>void saveOption()}><Text style={styles.secondaryButtonText}>Adicionar opção</Text></Pressable></View>}</View>)}</ScrollView><Pressable style={styles.cancelButton} onPress={()=>setComplementsModal(false)}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable></View></View></Modal>
         <Modal visible={counterOpen} transparent animationType="slide" onRequestClose={()=>setCounterOpen(false)}><View style={styles.modalShade}><View style={[styles.modalCard,{maxHeight:'94%'},darkMode&&styles.darkPanel]}><ScrollView keyboardShouldPersistTaps="handled"><Text style={styles.sectionTitle}>Novo pedido de balcão</Text><Text style={styles.orderMeta}>Registre uma venda presencial sem depender do cardápio público.</Text><TextInput style={styles.input} value={counterName} onChangeText={setCounterName} placeholder="Nome do cliente (opcional)"/><TextInput style={styles.input} value={counterPhone} onChangeText={setCounterPhone} placeholder="Telefone (opcional)" keyboardType="phone-pad"/><Text style={styles.settingsGroup}>TIPO DE PEDIDO</Text><View style={{flexDirection:'row',gap:8}}>{(['Retirada','Entrega'] as const).map(v=><Pressable key={v} style={[styles.choiceChip,counterType===v&&styles.choiceChipActive]} onPress={()=>setCounterType(v)}><Text style={[styles.choiceChipText,counterType===v&&styles.choiceChipTextActive]}>{v}</Text></Pressable>)}</View>{counterType==='Entrega'&&<TextInput style={styles.input} value={counterAddress} onChangeText={setCounterAddress} placeholder="Endereço completo"/>}<Text style={styles.settingsGroup}>PAGAMENTO</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{['Dinheiro','Pix','Cartão de débito','Cartão de crédito','A combinar'].map(v=><Pressable key={v} style={[styles.choiceChip,counterPayment===v&&styles.choiceChipActive]} onPress={()=>setCounterPayment(v)}><Text style={[styles.choiceChipText,counterPayment===v&&styles.choiceChipActive&&styles.choiceChipTextActive]}>{v}</Text></Pressable>)}</View><Text style={styles.settingsGroup}>PRODUTOS</Text>{products.filter(p=>p.disponivel).map(p=><View key={p.id} style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:9,borderBottomWidth:1,borderBottomColor:darkMode?'#3A4146':'#EDF0F2'}}><View style={{flex:1}}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>{p.nome}</Text><Text style={styles.orderMeta}>{money(Number(p.preco))}</Text></View><View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable onPress={()=>setCounterQty(q=>({...q,[p.id]:Math.max(0,(q[p.id]??0)-1)}))}><Text style={styles.orderTotal}>−</Text></Pressable><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>{counterQty[p.id]??0}</Text><Pressable onPress={()=>setCounterQty(q=>({...q,[p.id]:(q[p.id]??0)+1}))}><Text style={styles.orderTotal}>＋</Text></Pressable></View></View>)}<View style={styles.orderBottom}><Text style={styles.sectionTitle}>TOTAL</Text><Text style={styles.orderTotal}>{money(products.reduce((sum,p)=>sum+Number(p.preco)*(counterQty[p.id]??0),0))}</Text></View><Pressable style={[styles.advanceButton,counterBusy&&{opacity:.6}]} disabled={counterBusy} onPress={()=>void createCounterOrder()}><Text style={styles.advanceButtonText}>{counterBusy?'Registrando...':'Registrar pedido'}</Text></Pressable><Pressable style={styles.cancelButton} onPress={()=>setCounterOpen(false)}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable></ScrollView></View></View></Modal>
@@ -475,7 +498,7 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#1D2930', fontSize: 27, fontWeight: '900', marginTop: 4 },
   avatar: { width: 43, height: 43, borderRadius: 15, backgroundColor: '#FCE9DE', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#C96332', fontWeight: '900', fontSize: 19 },
-  settingsShade:{flex:1,backgroundColor:'rgba(15,25,30,.38)',alignItems:'flex-end',paddingTop:54,paddingRight:14},
+  settingsShade:{flex:1,backgroundColor:'rgba(15,25,30,.38)',alignItems:'flex-end',paddingTop:54,paddingRight:14,paddingBottom:Platform.OS==='android'?24:0},
   settingsPanel:{width:'92%',maxWidth:390,backgroundColor:'#fff',borderRadius:22,padding:18,elevation:12,shadowColor:'#000',shadowOpacity:.18,shadowRadius:18,shadowOffset:{width:0,height:8}},
   settingsHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingBottom:14,borderBottomWidth:1,borderBottomColor:'#EDF0F2'},
   settingsTitle:{fontSize:19,fontWeight:'900',color:'#20313A'},settingsEmail:{fontSize:11,color:'#89949B',marginTop:3},settingsClose:{fontSize:19,color:'#89949B',padding:6},
@@ -490,7 +513,10 @@ const styles = StyleSheet.create({
   restaurantTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#63D6A1' },
   restaurantLabel: { color: '#C76535', fontSize: 8, letterSpacing: 1, fontWeight: '900' },
-  restaurantName: { color: '#26343C', fontSize: 19, fontWeight: '900', marginTop: 7 },
+  restaurantNameRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12,marginTop:7},
+  restaurantName: { color: '#26343C', fontSize: 19, fontWeight: '900',flex:1 },
+  storeSwitch:{width:48,height:28,borderRadius:16,backgroundColor:'#AAB3BA',padding:3,justifyContent:'center'},storeSwitchOn:{backgroundColor:'#278653'},storeSwitchKnob:{width:22,height:22,borderRadius:12,backgroundColor:'#fff',alignSelf:'flex-start',elevation:2},storeSwitchKnobOn:{alignSelf:'flex-end'},
+  orderActions:{flexDirection:'row',alignItems:'center',gap:7,marginTop:13},orderIconButton:{width:38,height:38,borderRadius:11,backgroundColor:'#F1F3F5',alignItems:'center',justifyContent:'center'},orderActionIcon:{fontSize:20,fontWeight:'800',color:'#52616B'},advanceButtonInline:{flex:1,marginTop:0,minHeight:40,paddingHorizontal:6},
   restaurantSlug: { color: '#89949B', fontSize: 10, marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   quickActions:{flexDirection:'row',gap:9,marginBottom:22},
@@ -526,14 +552,14 @@ const styles = StyleSheet.create({
   cancelButton: { alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 9, marginTop: 2 },
   cancelButtonText: { color: '#A65A50', fontSize: 10, fontWeight: '800' },
   notes: { color: '#7C878D', fontSize: 11, marginTop: 9 },
-  bottomNav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:'#E9EDF0',paddingTop:7,paddingBottom:Platform.OS==='android'?12:18},navItem:{flex:1,alignItems:'center',gap:3},navIcon:{fontSize:19,fontWeight:'800'},navLabel:{fontSize:9,fontWeight:'800'},addButton:{backgroundColor:'#E67E45',paddingHorizontal:13,paddingVertical:9,borderRadius:10},addButtonText:{color:'#fff',fontWeight:'800',fontSize:12},productCard:{backgroundColor:'#fff',borderRadius:15,padding:14,marginBottom:8,borderWidth:1,borderColor:'#E9EDF0',flexDirection:'row',alignItems:'center',gap:10},categoryTitle:{fontSize:14,fontWeight:'900',color:'#26343C',marginTop:16,marginBottom:8},modalShade:{flex:1,backgroundColor:'rgba(0,0,0,.35)',justifyContent:'flex-end'},modalCard:{backgroundColor:'#fff',padding:22,borderTopLeftRadius:24,borderTopRightRadius:24,gap:12},input:{borderWidth:1,borderColor:'#DCE2E6',borderRadius:11,padding:12,color:'#26343C'},categoryChip:{padding:9,borderRadius:10,backgroundColor:'#F0F2F4',marginRight:7},categoryChipActive:{backgroundColor:'#D66F3C'},
+  bottomNav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:'#E9EDF0',paddingTop:7,paddingBottom:Platform.OS==='android'?8:18},navItem:{flex:1,alignItems:'center',gap:3},navIcon:{fontSize:19,fontWeight:'800'},navLabel:{fontSize:9,fontWeight:'800'},addButton:{backgroundColor:'#E67E45',paddingHorizontal:13,paddingVertical:9,borderRadius:10},addButtonText:{color:'#fff',fontWeight:'800',fontSize:12},productCard:{backgroundColor:'#fff',borderRadius:15,padding:14,marginBottom:8,borderWidth:1,borderColor:'#E9EDF0',flexDirection:'row',alignItems:'center',gap:10},categoryTitle:{fontSize:14,fontWeight:'900',color:'#26343C',marginTop:16,marginBottom:8},modalShade:{flex:1,backgroundColor:'rgba(0,0,0,.35)',justifyContent:'flex-end',paddingBottom:Platform.OS==='android'?24:0},modalCard:{backgroundColor:'#fff',padding:22,borderTopLeftRadius:24,borderTopRightRadius:24,gap:12},input:{borderWidth:1,borderColor:'#DCE2E6',borderRadius:11,padding:12,color:'#26343C'},categoryChip:{padding:9,borderRadius:10,backgroundColor:'#F0F2F4',marginRight:7},categoryChipActive:{backgroundColor:'#D66F3C'},
   hoursDay:{backgroundColor:'#FFF8F4',borderRadius:12,padding:11,marginBottom:8,borderWidth:1,borderColor:'#F4DED2'},hoursDayTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:8},hoursDayName:{fontSize:12,fontWeight:'800',color:'#26343C'},hoursControls:{flexDirection:'row',alignItems:'center',gap:7},timeInput:{backgroundColor:'#fff',borderWidth:1,borderColor:'#E8CFC1',borderRadius:9,padding:8,width:72,textAlign:'center',color:'#26343C'},choiceChip:{paddingHorizontal:13,paddingVertical:9,borderRadius:10,borderWidth:1,borderColor:'#E8CFC1',backgroundColor:'#fff'},choiceChipActive:{backgroundColor:'#D66F3C',borderColor:'#D66F3C'},choiceChipText:{fontSize:12,fontWeight:'800',color:'#65727A'},choiceChipTextActive:{color:'#fff'},pdfButton:{backgroundColor:'#FFF1E8',borderRadius:10,paddingHorizontal:12,paddingVertical:9,marginTop:10,alignSelf:'flex-start'},pdfButtonText:{fontSize:11,fontWeight:'800',color:'#B65B31'},
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyIcon: { fontSize: 38, marginBottom: 13 },
   emptyTitle: { color: '#26343C', fontSize: 17, fontWeight: '900', textAlign: 'center' },
   emptyText: { color: '#8B969D', fontSize: 13, textAlign: 'center', lineHeight: 20, marginTop: 7 },
   emptyTextHome:{fontSize:17,lineHeight:25,fontWeight:'700',color:'#66747C',marginTop:0},
-  darkPanel:{backgroundColor:'#252D38',borderColor:'#394554'},darkText:{color:'#EEF2F6'},darkMuted:{color:'#B3BFCC'},darkHeader:{backgroundColor:'#1B222C'},darkCard:{backgroundColor:'#252D38',borderColor:'#394554'},darkRevenue:{backgroundColor:'#3A302C'},
+  darkPanel:{backgroundColor:'#1C1F24',borderColor:'#343A40'},darkText:{color:'#F2F3F5'},darkMuted:{color:'#B8C0C8'},darkHeader:{backgroundColor:'#171A1F'},darkCard:{backgroundColor:'#24282E',borderColor:'#363C44'},darkRevenue:{backgroundColor:'#332A25'},
   secondaryButton: { backgroundColor: '#E67E45', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, marginTop: 18 },
   secondaryButtonText: { color: '#fff', fontWeight: '800' }
 });
