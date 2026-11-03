@@ -92,3 +92,27 @@ $$;
 
 revoke all on function public.criar_pedido_balcao(integer, text, text, text, text, text, jsonb, numeric) from public;
 grant execute on function public.criar_pedido_balcao(integer, text, text, text, text, text, jsonb, numeric) to authenticated;
+
+-- Compatibilidade com versões antigas do aplicativo que ainda chamam a RPC de 7 parâmetros.
+create or replace function public.criar_pedido_balcao(
+  p_empresa_id integer,
+  p_nome text,
+  p_whatsapp text,
+  p_tipo_entrega text,
+  p_endereco text,
+  p_forma_pagamento text,
+  p_itens jsonb
+)
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+  select public.criar_pedido_balcao(
+    p_empresa_id, p_nome, p_whatsapp, p_tipo_entrega, p_endereco,
+    p_forma_pagamento, p_itens, 0
+  );
+$$;
+
+revoke all on function public.criar_pedido_balcao(integer, text, text, text, text, text, jsonb) from public;
+grant execute on function public.criar_pedido_balcao(integer, text, text, text, text, text, jsonb) to authenticated;
