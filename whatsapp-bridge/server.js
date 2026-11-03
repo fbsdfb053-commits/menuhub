@@ -789,10 +789,10 @@ function formatOrderStatusMessage(template, order) {
 
 async function handleOrderStatusEvent(payload) {
   let order = payload?.new
-  if (!order || !order.id || !order.empresa_id || !order.status) return
+  if (!order || !order.id || !order.empresa_id) return
 
   const isInsert = payload.eventType === 'INSERT'
-  if (!isInsert && normalizedStatus(payload.old?.status) === normalizedStatus(order.status)) return
+  if (!isInsert && (!order.status || normalizedStatus(payload.old?.status) === normalizedStatus(order.status))) return
 
   // The order RPC inserts total=0, then stores items and final total in one transaction.
   // Re-read after commit so the receipt always contains the persisted final values.
@@ -801,6 +801,7 @@ async function handleOrderStatusEvent(payload) {
     if (latestOrder.error) throw latestOrder.error
     if (latestOrder.data) order = latestOrder.data
   }
+  if (!order.status) return
 
   const settings = await admin
     .from('whatsapp_bot_config')
@@ -812,7 +813,9 @@ async function handleOrderStatusEvent(payload) {
   if (!config || config.enabled !== true) return
 
   const notification = orderStatusSettings(order.status, config)
-  if (!notification) return
+  // A newly created order must receive its receipt even if its current status
+  // is already Concluído (for example, a counter/test order finalized quickly).
+  if (isInsert ? config.statusNew === false : !notification) return
 
   const jid = whatsappJid(order.cliente_whatsapp)
   if (!jid) {
@@ -877,6 +880,53 @@ function startOrderStatusRealtime() {
       if (status === 'SUBSCRIBED') log.info('Supabase Realtime subscribed to order status changes')
       else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') log.error({ status, err }, 'Supabase Realtime order status subscription failed')
     })
+
+  // Realtime is fast, but a periodic reconciliation recovers events lost during
+  // reconnects or brief network outages. The unique order/status reservation
+  // prevents duplicates when Realtime and this fallback see the same change.
+  let polling = false
+  const reconcileRecentOrders = async () => {
+    if (polling) return
+    polling = true
+    try {
+      const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+      const { data: recentOrders, error: ordersError } = await admin
+        .from('pedidos')
+        .select('*')
+        .gte('criado_em', cutoff)
+        .order('criado_em', { ascending: false })
+        .limit(100)
+      if (ordersError) throw ordersError
+      const orders = recentOrders || []
+      if (!orders.length) return
+      const ids = orders.map(order => Number(order.id)).filter(Number.isSafeInteger)
+      const { data: sentRows, error: sentError } = await admin
+        .from('whatsapp_status_enviados')
+        .select('pedido_id,status')
+        .in('pedido_id', ids)
+      if (sentError) throw sentError
+      const sentByOrder = new Map()
+      for (const row of sentRows || []) {
+        const key = Number(row.pedido_id)
+        if (!sentByOrder.has(key)) sentByOrder.set(key, [])
+        sentByOrder.get(key).push(String(row.status))
+      }
+      for (const order of orders) {
+        if (!order.status) continue
+        const previous = sentByOrder.get(Number(order.id)) || []
+        if (previous.includes(String(order.status))) continue
+        const eventType = previous.length ? 'UPDATE' : 'INSERT'
+        const oldStatus = previous.length ? previous[previous.length - 1] : null
+        await handleOrderStatusEvent({ eventType, old: oldStatus ? { status: oldStatus } : {}, new: order })
+      }
+    } catch (err) {
+      log.error({ err }, 'WhatsApp order notification reconciliation failed')
+    } finally {
+      polling = false
+    }
+  }
+  void reconcileRecentOrders()
+  setInterval(() => { void reconcileRecentOrders() }, 10000)
 }
 
 function safeId(value) {
