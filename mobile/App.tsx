@@ -8,6 +8,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, Session } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
@@ -271,12 +272,8 @@ function AppContent() {
       else { await activateKeepAwakeAsync('fb3d2y-menu'); setKeepAwake(true); }
     } catch { Alert.alert('Não foi possível alterar', 'Tente novamente.'); }
   };
-  const playOrderBeep=async()=>{try{Speech.speak('Bip bip',{language:'pt-BR',rate:1.25,pitch:1.8});}catch{}};
-  const testAudio = () => {
-    setSettingsOpen(false);
-    Speech.stop();
-    void Linking.openURL('https://raw.githubusercontent.com/fbsdfb053-commits/menuhub/app-android/public/freesound_community-friend-request-14878.mp3').catch(() => Alert.alert('Áudio indisponível','Não foi possível reproduzir o som configurado.'));
-  };
+  const playOrderBeep=async()=>{try{const {sound}=await Audio.Sound.createAsync({uri:'https://raw.githubusercontent.com/fbsdfb053-commits/menuhub/app-android/public/freesound_community-friend-request-14878.mp3'},{shouldPlay:true,volume:1});sound.setOnPlaybackStatusUpdate(status=>{if(status.isLoaded&&status.didJustFinish)void sound.unloadAsync();});}catch{try{Speech.speak('Bip bip',{language:'pt-BR',rate:1.25,pitch:1.8});}catch{}}};
+  const testAudio = () => { setSettingsOpen(false); Speech.stop(); void playOrderBeep(); };
   const createCounterOrder=async()=>{if(!supabase||!restaurant)return;const chosen=products.filter(p=>(counterQty[p.id]??0)>0&&p.disponivel);if(!chosen.length){Alert.alert('Pedido vazio','Adicione pelo menos um produto.');return;}if(counterType==='Entrega'&&counterAddress.trim().length<5){Alert.alert('Endereço necessário','Informe o endereço para entrega.');return;}setCounterBusy(true);try{const payload=chosen.map(p=>({produto_id:p.id,quantidade:counterQty[p.id]}));const {data,error:e}=await supabase.rpc('criar_pedido_balcao',{p_empresa_id:restaurant.id,p_nome:counterName.trim()||'Cliente balcão',p_whatsapp:counterPhone.trim(),p_tipo_entrega:counterType,p_endereco:counterAddress.trim(),p_forma_pagamento:counterPayment,p_itens:payload});if(e)throw e;setCounterOpen(false);setCounterName('');setCounterPhone('');setCounterAddress('');setCounterType('Retirada');setCounterPayment('Dinheiro');setCounterQty({});await loadDashboard();Alert.alert('Pedido registrado','Pedido '+formatOrderCode(Number(data),new Date().toISOString())+' registrado com sucesso.');setTab('pedidos');}catch(e){Alert.alert('Não foi possível registrar',e instanceof Error?e.message:'Tente novamente.');}finally{setCounterBusy(false);}};
   const menuUrl = restaurant ? 'https://fb3d2ymenu.com.br/menu/' + encodeURIComponent(restaurant.slug) : 'https://fb3d2ymenu.com.br';
   const shareMenu = async () => {
