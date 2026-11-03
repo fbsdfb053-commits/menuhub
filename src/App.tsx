@@ -893,7 +893,7 @@ function SalesReport({orders,onRefresh}:{orders:AdminOrder[];onRefresh:()=>void}
   const daily = new Map(days.map(day=>[day.key,day]))
   periodOrders.forEach(order=>{const day=daily.get(dateKey(new Date(order.criado_em)));if(day){day.total+=Number(order.total||0);day.count+=1}})
   const maxDay = Math.max(1,...days.map(day=>day.total))
-  const statuses = ['Novo','Preparando','Pronto','Concluído']
+  const statuses = ['Novo','Aceito','Preparando','Pronto','Concluído']
   const exportCsv = () => {
     const rows = [['Pedido','Data','Cliente','Tipo','Status','Total'],...periodOrders.map(order=>[formatPublicOrderCode(order.id,order.criado_em),new Date(order.criado_em).toLocaleString('pt-BR'),order.cliente_nome,order.tipo_entrega,order.status,Number(order.total).toFixed(2).replace('.',',')])]
     const csv = '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n')
