@@ -41,7 +41,7 @@ type Order = {
 
 const StatusBarCompat = StatusBar as any;
 WebBrowser.maybeCompleteAuthSession();
-const APP_VERSION = '1.2.4';
+const APP_VERSION = '1.2.5';
 const UPDATED_AT = '03/11/2026';
 function formatOrderCode(id:number,createdAt:string|null){const date=createdAt?new Date(createdAt):new Date();const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'short'}).formatToParts(date);const day=parts.find(p=>p.type==='day')?.value??'01';const month=(parts.find(p=>p.type==='month')?.value??'jan').toLowerCase();let hash=(Number(id)^0x9e3779b9)>>>0;hash=Math.imul(hash^(hash>>>16),0x7feb352d);hash=Math.imul(hash^(hash>>>15),0x846ca68b);hash=(hash^(hash>>>16))>>>0;const suffix=(hash%46656).toString(36).toLowerCase().padStart(3,'0');return 'D'+day+month+'-'+suffix;}
 const GOOGLE_REDIRECT = 'fb3d2ymenu://auth/callback';
@@ -116,6 +116,8 @@ function AppContent() {
   const [error, setError] = useState('');
   const [updateBusy, setUpdateBusy] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [latestAvailableVersion, setLatestAvailableVersion] = useState('');
 
   useEffect(() => { void AsyncStorage.getItem('fb3d2y-paper-width').then(v=>{if(v==='58'||v==='80')setPaperWidth(v);}); void AsyncStorage.getItem('fb3d2y-dark-mode').then(v=>setDarkMode(v==='1')); }, []);
 
@@ -202,9 +204,9 @@ function AppContent() {
     }
   };
 
-  const checkForUpdates = async () => {
-    if (Platform.OS !== 'android') { Alert.alert('Atualização', 'A instalação pelo aplicativo está disponível no Android.'); return; }
-    setUpdateBusy(true); setUpdateProgress(0);
+  const checkForUpdates = async (silent = false) => {
+    if (Platform.OS !== 'android') { if (!silent) Alert.alert('Atualização', 'A instalação pelo aplicativo está disponível no Android.'); return; }
+    setUpdateBusy(true);
     try {
       const response = await fetch('https://api.github.com/repos/fbsdfb053-commits/menuhub/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
       if (!response.ok) throw new Error(response.status === 404 ? 'Ainda não há uma versão publicada para atualização.' : 'Não foi possível consultar as atualizações. Tente novamente.');
@@ -213,17 +215,26 @@ function AppContent() {
       const currentParts = APP_VERSION.split('.').map(Number);
       const latestParts = latest.split('.').map(Number);
       const newer = latestParts.some((n:number, i:number) => n > (currentParts[i] || 0) && latestParts.slice(0,i).every((v:number,j:number)=>v===(currentParts[j]||0)));
-      if (!newer) { Alert.alert('Tudo atualizado', 'Você já está usando a versão mais recente do Fb3d2y Menu (v' + APP_VERSION + ').'); return; }
+      if (!newer) {
+        setUpdateAvailable(false);
+        setLatestAvailableVersion('');
+        if (!silent) Alert.alert('Tudo atualizado', 'Você já está usando a versão mais recente do Fb3d2y Menu (v' + APP_VERSION + ').');
+        return;
+      }
       const apk = (release.assets || []).find((asset:any) => String(asset.name).toLowerCase().endsWith('.apk'));
       if (!apk?.browser_download_url) throw new Error('A nova versão foi encontrada, mas o arquivo de instalação ainda não está disponível.');
-      Alert.alert('Atualização disponível', 'Versão ' + latest + ' disponível. O app vai baixar o arquivo e abrir o instalador do Android.', [
+      setUpdateAvailable(true);
+      setLatestAvailableVersion(latest);
+      if (!silent) Alert.alert('Atualização disponível', 'Versão ' + latest + ' disponível. O app vai baixar o arquivo e abrir o instalador do Android.', [
         { text: 'Agora não', style: 'cancel' },
         { text: 'Baixar e instalar', onPress: () => { void downloadAndInstallUpdate(apk.browser_download_url, latest); } }
       ]);
     } catch (err) {
-      Alert.alert('Verificar atualizações', err instanceof Error ? err.message : 'Não foi possível verificar agora.');
+      if (!silent) Alert.alert('Verificar atualizações', err instanceof Error ? err.message : 'Não foi possível verificar agora.');
     } finally { setUpdateBusy(false); }
   };
+
+  useEffect(() => { void checkForUpdates(true); }, []);
   const downloadAndInstallUpdate = async (url:string, version:string) => {
     setUpdateBusy(true); setUpdateProgress(0);
     try {
@@ -309,9 +320,10 @@ function AppContent() {
   };
 
   const nextStatusFor = (order: Order): string | null => {
-    const status = (order.status ?? '').toLocaleLowerCase('pt-BR');
-    if (status === 'novo' || status === 'recebido') return 'Preparando';
-    if (status === 'preparando') return 'Pronto';
+    const status = (order.status ?? '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
+    if (status === 'novo' || status === 'recebido' || status === 'pendente') return 'Aceito';
+    if (status === 'aceito' || status === 'aceita') return 'Preparando';
+    if (status === 'preparando' || status === 'em preparo') return 'Pronto';
     if (status === 'pronto') return order.tipo_entrega === 'Entrega' ? 'Em entrega' : 'Retirada disponível';
     if (status === 'em entrega' || status === 'retirada disponível') return 'Concluído';
     return null;
@@ -408,13 +420,12 @@ function AppContent() {
               {!!item.itens_pedido?.length && <View style={styles.orderItems}>{item.itens_pedido.map(line => <Text key={line.id} style={[styles.orderItemText,darkMode&&styles.darkMuted]}>{line.quantidade}× {line.nome_produto ?? 'Produto'}</Text>)}</View>}
               <View style={styles.orderBottom}><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{item.tipo_entrega} · {item.forma_pagamento}{Number(item.taxa_entrega) > 0 ? ' · Entrega ' + money(Number(item.taxa_entrega)) : ''}</Text><Text style={styles.orderTotal}>{money(Number(item.total))}</Text></View>
               <View style={styles.statusPill}><Text style={styles.statusText}>{item.status ?? 'Sem status'}</Text></View>
-              <Pressable style={styles.pdfButton} onPress={()=>void exportOrderPdf(item)}><Text style={styles.pdfButtonText}>↓ Exportar comanda em PDF</Text></Pressable>
               {!!item.observacoes && <Text style={styles.notes}>Obs.: {item.observacoes}</Text>}
               <View style={styles.orderActions}>
-                <Pressable style={styles.orderIconButton} onPress={()=>void shareOrder(item)} accessibilityLabel="Compartilhar pedido"><Text style={styles.orderActionIcon}>↗</Text></Pressable>
+                <Pressable style={styles.orderIconButton} onPress={()=>void exportOrderPdf(item)} accessibilityLabel="Exportar comanda em PDF"><Text style={[styles.orderActionIcon,{fontSize:13}]}>PDF</Text></Pressable>
                 <Pressable style={styles.orderIconButton} onPress={()=>openOrderEditor(item)} accessibilityLabel="Editar pedido"><Text style={styles.orderActionIcon}>✎</Text></Pressable>
                 <Pressable style={styles.orderIconButton} onPress={()=>deleteOrder(item)} accessibilityLabel="Excluir pedido"><Text style={[styles.orderActionIcon,{color:'#C45A50'}]}>⌫</Text></Pressable>
-                {nextStatusFor(item) ? <Pressable style={[styles.advanceButton,styles.advanceButtonInline]} onPress={() => void changeOrderStatus(item, nextStatusFor(item)!)}><Text style={styles.advanceButtonText}>{nextStatusFor(item) === 'Preparando' ? 'Aceitar' : nextStatusFor(item) === 'Pronto' ? 'Pronto' : nextStatusFor(item) === 'Em entrega' ? 'Em entrega' : nextStatusFor(item) === 'Retirada disponível' ? 'Retirada' : 'Finalizar'}</Text></Pressable> : <View style={[styles.advanceButton,styles.advanceButtonInline,{opacity:0.35}]}><Text style={styles.advanceButtonText}>Status</Text></View>}
+                {nextStatusFor(item) ? <Pressable style={[styles.advanceButton,styles.advanceButtonInline]} onPress={() => void changeOrderStatus(item, nextStatusFor(item)!)}><Text style={styles.advanceButtonText}>{nextStatusFor(item) === 'Aceito' ? 'Aceitar' : nextStatusFor(item) === 'Preparando' ? 'Preparar' : nextStatusFor(item) === 'Pronto' ? 'Pronto' : nextStatusFor(item) === 'Em entrega' ? 'Em entrega' : nextStatusFor(item) === 'Retirada disponível' ? 'Retirada' : 'Finalizar'}</Text></Pressable> : <View style={[styles.advanceButton,styles.advanceButtonInline,{opacity:0.35}]}><Text style={styles.advanceButtonText}>Status</Text></View>}
               </View>
             </Pressable>
           )}
@@ -431,8 +442,8 @@ function AppContent() {
               <Pressable style={styles.settingsRow} onPress={()=>void checkForUpdates()} disabled={updateBusy}>
                 <Text style={styles.settingsIcon}>⟳</Text>
                 <View style={styles.settingsCopy}>
-                  <Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>{updateBusy ? 'Verificando / baixando...' : 'Verificar atualizações'}</Text>
-                  <Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>{updateBusy && updateProgress>0 ? 'Download: '+updateProgress+'%' : 'Versão instalada: '+APP_VERSION}</Text>
+                  <Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>{updateBusy ? 'Verificando atualizações...' : updateAvailable ? 'Atualização disponível' : 'Verificar atualizações'}</Text>
+                  <Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>{updateBusy && updateProgress>0 ? 'Download: '+updateProgress+'%' : updateAvailable ? 'Nova versão: '+latestAvailableVersion+' · Instalada: '+APP_VERSION : 'Versão instalada: '+APP_VERSION}</Text>
                 </View>
                 {updateBusy ? <ActivityIndicator color="#D66F3C"/> : <Text style={styles.settingsArrow}>›</Text>}
               </Pressable>
