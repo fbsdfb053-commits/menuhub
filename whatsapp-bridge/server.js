@@ -275,9 +275,6 @@ async function buildMenuReply(restaurantId, full = false) {
   return withMenuLink('Claro! Você pode conferir todas as opções disponíveis diretamente no nosso cardápio.')
 }
 
-function normalizeText(}
-
-
 function normalizeText(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 }
