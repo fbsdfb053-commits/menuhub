@@ -1239,7 +1239,7 @@ app.get('/api/whatsapp/:restaurantId/conversations/human-paused', async (req, re
 })
 app.post('/api/whatsapp/:restaurantId/conversations/resume', async (req, res) => {
   const remoteJid = String(req.body?.remoteJid || '').trim()
-  if (!/^[^/@\\s]+@(s\\.whatsapp\\.net|lid)$/.test(remoteJid)) {
+  if (!/^[^/@\s]+@(s\.whatsapp\.net|lid)$/.test(remoteJid)) {
     return res.status(400).json({ error: 'Conversa inválida. Informe o remoteJid do WhatsApp.' })
   }
   const senderKey = String(req.restaurantId) + ':' + remoteJid
