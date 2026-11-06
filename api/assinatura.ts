@@ -9,9 +9,10 @@ const anon = () => process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_AN
 const service = () => process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 async function userFrom(req: Req) {
-  const token = (req.headers.authorization || '').replace(/^Bearer\\s+/i, '')
+  const authorization = (req.headers.authorization || '').trim()
+  const token = authorization.toLowerCase().startsWith('bearer ') ? authorization.slice(7).trim() : authorization
   if (!token || !url() || !anon()) return null
-  const response = await fetch(url().replace(/\\/$/, '') + '/auth/v1/user', {
+  const response = await fetch((url().endsWith('/') ? url().slice(0, -1) : url()) + '/auth/v1/user', {
     headers: { apikey: anon(), Authorization: 'Bearer ' + token }
   })
   if (!response.ok) return null
