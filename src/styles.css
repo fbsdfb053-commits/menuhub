@@ -2610,3 +2610,24 @@ img, video, canvas, svg { max-width: 100%; }
 .backup-assurance p { margin: 2px 0 0; color: #6d8874; font-size: 9px; line-height: 1.4; }
 .home-trust span { display: inline-flex; align-items: center; gap: 6px; }
 @media (max-width: 640px) { .backup-assurance { align-items: flex-start; padding: 13px; } .backup-assurance__icon { flex-basis: 34px; width: 34px; height: 34px; } }
+
+
+/* Controle de estoque */
+.stock-page{display:flex;flex-direction:column;gap:18px}
+.stock-intro{display:flex;align-items:flex-start;gap:15px;background:#fffaf4;border-color:#f5dfc7}
+.stock-intro__icon{width:44px;height:44px;flex:0 0 44px;border-radius:14px;background:#fff0df;color:#c66b20;display:grid;place-items:center}
+.stock-intro strong{display:block;color:#27313a}.stock-intro p{margin:6px 0 0;color:#68727b;line-height:1.55}
+.stock-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.stock-tabs button{border:1px solid #e6e9ec;background:#fff;color:#59636d;border-radius:12px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}
+.stock-tabs button.is-active{background:#fff1e3;border-color:#f1c99f;color:#b85d13}
+.stock-search{width:100%;max-width:420px;border:1px solid #e1e5e8;border-radius:11px;padding:11px 13px;font:inherit;margin:0 0 14px}
+.stock-table-wrap{width:100%;overflow-x:auto}
+.stock-table{width:100%;border-collapse:collapse;min-width:680px}
+.stock-table th,.stock-table td{padding:12px 10px;border-bottom:1px solid #edf0f2;text-align:left;vertical-align:middle}
+.stock-table th{font-size:12px;color:#78828b;font-weight:700}
+.stock-table td strong{display:block;color:#29343d}.stock-table td small{display:block;color:#87919a;margin-top:3px}
+.stock-table td em{display:inline-block;margin-top:5px;padding:3px 7px;border-radius:7px;background:#fff0e9;color:#bd4b26;font-size:11px;font-style:normal;font-weight:700}
+.stock-table input,.stock-table select{width:100%;min-width:82px;border:1px solid #dfe4e8;border-radius:9px;padding:9px 8px;background:#fff;font:inherit}
+.stock-table td .primary-button{white-space:nowrap;padding:9px 12px}
+.stock-alert-list{display:grid;gap:0}.stock-alert-list>div{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #edf0f2}.stock-alert-list>div:last-child{border:0}.stock-alert-list span{font-weight:700}.stock-alert-list small{display:block;color:#87919a;font-weight:400}.stock-alert-list strong{color:#b85d13;white-space:nowrap}
+@media(max-width:650px){.stock-intro{padding:16px;gap:11px}.stock-intro__icon{width:38px;height:38px;flex-basis:38px}.stock-table{min-width:610px}.stock-page .admin-heading{align-items:flex-start;gap:12px}.stock-page .admin-heading .secondary-button{white-space:nowrap}}
