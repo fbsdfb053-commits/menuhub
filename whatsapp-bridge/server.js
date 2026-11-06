@@ -205,16 +205,21 @@ async function sendAndStoreMessage(sock, restaurantId, jid, content, options) {
   const signature = bodyText ? String(restaurantId) + ':' + String(jid) + ':' + bodyText : null
   // A assinatura existe apenas durante o envio. Depois que Baileys retorna,
   // o ID real já foi registrado em sent-messages.json.
-  if (signature) recentBotOutgoing.set(signature, (recentBotOutgoing.get(signature) || 0) + 1)
+  const sendToken = signature ? {} : null
+  if (signature) {
+    const pending = recentBotOutgoing.get(signature) || new Set()
+    pending.add(sendToken)
+    recentBotOutgoing.set(signature, pending)
+  }
   try {
     const sent = await sock.sendMessage(jid, content, options)
     rememberSentMessage(restaurantId, sent)
     return sent
   } finally {
     if (signature) {
-      const remaining = (recentBotOutgoing.get(signature) || 1) - 1
-      if (remaining > 0) recentBotOutgoing.set(signature, remaining)
-      else recentBotOutgoing.delete(signature)
+      const pending = recentBotOutgoing.get(signature)
+      pending?.delete(sendToken)
+      if (pending && !pending.size) recentBotOutgoing.delete(signature)
     }
   }
 }
@@ -603,10 +608,11 @@ async function handleIncomingMessage(restaurantId, sock, message) {
   if (key.fromMe) {
     if (getStoredMessage(restaurantId, messageId)) return
     const outgoingSignature = String(restaurantId) + ':' + String(remoteJid) + ':' + text
-    const outgoingInFlight = recentBotOutgoing.get(outgoingSignature) || 0
-    if (outgoingInFlight > 0) {
-      if (outgoingInFlight === 1) recentBotOutgoing.delete(outgoingSignature)
-      else recentBotOutgoing.set(outgoingSignature, outgoingInFlight - 1)
+    const outgoingInFlight = recentBotOutgoing.get(outgoingSignature)
+    if (outgoingInFlight?.size) {
+      const [token] = outgoingInFlight
+      outgoingInFlight.delete(token)
+      if (!outgoingInFlight.size) recentBotOutgoing.delete(outgoingSignature)
       return
     }
     if (/^\/bot\s+(retomar|voltar|reativar)$/i.test(text.trim())) {
