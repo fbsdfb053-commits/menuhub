@@ -51,6 +51,16 @@ const processedMessages = new Map()
 const senderReplyTimes = new Map()
 const welcomedContacts = new Map()
 const humanHandoffTimes = new Map()
+const pendingInbound = new Map()
+const processingConversations = new Set()
+const conversationVersions = new Map()
+const humanPausedConversations = new Set()
+const humanHandoffStateFile = path.join(AUTH_DIR, 'human-handoff.json')
+try {
+  const savedHandoffs = JSON.parse(fs.readFileSync(humanHandoffStateFile, 'utf8'))
+  for (const key of Array.isArray(savedHandoffs) ? savedHandoffs : []) humanPausedConversations.add(String(key))
+} catch {}
+
 const conversationHistory = new Map()
 const HANDOFF_MARKER = '\u2063HANDOFF\u2063'
 const SILENT_HANDOFF_MARKER = '\u2063SILENT_HANDOFF\u2063'
@@ -261,34 +271,11 @@ async function buildMenuReply(restaurantId, full = false) {
     groups.get(groupName).push(product)
   }
 
-  if (!full) {
-    const summary = [...groups.entries()].map(([name, items]) =>
-      `• ${name} (${items.length} ${items.length === 1 ? 'opção' : 'opções'})`
-    ).join('\n')
-    return withMenuLink(`Temos estas categorias no cardápio:\n${summary}\n\nQual delas você gostaria de conhecer?`)
-  }
-
-  const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-  const lines = [`*${restaurantName}*`, '', '*Itens disponíveis no momento:*', '']
-  let truncated = false
-  for (const [groupName, products] of groups) {
-    const groupLines = [`*${groupName}*`]
-    for (const product of products) {
-      let line = `• ${product.nome} — ${currency.format(Number(product.preco) || 0)}`
-      if (product.descricao?.trim()) line += `\n  ${product.descricao.trim().slice(0, 120)}`
-      groupLines.push(line)
-    }
-    const section = groupLines.join('\n') + '\n'
-    if ((lines.join('\n') + '\n' + section).length > 3500) {
-      lines.push('Para ver mais opções, peça uma categoria específica.')
-      truncated = true
-      break
-    }
-    lines.push(...groupLines, '')
-  }
-  if (truncated) log.info({ restaurantId }, 'Menu WhatsApp reply shortened to fit message limit')
-  return withMenuLink(lines.join('\n').trim().slice(0, 3700))
+  // O cardápio completo fica no link; não despejar listas no WhatsApp.
+  return withMenuLink('Claro! Você pode conferir todas as opções disponíveis diretamente no nosso cardápio.')
 }
+
+function normalizeText(}
 
 
 function normalizeText(value) {
@@ -315,6 +302,33 @@ function isHoursQuestion(text) {
 
 function humanHelpMessage(_restaurant, reason) {
   return HANDOFF_MARKER + reason
+}
+
+function persistHumanHandoffs() {
+  try {
+    const temporaryFile = humanHandoffStateFile + '.tmp'
+    fs.writeFileSync(temporaryFile, JSON.stringify([...humanPausedConversations]), { mode: 0o600 })
+    fs.renameSync(temporaryFile, humanHandoffStateFile)
+  } catch (err) {
+    log.error({ err }, 'Could not persist human-owned WhatsApp conversations')
+  }
+}
+
+function pauseConversationForHuman(senderKey, reason = 'manual_message') {
+  humanPausedConversations.add(senderKey)
+  conversationVersions.set(senderKey, (conversationVersions.get(senderKey) || 0) + 1)
+  const pending = pendingInbound.get(senderKey)
+  if (pending?.timer) clearTimeout(pending.timer)
+  pendingInbound.delete(senderKey)
+  persistHumanHandoffs()
+  log.info({ senderKey, reason }, 'WhatsApp conversation paused for human attendant')
+}
+
+function resumeConversationForBot(senderKey) {
+  humanPausedConversations.delete(senderKey)
+  conversationVersions.set(senderKey, (conversationVersions.get(senderKey) || 0) + 1)
+  persistHumanHandoffs()
+  log.info({ senderKey }, 'WhatsApp automation explicitly resumed')
 }
 
 function formatBusinessHours(restaurant) {
@@ -362,22 +376,9 @@ async function buildWelcomeMessage(restaurantId, config) {
   const botName = String(config?.botName || '').trim() || 'assistente virtual'
   const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
   const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
-  const hours = formatBusinessHours(restaurant)
-  const lines = [
-    'Olá! 😊 Sou ' + botName + ', atendente do *' + restaurantName + '*.',
-    '',
-    '*🍣 Acesse nosso cardápio e faça seu pedido:*',
-    menuLink || 'O link do cardápio não está disponível no momento. Nossa equipe pode ajudar por aqui.',
-    '',
-    '*🕒 Horário de funcionamento:*',
-    hours ? hours.replace(/^Nosso funcionamento:\n/, '') : 'Horário ainda não cadastrado. Consulte nossa equipe.'
-  ]
-  if (restaurant?.aceita_pedidos === false) lines.push('', 'No momento, não estamos aceitando pedidos.')
-  if (typeof restaurant?.status_loja_manual === 'boolean') {
-    lines.push('', restaurant.status_loja_manual ? 'A loja está marcada como aberta no momento.' : 'A loja está marcada como fechada no momento.')
-  }
-  lines.push('', 'Como podemos ajudar você? 😊')
-  return lines.join('\n')
+  return menuLink
+    ? 'Olá! Sou ' + botName + ', atendente do *' + restaurantName + '*.' + '\nCardápio: ' + menuLink
+    : 'Olá! Sou ' + botName + ', atendente do *' + restaurantName + '*.'
 }
 
 async function buildIntelligentReply(restaurantId, text, config, senderKey, conversation = []) {
@@ -503,10 +504,7 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
   if (category) {
     const items = available.filter(product => product.categoria_id === category.id)
     if (!items.length) return withMenuLink('No momento, não encontrei itens disponíveis em ' + category.nome + '.')
-    const itemLines = items.map(product =>
-      '• ' + product.nome + ' — ' + currency.format(Number(product.preco) || 0)
-    )
-    return withMenuLink('*Temos estas opções de ' + category.nome + ' disponíveis:*\n\n' + itemLines.join('\n'))
+    return withMenuLink('Temos opções em ' + category.nome + '. Confira os produtos e preços no cardápio:')
   }
 
   const productMatches = products.map(product => ({ product, name: normalizeText(product.nome) }))
@@ -517,11 +515,10 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
     if (product.disponivel !== true) return withMenuLink('No momento, *' + product.nome + '* está indisponível. Posso ajudar com outra opção?')
     const asksDescription = /\b(ingrediente|ingredientes|compoe|composicao|vem|acompanha|descricao|o que e|feito de|tem dentro)\b/.test(normalized)
     const asksPrice = /\b(preco|quanto custa|valor|custa|reais)\b/.test(normalized)
-    const lines = ['*' + product.nome + '*', 'Preço: ' + currency.format(Number(product.preco) || 0)]
-    if (product.descricao?.trim()) lines.push('Descrição: ' + product.descricao.trim())
-    else if (asksDescription) lines.push('A descrição e os ingredientes não estão cadastrados. Nossa equipe pode confirmar para você.')
-    if (!asksPrice && !asksDescription && product.descricao?.trim()) lines.push('Quer saber o preço, os detalhes ou ver outras opções?')
-    return withMenuLink(lines.join('\n'))
+    const answer = ['*' + product.nome + '*']
+    if (asksPrice || !asksDescription) answer.push('Preço: ' + currency.format(Number(product.preco) || 0))
+    if (asksDescription) answer.push(product.descricao?.trim() ? product.descricao.trim() : 'A descrição ainda não está cadastrada. Posso pedir à equipe para confirmar.')
+    return withMenuLink(answer.join(' '))
   }
 
   if (isMenuRequest(text)) {
@@ -597,68 +594,117 @@ async function handleIncomingMessage(restaurantId, sock, message) {
   const key = message?.key
   const remoteJid = key?.remoteJid
   const messageId = key?.id
-  if (!remoteJid || !messageId || key.fromMe || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast' || remoteJid.endsWith('@broadcast')) return
+  if (!remoteJid || !messageId || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast' || remoteJid.endsWith('@broadcast')) return
 
-  const audioMessage = isAudioMessage(message.message)
+  const senderKey = String(restaurantId) + ':' + remoteJid
   const text = messageText(message.message)
+
+  // Mensagens próprias registradas pelo BOT são ignoradas. Qualquer mensagem
+  // própria desconhecida representa uma intervenção humana.
+  if (key.fromMe) {
+    if (getStoredMessage(restaurantId, messageId)) return
+    if (/^\/bot\s+(retomar|voltar|reativar)$/i.test(text.trim())) {
+      resumeConversationForBot(senderKey)
+      return
+    }
+    pauseConversationForHuman(senderKey, 'mensagem_manual_no_whatsapp')
+    return
+  }
+
+  if (humanPausedConversations.has(senderKey)) return
+  const audioMessage = isAudioMessage(message.message)
   if (!text && !audioMessage) return
 
   const now = Date.now()
   for (const [id, timestamp] of processedMessages) if (now - timestamp > 10 * 60 * 1000) processedMessages.delete(id)
-  if (processedMessages.has(messageId)) return
-  processedMessages.set(messageId, now)
+  const dedupeKey = String(restaurantId) + ':' + messageId
+  if (processedMessages.has(dedupeKey)) return
+  processedMessages.set(dedupeKey, now)
 
-  const senderKey = restaurantId + ':' + remoteJid
-  if (now - (senderReplyTimes.get(senderKey) || 0) < 1500) return
+  const pending = pendingInbound.get(senderKey) || { messages: [], timer: null }
+  pending.messages.push(message)
+  if (pending.timer) clearTimeout(pending.timer)
+  pending.timer = setTimeout(() => { void flushPendingCustomerMessages(restaurantId, sock, senderKey) }, 1000)
+  pendingInbound.set(senderKey, pending)
+}
 
+async function flushPendingCustomerMessages(restaurantId, sock, senderKey) {
+  const pending = pendingInbound.get(senderKey)
+  if (!pending || humanPausedConversations.has(senderKey)) {
+    pendingInbound.delete(senderKey)
+    return
+  }
+  if (processingConversations.has(senderKey)) {
+    pending.timer = setTimeout(() => { void flushPendingCustomerMessages(restaurantId, sock, senderKey) }, 500)
+    return
+  }
+  pendingInbound.delete(senderKey)
+  processingConversations.add(senderKey)
+  const messages = pending.messages
+  const lastMessage = messages[messages.length - 1]
+  const text = messages.map(item => messageText(item.message)).filter(Boolean).join('\n').slice(0, 2400)
+  const audioMessage = messages.some(item => isAudioMessage(item.message))
   try {
-    const { data, error } = await admin
-      .from('whatsapp_bot_config')
-      .select('config')
-      .eq('empresa_id', Number(restaurantId))
-      .maybeSingle()
+    await processCustomerMessage(restaurantId, sock, lastMessage, text, audioMessage, senderKey)
+  } finally {
+    processingConversations.delete(senderKey)
+    if (pendingInbound.has(senderKey) && !humanPausedConversations.has(senderKey)) {
+      const next = pendingInbound.get(senderKey)
+      if (next?.timer) clearTimeout(next.timer)
+      if (next) next.timer = setTimeout(() => { void flushPendingCustomerMessages(restaurantId, sock, senderKey) }, 250)
+    }
+  }
+}
+
+async function processCustomerMessage(restaurantId, sock, message, text, audioMessage, senderKey) {
+  const messageId = message?.key?.id
+  const remoteJid = message?.key?.remoteJid
+  const versionAtStart = conversationVersions.get(senderKey) || 0
+  try {
+    const { data, error } = await admin.from('whatsapp_bot_config').select('config').eq('empresa_id', Number(restaurantId)).maybeSingle()
     if (error) throw error
     const config = data?.config
-    if (!config || config.enabled !== true) return
+    if (!config || config.enabled !== true || humanPausedConversations.has(senderKey)) return
 
     const history = conversationHistory.get(senderKey) || []
     let reply = audioMessage
       ? 'No momento não consigo ouvir áudios. Pode me enviar sua mensagem por escrito?'
       : await buildIntelligentReply(restaurantId, text, config, senderKey, history)
+
+    if (humanPausedConversations.has(senderKey) || (conversationVersions.get(senderKey) || 0) !== versionAtStart) return
     if (typeof reply !== 'string' || !reply.trim()) return
 
     const isSilentHandoff = reply.includes(SILENT_HANDOFF_MARKER)
     const isHandoff = isSilentHandoff || reply.includes(HANDOFF_MARKER)
     if (isHandoff) {
       reply = reply.replaceAll(HANDOFF_MARKER, '').replaceAll(SILENT_HANDOFF_MARKER, '').trim()
-      await notifyHumanAttendant({
-        restaurantId, sock, config, message, remoteJid, log,
-        reason: isSilentHandoff ? 'Limite de interações automáticas atingido.' : null
-      })
+      pauseConversationForHuman(senderKey, 'handoff_solicitado_ou_limite_da_ia')
+      await notifyHumanAttendant({ restaurantId, sock, config, message, remoteJid, log, reason: isSilentHandoff ? 'Limite de interações automáticas atingido.' : null })
     }
     if (isSilentHandoff) {
       log.info({ restaurantId, messageId }, 'Customer reply suppressed after AI limit; attendant notified')
       return
     }
 
-    // A primeira resposta (e a apresentação após 24h) sempre entrega link e horário.
     const lastWelcome = welcomedContacts.get(senderKey) || 0
-    const shouldIntroduce = now - lastWelcome >= 24 * 60 * 60 * 1000
+    const shouldIntroduce = !lastWelcome
     if (shouldIntroduce) {
       const welcome = await buildWelcomeMessage(restaurantId, config)
       const normalizedIncoming = normalizeText(text)
       const isGreeting = /^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)([!.,? ]|$)/.test(normalizedIncoming)
-      reply = isGreeting ? welcome : welcome + '\n\n' + reply.trim()
+      reply = isGreeting ? welcome : welcome + '\n' + reply.trim()
     }
-    senderReplyTimes.set(senderKey, now)
+
+    if ((conversationVersions.get(senderKey) || 0) !== versionAtStart && !isHandoff) return
+    senderReplyTimes.set(senderKey, Date.now())
     await sendAndStoreMessage(sock, restaurantId, remoteJid, { text: reply.trim().slice(0, 4000) })
     if (!audioMessage) {
       const updatedHistory = [...history, { role: 'user', content: text.slice(0, 700) }, { role: 'assistant', content: reply.trim().slice(0, 700) }].slice(-12)
       conversationHistory.set(senderKey, updatedHistory)
     }
     if (shouldIntroduce) {
-      welcomedContacts.set(senderKey, now)
-      const cutoff = now - 30 * 24 * 60 * 60 * 1000
+      welcomedContacts.set(senderKey, Date.now())
+      const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000
       for (const [key, timestamp] of welcomedContacts) if (timestamp < cutoff) welcomedContacts.delete(key)
       try { fs.writeFileSync(welcomeStateFile, JSON.stringify(Object.fromEntries(welcomedContacts)), { mode: 0o600 }) }
       catch (saveError) { log.warn({ message: String(saveError?.message || saveError) }, 'Could not persist WhatsApp welcome state') }
