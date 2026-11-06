@@ -675,6 +675,11 @@ async function handleIncomingMessage(restaurantId, sock, message) {
 
   const now = Date.now()
   if (humanPausedConversations.has(senderKey)) {
+    // A returning customer gets a fresh 150-second quiet window, even if the
+    // original five-minute attendant timeout would expire sooner.
+    const pauseTimer = humanPauseTimers.get(senderKey)
+    if (pauseTimer) clearTimeout(pauseTimer)
+    humanPauseTimers.delete(senderKey)
     const pending = pendingInbound.get(senderKey) || { messages: [], timer: null }
     pending.messages.push(message)
     if (pending.timer) clearTimeout(pending.timer)
