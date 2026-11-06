@@ -55,11 +55,19 @@ const pendingInbound = new Map()
 const processingConversations = new Set()
 const recentBotOutgoing = new Map()
 const conversationVersions = new Map()
-const humanPausedConversations = new Set()
+const humanPausedConversations = new Map()
+const humanPauseTimers = new Map()
+const customerTakeoverTimers = new Map()
 const humanHandoffStateFile = path.join(AUTH_DIR, 'human-handoff.json')
 try {
   const savedHandoffs = JSON.parse(fs.readFileSync(humanHandoffStateFile, 'utf8'))
-  for (const key of Array.isArray(savedHandoffs) ? savedHandoffs : []) humanPausedConversations.add(String(key))
+  // Legacy entries had no timestamp and could pause a conversation forever.
+  // Discard them on upgrade; only timestamped pauses are restored.
+  for (const [key, timestamp] of Object.entries(savedHandoffs && !Array.isArray(savedHandoffs) ? savedHandoffs : {})) {
+    if (Number.isFinite(Number(timestamp)) && Date.now() - Number(timestamp) < 5 * 60 * 1000) {
+      humanPausedConversations.set(String(key), Number(timestamp))
+    }
+  }
 } catch {}
 
 const conversationHistory = new Map()
@@ -308,28 +316,56 @@ function humanHelpMessage(_restaurant, reason) {
 function persistHumanHandoffs() {
   try {
     const temporaryFile = humanHandoffStateFile + '.tmp'
-    fs.writeFileSync(temporaryFile, JSON.stringify([...humanPausedConversations]), { mode: 0o600 })
+    fs.writeFileSync(temporaryFile, JSON.stringify(Object.fromEntries(humanPausedConversations)), { mode: 0o600 })
     fs.renameSync(temporaryFile, humanHandoffStateFile)
   } catch (err) {
     log.error({ err }, 'Could not persist human-owned WhatsApp conversations')
   }
 }
 
+function resumeConversationForBot(senderKey) {
+  humanPausedConversations.delete(senderKey)
+  const pauseTimer = humanPauseTimers.get(senderKey)
+  if (pauseTimer) clearTimeout(pauseTimer)
+  humanPauseTimers.delete(senderKey)
+  const takeoverTimer = customerTakeoverTimers.get(senderKey)
+  if (takeoverTimer) clearTimeout(takeoverTimer)
+  customerTakeoverTimers.delete(senderKey)
+  conversationVersions.set(senderKey, (conversationVersions.get(senderKey) || 0) + 1)
+  persistHumanHandoffs()
+  log.info({ senderKey }, 'WhatsApp automation explicitly resumed')
+}
+
 function pauseConversationForHuman(senderKey, reason = 'manual_message') {
-  humanPausedConversations.add(senderKey)
+  const now = Date.now()
+  humanPausedConversations.set(senderKey, now)
   conversationVersions.set(senderKey, (conversationVersions.get(senderKey) || 0) + 1)
   const pending = pendingInbound.get(senderKey)
   if (pending?.timer) clearTimeout(pending.timer)
   pendingInbound.delete(senderKey)
+  const oldTimer = humanPauseTimers.get(senderKey)
+  if (oldTimer) clearTimeout(oldTimer)
+  humanPauseTimers.set(senderKey, setTimeout(() => resumeConversationForBot(senderKey), 5 * 60 * 1000))
+  const takeoverTimer = customerTakeoverTimers.get(senderKey)
+  if (takeoverTimer) clearTimeout(takeoverTimer)
+  customerTakeoverTimers.delete(senderKey)
   persistHumanHandoffs()
-  log.info({ senderKey, reason }, 'WhatsApp conversation paused for human attendant')
+  log.info({ senderKey, reason, resumesInMs: 5 * 60 * 1000 }, 'WhatsApp conversation paused for human attendant')
 }
 
-function resumeConversationForBot(senderKey) {
-  humanPausedConversations.delete(senderKey)
-  conversationVersions.set(senderKey, (conversationVersions.get(senderKey) || 0) + 1)
-  persistHumanHandoffs()
-  log.info({ senderKey }, 'WhatsApp automation explicitly resumed')
+function scheduleCustomerTakeover(restaurantId, sock, senderKey, customerMessageAt) {
+  const previous = customerTakeoverTimers.get(senderKey)
+  if (previous) clearTimeout(previous)
+  customerTakeoverTimers.set(senderKey, setTimeout(() => {
+    customerTakeoverTimers.delete(senderKey)
+    const lastHumanMessageAt = humanPausedConversations.get(senderKey)
+    if (lastHumanMessageAt && lastHumanMessageAt > customerMessageAt) {
+      scheduleCustomerTakeover(restaurantId, sock, senderKey, lastHumanMessageAt)
+      return
+    }
+    resumeConversationForBot(senderKey)
+    void flushPendingCustomerMessages(restaurantId, sock, senderKey)
+  }, 150 * 1000))
 }
 
 function formatBusinessHours(restaurant) {
@@ -634,11 +670,20 @@ async function handleIncomingMessage(restaurantId, sock, message) {
     return
   }
 
-  if (humanPausedConversations.has(senderKey)) return
   const audioMessage = isAudioMessage(message.message)
   if (!text && !audioMessage) return
 
   const now = Date.now()
+  if (humanPausedConversations.has(senderKey)) {
+    const pending = pendingInbound.get(senderKey) || { messages: [], timer: null }
+    pending.messages.push(message)
+    if (pending.timer) clearTimeout(pending.timer)
+    pending.timer = null
+    pendingInbound.set(senderKey, pending)
+    scheduleCustomerTakeover(restaurantId, sock, senderKey, now)
+    log.info({ restaurantId, remoteJid }, 'Customer message received during human handoff; bot takeover scheduled')
+    return
+  }
   for (const [id, timestamp] of processedMessages) if (now - timestamp > 10 * 60 * 1000) processedMessages.delete(id)
   const dedupeKey = String(restaurantId) + ':' + messageId
   if (processedMessages.has(dedupeKey)) return
