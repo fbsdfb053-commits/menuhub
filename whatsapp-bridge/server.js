@@ -1218,6 +1218,25 @@ app.post('/api/whatsapp/:restaurantId/connect', async (req, res) => {
   const nextState = await startSession(id)
   res.status(202).json({ status: nextState.status })
 })
+app.get('/api/whatsapp/:restaurantId/conversations/human-paused', async (req, res) => {
+  const prefix = String(req.restaurantId) + ':'
+  const conversations = [...humanPausedConversations]
+    .filter(key => key.startsWith(prefix))
+    .map(key => ({ remoteJid: key.slice(prefix.length) }))
+  res.json({ conversations })
+})
+app.post('/api/whatsapp/:restaurantId/conversations/resume', async (req, res) => {
+  const remoteJid = String(req.body?.remoteJid || '').trim()
+  if (!/^[^/@\\s]+@(s\\.whatsapp\\.net|lid)$/.test(remoteJid)) {
+    return res.status(400).json({ error: 'Conversa inválida. Informe o remoteJid do WhatsApp.' })
+  }
+  const senderKey = String(req.restaurantId) + ':' + remoteJid
+  if (!humanPausedConversations.has(senderKey)) {
+    return res.json({ resumed: false, message: 'Esta conversa não estava pausada para atendimento humano.' })
+  }
+  resumeConversationForBot(senderKey)
+  res.json({ resumed: true })
+})
 app.get('/api/whatsapp/:restaurantId/status', async (req, res) => {
   const id = req.restaurantId
   let state = stateFor(id)
