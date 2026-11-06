@@ -202,14 +202,21 @@ function rememberSentMessage(restaurantId, sent) {
 
 async function sendAndStoreMessage(sock, restaurantId, jid, content, options) {
   const bodyText = typeof content === 'string' ? content : String(content?.text || '')
-  if (bodyText) {
-    const signature = String(restaurantId) + ':' + String(jid) + ':' + bodyText
-    recentBotOutgoing.set(signature, Date.now())
-    for (const [key, timestamp] of recentBotOutgoing) if (Date.now() - timestamp > 60000) recentBotOutgoing.delete(key)
+  const signature = bodyText ? String(restaurantId) + ':' + String(jid) + ':' + bodyText : null
+  // A assinatura existe apenas durante o envio. Depois que Baileys retorna,
+  // o ID real já foi registrado em sent-messages.json.
+  if (signature) recentBotOutgoing.set(signature, (recentBotOutgoing.get(signature) || 0) + 1)
+  try {
+    const sent = await sock.sendMessage(jid, content, options)
+    rememberSentMessage(restaurantId, sent)
+    return sent
+  } finally {
+    if (signature) {
+      const remaining = (recentBotOutgoing.get(signature) || 1) - 1
+      if (remaining > 0) recentBotOutgoing.set(signature, remaining)
+      else recentBotOutgoing.delete(signature)
+    }
   }
-  const sent = await sock.sendMessage(jid, content, options)
-  rememberSentMessage(restaurantId, sent)
-  return sent
 }
 
 function unwrapMessageContent(message) {
@@ -596,9 +603,10 @@ async function handleIncomingMessage(restaurantId, sock, message) {
   if (key.fromMe) {
     if (getStoredMessage(restaurantId, messageId)) return
     const outgoingSignature = String(restaurantId) + ':' + String(remoteJid) + ':' + text
-    const outgoingAt = recentBotOutgoing.get(outgoingSignature)
-    if (outgoingAt && Date.now() - outgoingAt < 60000) {
-      recentBotOutgoing.delete(outgoingSignature)
+    const outgoingInFlight = recentBotOutgoing.get(outgoingSignature) || 0
+    if (outgoingInFlight > 0) {
+      if (outgoingInFlight === 1) recentBotOutgoing.delete(outgoingSignature)
+      else recentBotOutgoing.set(outgoingSignature, outgoingInFlight - 1)
       return
     }
     if (/^\/bot\s+(retomar|voltar|reativar)$/i.test(text.trim())) {
