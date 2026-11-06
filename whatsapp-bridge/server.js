@@ -359,7 +359,7 @@ function formatBusinessHours(restaurant) {
     }
     if (typeof restaurant.status_loja_manual === 'boolean') current = restaurant.status_loja_manual ? 'A loja está marcada como aberta no momento.' : 'A loja está marcada como fechada no momento.'
     if (restaurant.aceita_pedidos === false) current += ' No momento, não estamos aceitando pedidos.'
-    return 'Nosso funcionamento:\n' + current + '\n\n' + lines.join('\n')
+    return current
   }
   if (restaurant?.horario?.trim()) return 'Nosso horário informado é: ' + restaurant.horario.trim() + '.'
   return null
@@ -377,9 +377,9 @@ async function buildWelcomeMessage(restaurantId, config) {
   const botName = String(config?.botName || '').trim() || 'assistente virtual'
   const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
   const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
-  return menuLink
-    ? 'Olá! Sou ' + botName + ', atendente do *' + restaurantName + '*.' + '\nCardápio: ' + menuLink
-    : 'Olá! Sou ' + botName + ', atendente do *' + restaurantName + '*.'
+  const introduction = 'Olá! Sou ' + botName + ', atendente do *' + restaurantName + '*.'
+  const hours = formatBusinessHours(restaurant)
+  return introduction + (hours ? '\n' + hours : '') + (menuLink ? '\nCardápio: ' + menuLink : '')
 }
 
 async function buildIntelligentReply(restaurantId, text, config, senderKey, conversation = []) {
@@ -693,8 +693,9 @@ async function processCustomerMessage(restaurantId, sock, message, text, audioMe
       if (isGreeting) {
         reply = welcome
       } else {
-        const [intro, menuLine] = welcome.split('\n')
-        reply = intro + '\n' + reply.trim()
+        const menuLine = welcome.split('\n').find(line => line.startsWith('Cardápio:'))
+        const introAndHours = welcome.split('\n').filter(line => !line.startsWith('Cardápio:')).join('\n')
+        reply = introAndHours + '\n' + reply.trim()
         const menuUrl = menuLine?.replace(/^Cardápio:\s*/, '')
         if (menuUrl && !reply.includes(menuUrl)) reply += '\n' + menuLine
       }
