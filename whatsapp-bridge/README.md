@@ -28,3 +28,16 @@ Set `VITE_WHATSAPP_BRIDGE_URL` in the Menuhub **test/preview** environment to th
 - Use a separate test number first. The bot replies only to direct incoming text messages (not groups/status messages), only when the saved `enabled` setting is on, and uses the saved welcome/menu/hours/payment texts. Test with a few trusted contacts before relying on it for customers.
 - Replies are basic keyword-based rules, not an AI agent; unknown messages receive the welcome message. The current duplicate guard and rate limit are in-memory and reset when the service restarts.
 - Order notifications use Supabase Realtime on `public.pedidos` and the `whatsapp_status_enviados` table for persistent deduplication. The database must have the `notificacoes_pedidos_realtime` migration applied and the unique `(pedido_id, status)` index on `whatsapp_status_enviados`.
+
+
+## Atendimento humano prioritário
+
+Quando uma pessoa enviar uma mensagem manualmente pelo WhatsApp conectado, o bridge pausa a automação somente naquela conversa e grava essa pausa em `human-handoff.json`, preservando-a após reinícios. Mensagens enviadas pelo próprio bridge são reconhecidas pelo ID armazenado e não ativam a pausa.
+
+Para devolver a conversa ao BOT, envie no próprio chat do cliente, pelo WhatsApp da empresa, o comando:
+
+```
+/bot retomar
+```
+
+Também são aceitos `/bot voltar` e `/bot reativar`. O comando não é encaminhado ao cliente como resposta automática. Mensagens recebidas em sequência são agrupadas por aproximadamente 1 segundo antes de gerar uma única resposta. O BOT responde de forma breve e direciona o cliente ao link individual do cardápio, em vez de listar produtos.
