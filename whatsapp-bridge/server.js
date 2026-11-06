@@ -454,33 +454,37 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
     const regions = options.filter(option => !option.negotiate && Array.isArray(option.places) && option.places.length)
     const matched = regions.filter(option => option.places.some(place => {
       const normalizedPlace = normalizeText(place)
-      return normalizedPlace.length >= 3 && (normalized.includes(normalizedPlace) || normalizedPlace.includes(normalized))
+      return normalizedPlace.length >= 3 && normalized.includes(normalizedPlace)
     }))
     if (matched.length) {
-      const lines = matched.map(option => {
-        const fee = currency.format(Number(option.fee) || 0)
-        return '• ' + (option.name || 'Entrega') + ': ' + fee
-      })
-      return 'Atendemos sua região! Estas são as opções cadastradas:\n' + lines.join('\n') + '\nA taxa será confirmada no fechamento do pedido. 🍣'
+      const option = matched[0]
+      return 'Entregamos na sua região. A taxa cadastrada para ' + (option.name || 'seu bairro') + ' é ' + currency.format(Number(option.fee) || 0) + '.'
     }
-    if (regions.length) {
-      const lines = regions.map(option => {
-        const places = option.places.join(', ')
-        return '• ' + (option.name || 'Região') + ' — ' + currency.format(Number(option.fee) || 0) + ': ' + places
-      })
-      const negotiated = options.find(option => option.negotiate)
-      if (negotiated) lines.push('• ' + (negotiated.name || 'Outras regiões') + ': taxa a combinar')
-      const asksList = /\b(quais|opcoes|opcao|regioes|bairros|localidades|onde|lista)\b/.test(normalized)
-      if (asksList || !/\b(centro|bairro|rua|localidade|regiao|moro|fica|para)\b/.test(normalized)) {
-        return 'Estas são nossas opções de entrega e respectivas taxas:\n' + lines.join('\n')
-      }
-      return humanHelpMessage(restaurant, 'Não identifiquei sua localidade nas regiões cadastradas. Vou chamar alguém da equipe para confirmar.')
+    if (!regions.length) return humanHelpMessage(restaurant, 'As taxas de entrega ainda não estão cadastradas. Vou chamar alguém da equipe para confirmar.')
+    if (/\b(bairro|moro|rua|localidade|regiao|cep)\b/.test(normalized)) {
+      return humanHelpMessage(restaurant, 'Não consegui confirmar a taxa para essa localidade. Vou chamar alguém da equipe para verificar.')
     }
-    return humanHelpMessage(restaurant, 'As opções de entrega ainda não estão cadastradas. Vou chamar alguém da equipe para confirmar.')
+    return 'Qual é o seu bairro? Assim verifico a taxa de entrega.'
   }
+
   if (/\b(promocao|promocoes|oferta|ofertas|desconto|cupom|combo do dia)\b/.test(normalized)) {
     return humanHelpMessage(restaurant, 'Não encontrei uma lista de promoções atualizada para consultar.')
   }
+
+  const productMatches = products.map(product => ({ product, name: normalizeText(product.nome) }))
+    .filter(item => item.name.length >= 3 && normalized.includes(item.name))
+    .sort((a, b) => b.name.length - a.name.length)
+  if (productMatches.length) {
+    const product = productMatches[0].product
+    if (product.disponivel !== true) return withMenuLink('No momento, *' + product.nome + '* está indisponível. Posso ajudar com outra opção?')
+    const asksDescription = /\b(ingrediente|ingredientes|compoe|composicao|vem|acompanha|descricao|o que e|feito de|tem dentro)\b/.test(normalized)
+    const asksPrice = /\b(preco|quanto custa|valor|custa|reais)\b/.test(normalized)
+    const answer = ['*' + product.nome + '*']
+    if (asksPrice || !asksDescription) answer.push('Preço: ' + currency.format(Number(product.preco) || 0))
+    if (asksDescription) answer.push(product.descricao?.trim() ? product.descricao.trim() : 'A descrição ainda não está cadastrada. Posso pedir à equipe para confirmar.')
+    return withMenuLink(answer.join(' '))
+  }
+
 
   // Reconhece a categoria mesmo quando o cliente responde apenas com seu nome.
   const categoryAliases = {
@@ -506,20 +510,6 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
     const items = available.filter(product => product.categoria_id === category.id)
     if (!items.length) return withMenuLink('No momento, não encontrei itens disponíveis em ' + category.nome + '.')
     return withMenuLink('Temos opções em ' + category.nome + '. Confira os produtos e preços no cardápio:')
-  }
-
-  const productMatches = products.map(product => ({ product, name: normalizeText(product.nome) }))
-    .filter(item => item.name.length >= 3 && normalized.includes(item.name))
-    .sort((a, b) => b.name.length - a.name.length)
-  if (productMatches.length) {
-    const product = productMatches[0].product
-    if (product.disponivel !== true) return withMenuLink('No momento, *' + product.nome + '* está indisponível. Posso ajudar com outra opção?')
-    const asksDescription = /\b(ingrediente|ingredientes|compoe|composicao|vem|acompanha|descricao|o que e|feito de|tem dentro)\b/.test(normalized)
-    const asksPrice = /\b(preco|quanto custa|valor|custa|reais)\b/.test(normalized)
-    const answer = ['*' + product.nome + '*']
-    if (asksPrice || !asksDescription) answer.push('Preço: ' + currency.format(Number(product.preco) || 0))
-    if (asksDescription) answer.push(product.descricao?.trim() ? product.descricao.trim() : 'A descrição ainda não está cadastrada. Posso pedir à equipe para confirmar.')
-    return withMenuLink(answer.join(' '))
   }
 
   if (isMenuRequest(text)) {
