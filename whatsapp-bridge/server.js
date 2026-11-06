@@ -514,8 +514,12 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
   if (aiPermission.allowed) {
     const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log, conversation })
     if (aiReply) {
-      const asksSpecificProduct = products.some(product => normalized.includes(normalizeText(product.nome)))
-      return asksSpecificProduct ? withMenuLink(aiReply) : aiReply
+      const aiReplyNormalized = normalizeText(aiReply)
+      const mentionsSpecificProduct = products.some(product => {
+        const productName = normalizeText(product.nome)
+        return productName.length >= 3 && (normalized.includes(productName) || aiReplyNormalized.includes(productName))
+      })
+      return mentionsSpecificProduct ? withMenuLink(aiReply) : aiReply
     }
   } else if (aiPermission.reason === 'closed') {
     const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
