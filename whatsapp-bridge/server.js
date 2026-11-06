@@ -1103,9 +1103,13 @@ async function startSession(id) {
     state.socket = sock
     sock.ev.on('creds.update', saveCreds)
     sock.ev.on('messages.upsert', async event => {
-      if (event.type !== 'notify') return
+      if (event.type !== 'notify' && event.type !== 'append') return
       for (const message of event.messages || []) {
-        await handleIncomingMessage(id, sock, message)
+        // Mensagens antigas sincronizadas via append não reabrem atendimento.
+        // Mensagens próprias de dispositivos vinculados ainda identificam o atendente.
+        if (event.type === 'notify' || message?.key?.fromMe) {
+          await handleIncomingMessage(id, sock, message)
+        }
       }
     })
     sock.ev.on('connection.update', async update => {
