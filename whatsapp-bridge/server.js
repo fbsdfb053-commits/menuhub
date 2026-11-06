@@ -66,6 +66,7 @@ try {
   for (const [key, timestamp] of Object.entries(savedHandoffs && !Array.isArray(savedHandoffs) ? savedHandoffs : {})) {
     if (Number.isFinite(Number(timestamp)) && Date.now() - Number(timestamp) < 5 * 60 * 1000) {
       humanPausedConversations.set(String(key), Number(timestamp))
+      humanPauseTimers.set(String(key), setTimeout(() => resumeConversationForBot(String(key)), Math.max(0, 5 * 60 * 1000 - (Date.now() - Number(timestamp)))))
     }
   }
 } catch {}
@@ -1300,7 +1301,7 @@ app.post('/api/whatsapp/:restaurantId/connect', async (req, res) => {
 })
 app.get('/api/whatsapp/:restaurantId/conversations/human-paused', async (req, res) => {
   const prefix = String(req.restaurantId) + ':'
-  const conversations = [...humanPausedConversations]
+  const conversations = [...humanPausedConversations.keys()]
     .filter(key => key.startsWith(prefix))
     .map(key => ({ remoteJid: key.slice(prefix.length) }))
   res.json({ conversations })
