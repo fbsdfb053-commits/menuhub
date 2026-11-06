@@ -33,6 +33,8 @@ type Product = { id:number; nome:string; descricao:string|null; preco:number; di
 type Category = { id:number; nome:string; ordem:number };
 type ComplementGroup = { id:number; nome:string; descricao:string|null; ordem:number; ativo:boolean };
 type ComplementOption = { id:number; grupo_id:number; nome:string; preco_adicional:number; ordem:number; ativo:boolean };
+type StockRecord = { id:number; empresa_id:number; item_type:'product'|'complement'; item_id:number; quantity:number; minimum_quantity:number; unit:string; updated_at:string };
+type StockMovement = { id:number; stock_id:number; movement_type:string; quantity:number; previous_quantity:number; new_quantity:number; note:string|null; created_at:string };
 type Order = {
   id: number; cliente_nome: string; cliente_whatsapp?: string|null; endereco_entrega?:string|null; total: number; status: string | null;
   tipo_entrega: string; forma_pagamento: string; taxa_entrega: number;
@@ -41,8 +43,8 @@ type Order = {
 
 const StatusBarCompat = StatusBar as any;
 WebBrowser.maybeCompleteAuthSession();
-const APP_VERSION = '1.2.5';
-const UPDATED_AT = '03/11/2026';
+const APP_VERSION = '1.2.6';
+const UPDATED_AT = '06/11/2026';
 function formatOrderCode(id:number,createdAt:string|null){const date=createdAt?new Date(createdAt):new Date();const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'short'}).formatToParts(date);const day=parts.find(p=>p.type==='day')?.value??'01';const month=(parts.find(p=>p.type==='month')?.value??'jan').toLowerCase();let hash=(Number(id)^0x9e3779b9)>>>0;hash=Math.imul(hash^(hash>>>16),0x7feb352d);hash=Math.imul(hash^(hash>>>15),0x846ca68b);hash=(hash^(hash>>>16))>>>0;const suffix=(hash%46656).toString(36).toLowerCase().padStart(3,'0');return 'D'+day+month+'-'+suffix;}
 const GOOGLE_REDIRECT = 'fb3d2ymenu://auth/callback';
 const BRAND_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACcCAYAAAD4d6D7AAASAklEQVR42u2dfWwb933Gnzu+HEn5JCpWZdexQy8WFhmR4LbpFsSoF9mpkqa2qwlQbKdQZbCDsQQIZsPBMEUOsBaNVRVFumQzkAAarNkTUtkVYLiOG9dKbG3y1DlrtrlWJiWTPbN+iaXKJkXaRx4p8vaHeNSJFiW+HO+O5Pf5J3ZkHe+On3u+L7+XY5BHSW43i+cCDLOrP6r8/2K7yxlly7cBgAQ0AkAwKDZZOSsPUt4VFsMBu507CQAMMAAAppj/fa7L45v3/fW1mPBrXmJ6emL5OhdGdegABn0trBI64a1aHpOWJgloJNCMDyYDDCQDKfW1mLCrP8YAkmEBlPpaTErwxHaXc4Ytfzsak1oBwGa3IRQM0TddIDKxTK855t+bDGJyRNMdwF/u+bLpO91fRJVuJwTFQ1bOyhN0xeGMDjv3itIVld+5bgAqw63kdrMza/+7adp3v4dCbHGDaP/i6+8xPT0xNcJy1gCK7S6n/DSI7S5nQOSulTvLeXK70gCR58S1yu8/uYBJy8AkickKQNl+k3M8UunmiNmE5KwAlJNQcj1Sshtm44RsNvAJHfWtIvg7Vs5K8JW4rJyVF8HfETrqW7kuj09yuzNiKi0HVBYbQkd960xMOkK3npQsM8vsdnRe7s2kOEkLQNlaCT5SOnlhWefl3cJbtbx939i9pSBkM4HPzHEEH2lRRWNS6/2O+iOOfWOBcLurIicHJOcj5RqOlypMUjrg+aefNhN8pGw1E5OOyIWJ2O5yZuSAktvNMj09MbHd5RTB36HbScpWHALLF2vRPOCAkjQLpfBWLR8QuWt0C0m5KCBy12QHlNlaPAQfa2GZnp6YNGk5RGO6pFxl5az8DFv+Ntfl8eFYC7toCKbQS9K6KEkQKcVhlIfY6JaR1JQQFA9JfS0mJWvzQ3DfbOiNsuXbyp3lFHpJqofi4O8+e5Hr8vjQNxeKmQSREhB+zVURELlrlPuVtsJiOJAvBjgEllu7PNNx+CQzAITbXRUc4/EJHeXbrJxE8GUgm92G8LpNxXVNAA8AsZEB1Y8dZcu3MUCv2O5yosvjY+R4HG4n90tXbF0jIpVrgA3fAgA4KquLM2/zTsIy2K0qiPL0LdkFzeF2VwXX5fEJLLlfWuA17AFXWQ1LCVyvo7IaaD6AiIpuaOWsfJTlEi5oVlTBjYQYgbeQLCpDGGet1zqxxZ9ovVDfL0XOsun7cDS0lfx9mBodBt/foWoxwnV5fKycGOpVbRn5pgdaOgk+ORyvrFG1cJOZM2sZfuXkXVgxezGOiXGe9V6H9cqQodYO2+w23P+Lo6gq0uLCCJLDMCOPfOSz+mXrGjFduxlV6zemrLaE2+OoGDuPfJX/mTpfqnMtVQneSZgO7VC9GjbLlUk+4bM0H0DVEtWWo7IaiH/pU7WbdYOR4NNGs8yJMEfZ8m2ISXmFL1NVrd84D0bHxDgs3ut5h5GtayT4tCzw2PJt5nzmf5GGPTm3LZQwCg17gEtn8gajGudLyiwPNOerujV98yVe7RECR2U1EK9K1YQxLIYDtie28hwVHZrLHN+vT/X4Ho0PU+WtLbAIjJkOpls5K0/up72CQbHJnI8ChK1rhJZukgyj6dIZns3AGbU+X9Lcg28utotayBlNQ4cXDb9i7Wa+injQRWwxX5yjshqOhjZEXzkOtq5xwZEXK2fl1ezykzLMAUvhIuVZHQD45LBM4ZccUDNZmg+ArWucF34JgSID0Ohf6nTtZgKPQrCO4XhlDUw067t4HdDoU/odldXzwjCJckBSAUi4PU4AkvSTPDuJACyhdMEw7uedzNtMJHJA0pKyDHZTDkjSR1Ojw3mdh0kAkhYNvWquhCMASRk5n5prQFLJTLealOx6lsFu8BqtxTHreaGnLnwEANj+jWcAFO8eK8nXbcjziq9KNI0MIKbh5+oC4OB//gvOXpx7wi71fQoA2LD68aIDcmp0OLGoCgDKDLYGWhYPaAqebgAK3sl58Cl16canCSCXl1VideUqrHh4Ff70j9YXHIzC4FFYvNfBx5cIyOPP9Ga9AskB79z34s59L3DjU5y9OJAA8pkaFxwrawwL5NToMCrGziP6yekEdNTwLoIiRAZSdkkjhmth8Cj4ocOIEXTGBdBRWY39Dd/GzwZ/ldNxlOFaBlLPcB05cXCe65EM7IBV6zfi9ZU1iSpYhilnIOPh+tknG9Hwtac1db7oJ6cD5HoFFIIdldXYuf3F2TAa35zoo3EPbnhvzeZ+OejsxQHNnFDwTsI0dJgmuRZyDihvTrRT3oLDO4mP/28UEzdvZQ2kcHtcEwAtg915aV/Y7DYASLRsUi0jULpu8u8QgDkA2VBZDXxtrnGbabjWYqml4J2EScURA5vdhlAwhLAYDpz0MDwAnJtyYMp3D4A5hcPO4l/lXIYtVUEAQJOrcGA0fBUsu5gyXMtApnLHDasf16YQuXRGlXdqyOAdGxPjwMV4IBr/6b302j++ezjum/3z8XGgysliS1UwAaNRQSy4seBkIAVF/ggAKx5epVkBYvFezyn3U4J3fDyWEXDpAnlualkCRAJQg/yxUGSz2+D3+QPuC+a8Fi9KEH9a5wuUO8t5I7khTcfSCb5jYyLyDV8yiO4LZv7YmEgOCMwOWX007kk0j5XhtZjBCwVD+MsLLKZ8UV3O4fh4FIAJTS6pdAE8durnc9VsvHksFw+FNPkgUrkGJqSf5M/levd0Pe93P74DYDl21nK6Fye6zIZJ1UpRjmYUyuSDkx4Gz6/0p6yEw2I48MFtjp91HmPooYeccScUdS9OtAcwzQXOhTD5wNHQhn8/eh7HL1zhgViiF3duyp7Iu2b7d1FDPjzHx6N4fuWMrkOI2k9GyLJBbNS5gm+0bUbbD67Mqzj1DrGZ6K9HnPzbTwil44COympsWP14ThMQjDRX0NHQhhdeteAXb75TkIXRlO8ewqJ+Lmh67RvVf6v2QZnqdTCt/7OUP697rB4bltkgzFgxE51BMJJbIhyMhDDh/wN+c+1/8a8jF/FUTR0s9rKU/z42NgRp8irCYjhgXvXH3GLnmo7qHquHtNyG//nNbwsSwn/zl3PPr4qgZAAEAMeX1qDusXps3LART9XUwVZWjmWMHRP+P+T8+UtBKAMYjUbDagAoQ7itaSsmbn2BoP8uhFC4YAAUQmFsfzgSMJlNXEm0YRYKy/Lkg+1ZTj7IRmqHHUdlNfb/6GBixd8N7y3cHBwxJnR3J+JF0qw+uM3xerRlDDcUt9DkAzXnCmp1DfL5w6Bve5UfkosnzuL3V6/g3JQdTUHti5GCmA2TyVzB0H/cxJPNz5bEGmM1HpKd21/EsVM/jxdRLAGYSbhOnisIAFj9+Jz7kNKSfL/CF/9B82rYXOhPsfIGknKDMDJzldf69bg0G4aU0HTt5tIIwcoqUTmioXQ1kg4RRYc3RukC4Dun/jlRPBTi7gekAgZQ8E6mbKUUwgQEtSTPh7z58Qhu3LylyWe+8eZPlryHWq8fMexsGMB4ux+oBV7nT7vx+6tXNP3cu3d9ePdnb2P/jw6WtgPmkmcU4nxBpeb6bST9AKysxuu7/gpv9P19TsdZLFwbEcZ8w1flXLbozx95dB1e2r+XAFRCqOYQmzJca703jNrwPfX9Jry8/Xuq33NywKQbkmqILdcJCFruDZMP53t5+/dKpgNgmJEQtWfEaLU3TF7C7qUzQIN6sxgE7yQ5YDbhYqEZMUbaG2axL/z1V/8m60q37Qf/iEceVe/dbMLdCTgeWpFWG4YAXCJc78T8HfYXAlKzvWGSoMOlM3j3o88wPDSU8/HUbtPcvXqD2jBqArmQOwLAMzUuVGWwTUekcg0sS4ClPH6y5EZy8gRPUhEDuFgxo5abyZM19QKryrkMjodWJEJoRvdkgd+jNkwBaGp0GEffO43PL/+Xrm72wqsvJ4YfqQ1TIoqcOIhzpz/E5/FF5VXOZbpBaNRmej5U8vMBLd7ruPqTVpw4/SEAJHYZzRa+u3d9OZ+TXGAZ9bVe5IAqKjYygC+J4QDA8ck5mBJCOSd7svnZRLHzQKvn0hmcClgShUm2lewv3nwHF0+cVf1aqQ1TSPlgHL5HHl2HJ5ufTS8sNrRhJwBsz70to3obhmbDFBZ8GzdtQtt3t2bU0nkg6W9ow/4G4KWkJZAkAvCBzcWfXykGPrg9G4ZfePVlVRc6KZdAyi0e5UTUTNss2SjdNkzJL0zXW9ta3XA05G+VXaKJvh2aFhrp5H7C7XFovUNRyQKYvP71g9scPwuftlsZGKkocEyMq/LaCQIwCzVv/SYsDW0le/2CdxJlv30PIY0XppdsHzD51VeRhj0l/QBaBrt12S+65BvRYTEcsD2xlS/lJaBTo8PQekcEAlCRC5ay+02NDoPv79Dt80u+CGHrGsGVoPsJ3klYBrvB6+R8VIQYAAB5jbRjYlyzz7V4rwMATCMDeXnNLAFYIM5TdmUIJkXSryyKrJyVT/V+4FwVhfo7wxKABQSe7DyhFClBqr8Xq2h7Ng3hC31yOkB3gwBcMOzlG77YyEDJuBoBmGElnNekPw4fiQDUJfQSfASgbrIMdmsS5glAkq5hngDUOLGn8EsA0hNPohBMIgBJJAKQRACSSAQgiQCcrYSvDJXEviYkgwIYCoYyeiENiQBUXRVj5+nukpYGMF8jF7GRAUyNDtMdJqVUWAwHWLudO5mvD+D7OygXJKWU3c6dZIHZNyTmS6ZDOwhCUuoQzAAD+V4Rbzq0g8Ix6QExwABrivnf1+LD+P4ORE4cJBBJc8YU879vlpNBLWaxxEYGwI8MIFLXiOnazVlv/kgqjgLE7LJHWa7L48tnIZISRIUjUo5YWrLZbbDbuZOOfWMBsxyLAbRqfSKxkQFwn5wOlDnL+ftf/y6w4Vso5U2CSi3/A+KNaK3ywIVk5ax8KBhC9MN3A6ZDOxA5cZAcscgVCoaA6shJAGClvhYT1+XxmVimV8+TknPQ2MgAZBCpYCnO8GtimV7HvrGA5HaziaE4c8xvqBeJJeeJamq6djPCYjhA61f0cb8Ea88FGAYAxHaX0/pjz7RwoP6fojGp1YgnztY1IlK5RrU8MXJi9n0ZkYY9eck7Be8kTId2EHELVL88J661/tgzzTCQzAAQXWmPMgwkoUOfYiRdR4yK4YB16DAfqWvMGRxL84HZ/+bpfPXYcb4Q5LBzr3Cdn/ukr7SYgP4oI/+gEFxQ+RRZOSvPGrifGDlxkJZlLvC9Lf+7zyvD7a4KrsvjS1TBAGCd2OJnGEhGywWXKljkPFEYPGqY6pnWBC8snhPXMoBkndjiV7Rj5iS53SzT0xO731F/xMJxrXrsmq6GK6qZK2YDH21I9GDlGxHF3rLOy7tlxhYEUGx3OeWcUPDErhf6InMZRmFFDRwra/IO5NToMCrGzhN8C4hDYHniz/Hw+wCAAPDLPV82faf7i6jQUd86E5OOFNNTGF63aTY/i0MJ4MFXrmZRbDgmxmHxXifwUsjMMrsdnZd7xXaXUwnfggACgNTXYmJ29UeFjvpWM8cdKaRQnEm4NurxiumhnxHF3Y7Oy70yU8n/hkn1y/IvFGI+SDJY3pcCvsUBBJhwu6vC+pU/CQi/++yw0VszJOPBJ3dUrF2eaQaQFszTUx1E/gVmV3/UHPPvpWErUrrw+X3+gDnm3yvne6ngWxRAuVqRE0eeE9fqPWGBVBjOx3PiWiU7i3YqliyfFQcyx/x7TSzTm89FTKTCD7vpwrdoDpgs5QHvd9QfoZyQpJTcaklmZSmlvTMC1+XxSRIYsd3lLOu8vNvMMrvptpPrKeET211OSQKTLnwZAQgADAOJ6/L4JLebdXRe7uUQWE55YekqIoq9HALLHZ2XeyW3m+W6PD6GSV1w5BSCFwvJQkd9qxAUD1EztnSqXIede0UOucnju5oACACSBCb82tzUmsgPv9oswdQfCoZgs9tAzevigS4UDCEshueBJ0/hy9T1VANQ6YbKZmPkh19tDoszfx6NSa1ynkAwFq5MLNPLAAMyeJkWGnkHMOGISUMuYrvLGWXLt0lAYzAoNlGILgyFxXDAbudOMsCAKeZ/XwZNAhi43Uy24TbvACZAdLtZPBdglDAKb9XypttBkwwkABCUxoEtDsOAvFzSsW8soDQW/JqX1ARP1v8D2oriS9Sg0JMAAAAASUVORK5CYII=';
@@ -118,6 +120,13 @@ function AppContent() {
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [latestAvailableVersion, setLatestAvailableVersion] = useState('');
+  const [stockOpen,setStockOpen]=useState(false);
+  const [stockLoading,setStockLoading]=useState(false);
+  const [stockRows,setStockRows]=useState<StockRecord[]>([]);
+  const [stockMovements,setStockMovements]=useState<StockMovement[]>([]);
+  const [stockTab,setStockTab]=useState<'products'|'complements'|'report'>('products');
+  const [stockSearch,setStockSearch]=useState('');
+  const [stockDrafts,setStockDrafts]=useState<Record<string,{quantity:string;minimum:string;unit:string}>>({});
 
   useEffect(() => { void AsyncStorage.getItem('fb3d2y-paper-width').then(v=>{if(v==='58'||v==='80')setPaperWidth(v);}); void AsyncStorage.getItem('fb3d2y-dark-mode').then(v=>setDarkMode(v==='1')); }, []);
 
@@ -330,6 +339,57 @@ function AppContent() {
   };
 
   const refresh = async () => { setRefreshing(true); await loadDashboard(); setRefreshing(false); };
+  const inventoryItems = useMemo(() => [
+    ...products.map(p=>({id:p.id,type:'product' as const,name:p.nome,group:categories.find(c=>c.id===p.categoria_id)?.nome??'Sem categoria'})),
+    ...options.map(o=>({id:o.id,type:'complement' as const,name:o.nome,group:groups.find(g=>g.id===o.grupo_id)?.nome??'Complementos'}))
+  ],[products,categories,options,groups]);
+  const loadStock = async () => {
+    if(!supabase||!restaurant)return;
+    setStockLoading(true);
+    const [{data:rows,error:stockError},{data:movements,error:movementError}] = await Promise.all([
+      supabase.from('inventory_stock').select('id,empresa_id,item_type,item_id,quantity,minimum_quantity,unit,updated_at').eq('empresa_id',restaurant.id).order('item_type').order('item_id'),
+      supabase.from('inventory_movements').select('id,stock_id,movement_type,quantity,previous_quantity,new_quantity,note,created_at').eq('empresa_id',restaurant.id).order('created_at',{ascending:false}).limit(100)
+    ]);
+    if(stockError){Alert.alert('Não foi possível carregar o estoque',stockError.message);setStockLoading(false);return;}
+    if(movementError){Alert.alert('Não foi possível carregar o histórico',movementError.message);setStockLoading(false);return;}
+    const saved=(rows??[]) as StockRecord[];
+    setStockRows(saved);
+    setStockMovements((movements??[]) as StockMovement[]);
+    setStockDrafts(current=>{
+      const next={...current};
+      for(const row of saved){const key=row.item_type+':'+row.item_id;next[key]={quantity:String(row.quantity),minimum:String(row.minimum_quantity),unit:row.unit||'un'};}
+      return next;
+    });
+    setStockLoading(false);
+  };
+  const openStock = () => {setSettingsOpen(false);setStockTab('products');setStockSearch('');setStockOpen(true);void loadStock();};
+  const saveStockItem = async (item:{id:number;type:'product'|'complement';name:string}) => {
+    if(!supabase||!restaurant)return;
+    const key=item.type+':'+item.id;
+    const draft=stockDrafts[key]??{quantity:'',minimum:'0',unit:'un'};
+    const quantity=Number(draft.quantity.replace(',','.'));
+    const minimum=Number(draft.minimum.replace(',','.'));
+    if(draft.quantity.trim()===''||!Number.isFinite(quantity)||quantity<0||!Number.isFinite(minimum)||minimum<0){Alert.alert('Quantidade inválida','Informe uma quantidade disponível e um estoque mínimo válidos.');return;}
+    const current=stockRows.find(row=>row.item_type===item.type&&row.item_id===item.id);
+    if(!current){
+      const {error:e}=await supabase.from('inventory_stock').insert({empresa_id:restaurant.id,item_type:item.type,item_id:item.id,quantity,minimum_quantity:minimum,unit:draft.unit.trim()||'un'});
+      if(e){Alert.alert('Não foi possível ativar o estoque',e.message);return;}
+    }else{
+      const delta=quantity-Number(current.quantity);
+      if(delta!==0){
+        const {error:e}=await supabase.rpc('inventory_adjust_stock',{p_stock_id:current.id,p_delta:delta,p_movement_type:delta>0?'entry':'exit',p_note:'Ajuste pelo aplicativo'});
+        if(e){Alert.alert('Não foi possível ajustar o estoque',e.message);return;}
+      }
+      const {error:e}=await supabase.from('inventory_stock').update({minimum_quantity:minimum,unit:draft.unit.trim()||'un'}).eq('id',current.id);
+      if(e){Alert.alert('Não foi possível salvar',e.message);return;}
+    }
+    await loadStock();
+    Alert.alert('Estoque salvo',item.name+' atualizado com sucesso.');
+  };
+  const stockNameFor = (stockId:number) => {
+    const row=stockRows.find(s=>s.id===stockId);
+    return row?inventoryItems.find(i=>i.id===row.item_id&&i.type===row.item_type)?.name??'Item removido':'Item';
+  };
 
   const pending = useMemo(() => orders.filter(o => ['novo', 'recebido', 'pendente'].includes((o.status ?? '').toLocaleLowerCase('pt-BR'))).length, [orders]);
   const reportOrders = useMemo(() => {
@@ -452,6 +512,7 @@ function AppContent() {
               <Pressable style={styles.settingsRow} onPress={()=>void toggleKeepAwake()}><Text style={styles.settingsIcon}>◐</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>Manter tela ligada</Text><Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>Evita que a tela apague durante o uso</Text></View><Text style={[styles.settingsSwitch,keepAwake&&styles.settingsSwitchOn]}>{keepAwake?'Ligado':'Desligado'}</Text></Pressable>
               <Text style={styles.settingsGroup}>RESTAURANTE</Text>
               <Pressable style={styles.settingsRow} onPress={openHoursEditor}><Text style={styles.settingsIcon}>◷</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>Horário de funcionamento</Text><Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>Dias e horários de atendimento</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
+              <Pressable style={styles.settingsRow} onPress={openStock}><Text style={styles.settingsIcon}>▦</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>Estoque</Text><Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>Quantidades, complementos e movimentações</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
               <Pressable style={styles.settingsRow} onPress={()=>{setSettingsOpen(false);setPrinterOpen(true);}}><Text style={styles.settingsIcon}>▤</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>Impressora</Text><Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>Exportar comandas e relatórios em PDF</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
               <Pressable style={styles.settingsRow} onPress={()=>{setRestaurantNameDraft(restaurant?.nome??'');setRestaurantSlugDraft(restaurant?.slug??'');setSettingsOpen(false);setRestaurantEditOpen(true);}}><Text style={styles.settingsIcon}>▣</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>Dados do restaurante</Text><Text style={[styles.settingsHint,darkMode&&styles.darkMuted]}>Informações e preferências da loja</Text></View><Text style={styles.settingsArrow}>›</Text></Pressable>
               <Text style={styles.settingsGroup}>APARÊNCIA</Text>
@@ -461,6 +522,45 @@ function AppContent() {
               <Pressable style={[styles.settingsRow,styles.signOutRow]} onPress={()=>void signOut()}><Text style={styles.settingsIcon}>↪</Text><View style={styles.settingsCopy}><Text style={[styles.settingsLabel,{color:'#B42318'}]}>Sair da conta</Text></View></Pressable>
             </Pressable>
           </Pressable>
+        </Modal>
+        <Modal visible={stockOpen} transparent animationType="slide" onRequestClose={()=>setStockOpen(false)}>
+          <View style={styles.modalShade}>
+            <View style={[styles.modalCard,{maxHeight:'94%'},darkMode&&styles.darkPanel]}>
+              <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+                <View><Text style={[styles.sectionTitle,darkMode&&styles.darkText]}>Controle de estoque</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{restaurant?.nome??'Restaurante'}</Text></View>
+                <Pressable onPress={()=>setStockOpen(false)}><Text style={styles.settingsClose}>✕</Text></Pressable>
+              </View>
+              <View style={{flexDirection:'row',gap:7}}>
+                {([['products','Produtos'],['complements','Complementos'],['report','Relatório']] as const).map(([key,label])=><Pressable key={key} onPress={()=>setStockTab(key)} style={[styles.choiceChip,stockTab===key&&styles.choiceChipActive,{flex:1,alignItems:'center',paddingHorizontal:5}]}><Text style={[styles.choiceChipText,stockTab===key&&styles.choiceChipTextActive]}>{label}</Text></Pressable>)}
+              </View>
+              {stockTab!=='report'&&<TextInput value={stockSearch} onChangeText={setStockSearch} placeholder="Buscar item..." style={[styles.input,darkMode&&styles.darkInput]}/>}
+              {stockLoading?<View style={{padding:25,alignItems:'center'}}><ActivityIndicator color="#D66F3C"/><Text style={[styles.orderMeta,darkMode&&styles.darkMuted,{marginTop:8}]}>Carregando estoque...</Text></View>:
+                <ScrollView keyboardShouldPersistTaps="handled" style={{maxHeight:520}}>
+                  {stockTab==='report'?<>
+                    <Text style={[styles.settingsGroup,darkMode&&styles.darkMuted]}>ITENS PARA REPOR</Text>
+                    {stockRows.filter(row=>Number(row.minimum_quantity)>0&&Number(row.quantity)<=Number(row.minimum_quantity)).map(row=><View key={row.id} style={[styles.productCard,darkMode&&styles.darkCard]}><View style={{flex:1}}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>{stockNameFor(row.id)}</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>Disponível: {row.quantity} {row.unit} · Mínimo: {row.minimum_quantity} {row.unit}</Text></View><Text style={{color:'#B42318',fontWeight:'900',fontSize:11}}>REPOR</Text></View>)}
+                    {!stockRows.some(row=>Number(row.minimum_quantity)>0&&Number(row.quantity)<=Number(row.minimum_quantity))&&<Text style={[styles.emptyText,darkMode&&styles.darkMuted]}>Nenhum item precisa de reposição.</Text>}
+                    <Text style={[styles.settingsGroup,darkMode&&styles.darkMuted]}>MOVIMENTAÇÕES RECENTES</Text>
+                    {stockMovements.map(m=><View key={m.id} style={{paddingVertical:9,borderBottomWidth:1,borderBottomColor:darkMode?'#3A4146':'#EDF0F2'}}><View style={{flexDirection:'row',justifyContent:'space-between',gap:8}}><Text style={[styles.settingsLabel,darkMode&&styles.darkText,{flex:1}]}>{stockNameFor(m.stock_id)}</Text><Text style={[styles.settingsLabel,{color:m.movement_type==='exit'||m.movement_type==='sale'?'#B42318':'#247A4B'}]}>{m.movement_type==='sale'?'Venda':m.movement_type==='sale_return'?'Devolução':m.movement_type==='entry'?'Entrada':m.movement_type==='exit'?'Saída':'Ajuste'} · {m.quantity}</Text></View><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{new Date(m.created_at).toLocaleString('pt-BR')} {m.note?'· '+m.note:''}</Text></View>)}
+                    {!stockMovements.length&&<Text style={[styles.emptyText,darkMode&&styles.darkMuted]}>Ainda não há movimentações.</Text>}
+                  </>:inventoryItems.filter(item=>item.type===(stockTab==='products'?'product':'complement')&&(item.name+' '+item.group).toLocaleLowerCase('pt-BR').includes(stockSearch.toLocaleLowerCase('pt-BR'))).map(item=>{
+                    const key=item.type+':'+item.id;
+                    const row=stockRows.find(s=>s.item_type===item.type&&s.item_id===item.id);
+                    const draft=stockDrafts[key]??{quantity:row?String(row.quantity):'',minimum:row?String(row.minimum_quantity):'0',unit:row?.unit??'un'};
+                    return <View key={key} style={[styles.productCard,darkMode&&styles.darkCard,{alignItems:'stretch',flexDirection:'column',gap:8}]}>
+                      <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:8}}><View style={{flex:1}}><Text style={[styles.settingsLabel,darkMode&&styles.darkText]}>{item.name}</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{item.group} · {row?'Estoque ativo':'Ainda não controlado'}</Text></View>{row&&<Text style={{fontSize:9,fontWeight:'900',color:'#247A4B'}}>ATIVO</Text>}</View>
+                      <View style={{flexDirection:'row',gap:7}}>
+                        <View style={{flex:1}}><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>Quantidade</Text><TextInput value={draft.quantity} onChangeText={v=>setStockDrafts(old=>({...old,[key]:{...draft,quantity:v}}))} keyboardType="decimal-pad" placeholder="0" style={[styles.input,darkMode&&styles.darkInput,{padding:9}]}/></View>
+                        <View style={{flex:1}}><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>Estoque mínimo</Text><TextInput value={draft.minimum} onChangeText={v=>setStockDrafts(old=>({...old,[key]:{...draft,minimum:v}}))} keyboardType="decimal-pad" placeholder="0" style={[styles.input,darkMode&&styles.darkInput,{padding:9}]}/></View>
+                        <View style={{width:74}}><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>Unidade</Text><TextInput value={draft.unit} onChangeText={v=>setStockDrafts(old=>({...old,[key]:{...draft,unit:v}}))} placeholder="un" style={[styles.input,darkMode&&styles.darkInput,{padding:9}]}/></View>
+                      </View>
+                      <Pressable style={styles.advanceButton} onPress={()=>void saveStockItem(item)}><Text style={styles.advanceButtonText}>{row?'Salvar alterações':'Ativar estoque'}</Text></Pressable>
+                    </View>;
+                  })}
+                </ScrollView>}
+              <Pressable style={styles.cancelButton} onPress={()=>{setStockOpen(false);}}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable>
+            </View>
+          </View>
         </Modal>
         <Modal visible={editingOrder!==null} transparent animationType="slide" onRequestClose={()=>setEditingOrder(null)}><View style={styles.modalShade}><View style={[styles.modalCard,{maxHeight:'92%'},darkMode&&styles.darkPanel]}><ScrollView keyboardShouldPersistTaps="handled"><Text style={[styles.sectionTitle,darkMode&&styles.darkText]}>Editar pedido</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>Atualize os dados antes de salvar.</Text><TextInput value={editOrderName} onChangeText={setEditOrderName} placeholder="Nome do cliente" style={[styles.input,darkMode&&styles.darkInput]}/><TextInput value={editOrderPhone} onChangeText={setEditOrderPhone} placeholder="WhatsApp" keyboardType="phone-pad" style={[styles.input,darkMode&&styles.darkInput]}/><Text style={styles.settingsGroup}>TIPO DE PEDIDO</Text><View style={{flexDirection:'row',gap:8}}>{(['Retirada','Entrega'] as const).map(v=><Pressable key={v} style={[styles.choiceChip,editOrderType===v&&styles.choiceChipActive]} onPress={()=>setEditOrderType(v)}><Text style={[styles.choiceChipText,editOrderType===v&&styles.choiceChipTextActive]}>{v}</Text></Pressable>)}</View>{editOrderType==='Entrega'&&<><TextInput value={editOrderAddress} onChangeText={setEditOrderAddress} placeholder="Endereço de entrega" style={[styles.input,darkMode&&styles.darkInput]}/><TextInput value={editOrderDeliveryFee} onChangeText={setEditOrderDeliveryFee} placeholder="Taxa de entrega (R$)" keyboardType="decimal-pad" style={[styles.input,darkMode&&styles.darkInput]}/></>}<Text style={styles.settingsGroup}>PAGAMENTO</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{['Pix','Dinheiro','Cartão de débito','Cartão de crédito','A combinar'].map(v=><Pressable key={v} style={[styles.choiceChip,editOrderPayment===v&&styles.choiceChipActive]} onPress={()=>setEditOrderPayment(v)}><Text style={[styles.choiceChipText,editOrderPayment===v&&styles.choiceChipTextActive]}>{v}</Text></Pressable>)}</View><TextInput value={editOrderNotes} onChangeText={setEditOrderNotes} placeholder="Observações" multiline style={[styles.input,{minHeight:72,textAlignVertical:'top'}]}/><Pressable style={styles.advanceButton} disabled={orderEditBusy} onPress={()=>void saveOrderEdit()}><Text style={styles.advanceButtonText}>{orderEditBusy?'Salvando...':'Salvar alterações'}</Text></Pressable><Pressable style={styles.cancelButton} onPress={()=>setEditingOrder(null)}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable></ScrollView></View></View></Modal>
         <Modal visible={categoryModal} transparent animationType="slide" onRequestClose={()=>setCategoryModal(false)}><View style={styles.modalShade}><View style={[styles.modalCard,darkMode&&styles.darkPanel]}><Text style={styles.sectionTitle}>{editingCategory?'Editar categoria':'Nova categoria'}</Text><TextInput style={[styles.input,darkMode&&styles.darkInput]} value={categoryDraft} onChangeText={setCategoryDraft} placeholder="Nome da categoria"/><Pressable style={styles.advanceButton} onPress={()=>void saveCategory()}><Text style={styles.advanceButtonText}>Salvar categoria</Text></Pressable>{editingCategory&&<Pressable style={styles.cancelButton} onPress={()=>deleteCategory(editingCategory)}><Text style={styles.cancelButtonText}>Excluir categoria</Text></Pressable>}<Pressable style={styles.cancelButton} onPress={()=>setCategoryModal(false)}><Text style={styles.cancelButtonText}>Fechar</Text></Pressable></View></View></Modal>
