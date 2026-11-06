@@ -605,10 +605,6 @@ async function handleIncomingMessage(restaurantId, sock, message) {
       if (!outgoingInFlight.size) recentBotOutgoing.delete(outgoingSignature)
       return
     }
-    if (/^\/bot\s+(retomar|voltar|reativar)$/i.test(text.trim())) {
-      resumeConversationForBot(senderKey)
-      return
-    }
     pauseConversationForHuman(senderKey, 'mensagem_manual_no_whatsapp')
     return
   }
