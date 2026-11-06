@@ -53,6 +53,7 @@ const welcomedContacts = new Map()
 const humanHandoffTimes = new Map()
 const pendingInbound = new Map()
 const processingConversations = new Set()
+const recentBotOutgoing = new Map()
 const conversationVersions = new Map()
 const humanPausedConversations = new Set()
 const humanHandoffStateFile = path.join(AUTH_DIR, 'human-handoff.json')
@@ -200,6 +201,12 @@ function rememberSentMessage(restaurantId, sent) {
 }
 
 async function sendAndStoreMessage(sock, restaurantId, jid, content, options) {
+  const bodyText = typeof content === 'string' ? content : String(content?.text || '')
+  if (bodyText) {
+    const signature = String(restaurantId) + ':' + String(jid) + ':' + bodyText
+    recentBotOutgoing.set(signature, Date.now())
+    for (const [key, timestamp] of recentBotOutgoing) if (Date.now() - timestamp > 60000) recentBotOutgoing.delete(key)
+  }
   const sent = await sock.sendMessage(jid, content, options)
   rememberSentMessage(restaurantId, sent)
   return sent
@@ -246,33 +253,18 @@ function isMenuLinkRequest(text) {
   return isMenuRequest(text) && /\b(link|url|endereco)\b/.test(normalized)
 }
 
-async function buildMenuReply(restaurantId, full = false) {
-  const [restaurantResult, productsResult, categoriesResult] = await Promise.all([
-    admin.from('empresas').select('nome,slug').eq('id', Number(restaurantId)).maybeSingle(),
-    admin.from('produtos').select('nome,preco,descricao,categoria_id,ordem').eq('empresa_id', Number(restaurantId)).eq('disponivel', true).order('ordem').order('nome'),
-    admin.from('categorias').select('id,nome,ordem').eq('empresa_id', Number(restaurantId)).order('ordem').order('nome')
-  ])
-  if (restaurantResult.error) throw restaurantResult.error
-  if (productsResult.error) throw productsResult.error
-  if (categoriesResult.error) throw categoriesResult.error
+async function buildMenuReply(restaurantId) {
+  const { data: restaurant, error } = await admin
+    .from('empresas')
+    .select('nome,slug')
+    .eq('id', Number(restaurantId))
+    .maybeSingle()
+  if (error) throw error
 
-  const restaurantName = restaurantResult.data?.nome || 'Cardápio'
   const menuBaseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
-  const menuLink = restaurantResult.data?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurantResult.data.slug) : null
-  const withMenuLink = reply => menuLink ? reply + '\n\n*Link do nosso cardápio:*\n' + menuLink : reply
-  const availableProducts = productsResult.data || []
-  if (!availableProducts.length) return withMenuLink(`*${restaurantName}*\nNo momento, não há itens disponíveis no cardápio.`)
-
-  const categoryNames = new Map((categoriesResult.data || []).map(category => [category.id, category.nome]))
-  const groups = new Map()
-  for (const product of availableProducts) {
-    const groupName = categoryNames.get(product.categoria_id) || 'Outros itens'
-    if (!groups.has(groupName)) groups.set(groupName, [])
-    groups.get(groupName).push(product)
-  }
-
-  // O cardápio completo fica no link; não despejar listas no WhatsApp.
-  return withMenuLink('Claro! Você pode conferir todas as opções disponíveis diretamente no nosso cardápio.')
+  const menuLink = restaurant?.slug ? menuBaseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : null
+  if (!menuLink) return 'O link do cardápio não está disponível no momento. Nossa equipe pode ajudar por aqui.'
+  return 'Claro! Você pode conferir todas as opções disponíveis no cardápio de ' + (restaurant.nome || 'nosso restaurante') + ':\n' + menuLink
 }
 
 function normalizeText(value) {
@@ -603,6 +595,12 @@ async function handleIncomingMessage(restaurantId, sock, message) {
   // própria desconhecida representa uma intervenção humana.
   if (key.fromMe) {
     if (getStoredMessage(restaurantId, messageId)) return
+    const outgoingSignature = String(restaurantId) + ':' + String(remoteJid) + ':' + text
+    const outgoingAt = recentBotOutgoing.get(outgoingSignature)
+    if (outgoingAt && Date.now() - outgoingAt < 60000) {
+      recentBotOutgoing.delete(outgoingSignature)
+      return
+    }
     if (/^\/bot\s+(retomar|voltar|reativar)$/i.test(text.trim())) {
       resumeConversationForBot(senderKey)
       return
