@@ -335,19 +335,12 @@ function resumeConversationForBot(senderKey) {
 function formatBusinessHours(restaurant) {
   const schedule = restaurant?.horario_funcionamento
   if (schedule && typeof schedule === 'object') {
-    const days = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
     const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Fortaleza', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
     const weekday = parts.find(part => part.type === 'weekday')?.value
     const hour = Number(parts.find(part => part.type === 'hour')?.value)
     const minute = Number(parts.find(part => part.type === 'minute')?.value)
     const dayIndex = ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 })[weekday]
     const today = schedule[String(dayIndex)]
-    const lines = days.map((day, index) => {
-      const item = schedule[String(index)]
-      if (!item || item.closed) return '• ' + day + ': fechado'
-      if (!item.open || !item.close) return '• ' + day + ': horário não informado'
-      return '• ' + day + ': ' + item.open + ' às ' + item.close
-    })
     let current = 'O horário de hoje não está cadastrado.'
     if (today?.closed) current = 'Hoje estamos fechados.'
     else if (today?.open && today?.close) {
