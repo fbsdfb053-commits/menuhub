@@ -22,7 +22,7 @@ export default async function handler(req:Req,res:Res){
  const email=(user.email||'').trim().toLowerCase()
  const free=await db.from('assinaturas_gratuitas').select('email').eq('email',email).maybeSingle()
  if(free.error)return json(res,500,{error:'Execute o SQL de assinatura no Supabase antes de continuar.'})
- const {data:sub,error}=await db.from('assinaturas').select('status,expira_em,mp_payment_id').eq('user_id',user.id).maybeSingle()
+ const member=await db.from('empresa_usuarios').select('empresa_id').eq('user_id',user.id).limit(1)\n if(member.error)return json(res,500,{error:'Não foi possível verificar o acesso compartilhado.'})\n const isMember=Boolean(member.data?.length)\n const {data:sub,error}=await db.from('assinaturas').select('status,expira_em,mp_payment_id').eq('user_id',user.id).maybeSingle()
  if(error)return json(res,500,{error:'Não foi possível consultar a assinatura. Confira o SQL do Supabase.'})
  const active=Boolean(free.data)||(sub?.status==='ativa'&&sub.expira_em&&new Date(sub.expira_em).getTime()>Date.now())
  if(req.method==='GET')return json(res,200,{active,free:Boolean(free.data),expiresAt:sub?.expira_em||null,status:free.data?'gratuita':active?'ativa':'inativa'})
