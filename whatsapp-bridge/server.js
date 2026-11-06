@@ -335,26 +335,54 @@ function resumeConversationForBot(senderKey) {
 function formatBusinessHours(restaurant) {
   const schedule = restaurant?.horario_funcionamento
   if (schedule && typeof schedule === 'object') {
-    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Fortaleza', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
+    const now = new Date()
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Fortaleza', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now)
     const weekday = parts.find(part => part.type === 'weekday')?.value
     const hour = Number(parts.find(part => part.type === 'hour')?.value)
     const minute = Number(parts.find(part => part.type === 'minute')?.value)
     const dayIndex = ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 })[weekday]
+    const currentMinutes = hour * 60 + minute
+    const dayNames = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
     const today = schedule[String(dayIndex)]
-    let current = 'O horário de hoje não está cadastrado.'
-    if (today?.closed) current = 'Hoje estamos fechados.'
-    else if (today?.open && today?.close) {
-      const currentMinutes = hour * 60 + minute
-      const open = today.open.split(':').map(Number)
-      const close = today.close.split(':').map(Number)
-      const isOpen = currentMinutes >= open[0] * 60 + open[1] && currentMinutes < close[0] * 60 + close[1]
-      current = isOpen ? 'Hoje estamos abertos até ' + today.close + '.' : 'Hoje nosso horário é das ' + today.open + ' às ' + today.close + '.'
+    let isScheduledOpen = false
+    if (today && !today.closed && today.open && today.close) {
+      const [openHour, openMinute] = today.open.split(':').map(Number)
+      const [closeHour, closeMinute] = today.close.split(':').map(Number)
+      const opening = openHour * 60 + openMinute
+      const closing = closeHour * 60 + closeMinute
+      isScheduledOpen = closing > opening
+        ? currentMinutes >= opening && currentMinutes < closing
+        : currentMinutes >= opening || currentMinutes < closing
     }
-    if (typeof restaurant.status_loja_manual === 'boolean') current = restaurant.status_loja_manual ? 'A loja está marcada como aberta no momento.' : 'A loja está marcada como fechada no momento.'
-    if (restaurant.aceita_pedidos === false) current += ' No momento, não estamos aceitando pedidos.'
-    return current
+    const manuallyClosed = restaurant.status_loja_manual === false || restaurant.aceita_pedidos === false
+    if (isScheduledOpen && !manuallyClosed) {
+      return 'Estamos abertos agora e esperamos seu pedido! 😊 Hoje atendemos até ' + today.close + '.'
+    }
+
+    let nextOpening = null
+    for (let offset = 0; offset <= 7; offset++) {
+      const index = (dayIndex + offset) % 7
+      const day = schedule[String(index)]
+      if (!day || day.closed || !day.open || !day.close) continue
+      const [openHour, openMinute] = day.open.split(':').map(Number)
+      const opening = openHour * 60 + openMinute
+      if (offset === 0 && opening <= currentMinutes) continue
+      nextOpening = { day: dayNames[index], time: day.open, today: offset === 0 }
+      break
+    }
+
+    let reply = 'Infelizmente, não conseguimos receber pedidos neste momento.'
+    if (nextOpening) {
+      reply += nextOpening.today
+        ? ' Mas estaremos abertos hoje, a partir das ' + nextOpening.time + '.'
+        : ' Mas estaremos abertos ' + nextOpening.day + ', a partir das ' + nextOpening.time + '.'
+    } else {
+      reply += ' No momento, não há um próximo horário de abertura cadastrado. Nossa equipe pode confirmar para você.'
+    }
+    if (restaurant.aceita_pedidos === false) reply += ' A loja está temporariamente sem aceitar pedidos.'
+    return reply + ' Será um prazer atender você! 😊'
   }
-  if (restaurant?.horario?.trim()) return 'Nosso horário informado é: ' + restaurant.horario.trim() + '.'
+  if (restaurant?.horario?.trim()) return 'Infelizmente, não conseguimos atender neste momento. Nosso horário informado é: ' + restaurant.horario.trim() + '. Será um prazer receber seu pedido! 😊'
   return null
 }
 
