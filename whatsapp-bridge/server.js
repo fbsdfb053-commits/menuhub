@@ -526,7 +526,10 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
   const aiPermission = reserveAiUsage(restaurantId, senderKey, restaurant)
   if (aiPermission.allowed) {
     const aiReply = await generateAiReply({ text, restaurant, products, categories, config, log, conversation })
-    if (aiReply) return withMenuLink(aiReply)
+    if (aiReply) {
+      const asksSpecificProduct = products.some(product => normalized.includes(normalizeText(product.nome)))
+      return asksSpecificProduct ? withMenuLink(aiReply) : aiReply
+    }
   } else if (aiPermission.reason === 'closed') {
     const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
     const menuLink = restaurant?.slug ? '\nCardápio: ' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug) : ''
@@ -689,7 +692,14 @@ async function processCustomerMessage(restaurantId, sock, message, text, audioMe
       const welcome = await buildWelcomeMessage(restaurantId, config)
       const normalizedIncoming = normalizeText(text)
       const isGreeting = /^(oi|ola|bom dia|boa tarde|boa noite|opa|e ai)([!.,? ]|$)/.test(normalizedIncoming)
-      reply = isGreeting ? welcome : welcome + '\n' + reply.trim()
+      if (isGreeting) {
+        reply = welcome
+      } else {
+        const [intro, menuLine] = welcome.split('\n')
+        reply = intro + '\n' + reply.trim()
+        const menuUrl = menuLine?.replace(/^Cardápio:\s*/, '')
+        if (menuUrl && !reply.includes(menuUrl)) reply += '\n' + menuLine
+      }
     }
 
     if ((conversationVersions.get(senderKey) || 0) !== versionAtStart && !isHandoff) return
