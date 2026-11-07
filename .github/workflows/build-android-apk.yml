@@ -1,0 +1,54 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - app-android
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-android-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Expo native modules used by the app
+        run: npx expo install expo-keep-awake expo-speech expo-audio expo-print expo-sharing
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean --non-interactive
+
+      - name: Build release APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fb3d2y-menu-1.2.8-build-13
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
