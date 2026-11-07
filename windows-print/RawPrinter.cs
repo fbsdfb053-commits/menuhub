@@ -38,7 +38,7 @@ internal static class RawPrinter
             if (StartDocPrinter(handle, 1, info) == 0) return false;
             started = true;
             if (!StartPagePrinter(handle)) return false;
-            var bytes = Encoding.GetEncoding(850).GetBytes(text);
+            var bytes = Encoding.Latin1.GetBytes(text);
             var pointer = Marshal.AllocHGlobal(bytes.Length);
             try
             {
