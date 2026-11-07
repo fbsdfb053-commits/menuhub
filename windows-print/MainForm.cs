@@ -12,6 +12,7 @@ internal sealed class MainForm : Form
     private readonly NotifyIcon tray;
     private readonly PrintServer server;
     private readonly string token;
+    private bool exiting;
 
     public MainForm()
     {
@@ -33,7 +34,7 @@ internal sealed class MainForm : Form
             ContextMenuStrip = new ContextMenuStrip()
         };
         tray.ContextMenuStrip.Items.Add("Abrir Fb3d2y Print", null, (_, _) => ShowWindow());
-        tray.ContextMenuStrip.Items.Add("Sair", null, (_, _) => Close());
+        tray.ContextMenuStrip.Items.Add("Sair", null, (_, _) => { exiting = true; Close(); });
         tray.DoubleClick += (_, _) => ShowWindow();
 
         var title = new Label { Text = "FB3D2Y PRINT", Font = new Font("Segoe UI", 18, FontStyle.Bold), AutoSize = true, ForeColor = Color.FromArgb(230, 103, 32), Location = new Point(24, 20) };
@@ -57,7 +58,7 @@ internal sealed class MainForm : Form
         status.Text = "Terminal ativo — aguardando conexão do site.";
         FormClosing += (_, e) =>
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            if (!exiting && e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
                 Hide();
