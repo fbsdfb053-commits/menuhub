@@ -1,3 +1,4 @@
+using System.Text;
 namespace Fb3d2yPrint;
 internal static class Program
 {
