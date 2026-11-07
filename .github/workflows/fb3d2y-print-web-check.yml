@@ -1,0 +1,23 @@
+name: Check Fb3d2y Menu web integration
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/fb3d2y-print-windows]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/fb3d2y-print-web-check.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
