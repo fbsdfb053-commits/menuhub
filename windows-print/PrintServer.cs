@@ -103,7 +103,7 @@ internal sealed class PrintServer : IDisposable
                     if (count == 0) throw new IOException("Conexão encerrada antes do fim do conteúdo.");
                     offset += count;
                 }
-                var payload = JsonSerializer.Deserialize<PrintPayload>(bodyBytes);
+                var payload = JsonSerializer.Deserialize<PrintPayload>(bodyBytes, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 if (payload is null || string.IsNullOrWhiteSpace(payload.Content))
                 {
                     await Respond(stream, 400, new { ok = false, error = "Comanda vazia." }, allowedOrigin);
