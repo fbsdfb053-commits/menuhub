@@ -553,8 +553,68 @@ function AdminView({ onBack }: { onBack: () => void }) {
   const loadDetails=async(id:number)=>{setBusy(true);const [c,p,o,g,links]=await Promise.all([supabase.from('categorias').select('id,nome,ordem').eq('empresa_id',id).order('ordem'),supabase.from('produtos').select('id,nome,descricao,preco,categoria_id,imagem_url,disponivel,ordem,max_complementos').eq('empresa_id',id).order('ordem'),supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100),supabase.from('grupos_complementos').select('id,empresa_id,nome,descricao,ordem,ativo,max_selecoes,opcoes_complementos(id,nome,preco_adicional,imagem_url,ativo,ordem)').eq('empresa_id',id).order('ordem'),supabase.from('produto_grupos_complementos').select('produto_id,grupo_id')]);setBusy(false);if(c.error||p.error||o.error||g.error||links.error){notify('Erro ao carregar dados. Para Complementos, execute supabase/07_complementos.sql no Supabase de teste.',true);if(!g.error&&!links.error){setComplementGroups((g.data??[]) as unknown as AdminComplementGroup[])}return}setCats((c.data??[]) as AdminCategory[]);setItems((p.data??[]) as AdminProduct[]);setOrders((o.data??[]) as AdminOrder[]);setComplementGroups((g.data??[]) as unknown as AdminComplementGroup[]);const map:Record<number,number[]>={};for(const row of links.data??[]){const pid=Number(row.produto_id),gid=Number(row.grupo_id);(map[pid]??=[]).push(gid)}setProductGroupLinks(map)}
   const refreshOrders=async(id:number)=>{const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100);if(!error&&data)setOrders(data as AdminOrder[])}
   const autoPrintSeenIds=useRef(new Map<number,Set<string>>())
+  const autoPrintHandledIds=useRef(new Map<number,Set<string>>())
   const orderAudioRef=useRef<HTMLAudioElement|null>(null)
-  useEffect(()=>{if(!session||selectedId===null)return;const id=selectedId;let active=true;let initialized=false;let polling=false;const pollOrders=async()=>{if(polling||!active)return;polling=true;try{const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100);if(!active||error||!data)return;const list=data as AdminOrder[];setOrders(list);const seen=autoPrintSeenIds.current.get(id)??new Set<string>();if(!initialized){list.forEach(order=>seen.add(String(order.id)));autoPrintSeenIds.current.set(id,seen);initialized=true;return}let cfg:{autoPrint?:boolean;qzPrinterName?:string;terminalToken?:string}|null=null;try{cfg=JSON.parse(window.localStorage.getItem('menuhub-print-'+id)||'{}')}catch{cfg=null}const printerConfigured=Boolean(cfg?.qzPrinterName||cfg?.terminalToken);for(const order of [...list].reverse()){const key=String(order.id);if(seen.has(key))continue;seen.add(key);if(String(order.status??'').trim().toLocaleLowerCase('pt-BR')==='novo'){playOrderAlert();notify('Novo pedido recebido! '+formatPublicOrderCode(order.id,order.criado_em))}if(cfg?.autoPrint===true&&printerConfigured&&String(order.status??'').trim().toLocaleLowerCase('pt-BR')==='novo'){void printOrderWithItems(order)}}autoPrintSeenIds.current.set(id,seen)}finally{polling=false}};void pollOrders();const interval=window.setInterval(()=>{void pollOrders()},5000);const channel=supabase.channel('menuhub-orders-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'pedidos',filter:'empresa_id=eq.'+id},()=>{void pollOrders()}).subscribe();return()=>{active=false;window.clearInterval(interval);void supabase.removeChannel(channel)}},[session,selectedId,qzPrinterName])
+  useEffect(()=>{
+    if(!session||selectedId===null)return
+    const id=selectedId
+    let active=true,initialized=false,polling=false
+    const seen=autoPrintSeenIds.current.get(id)??new Set<string>()
+    const handled=autoPrintHandledIds.current.get(id)??new Set<string>()
+    autoPrintSeenIds.current.set(id,seen)
+    autoPrintHandledIds.current.set(id,handled)
+    const processIncomingOrder=(order:AdminOrder)=>{
+      const key=String(order.id)
+      if(handled.has(key))return
+      handled.add(key)
+      if(String(order.status??'').trim().toLocaleLowerCase('pt-BR')!=='novo')return
+      playOrderAlert()
+      notify('Novo pedido recebido! '+formatPublicOrderCode(order.id,order.criado_em))
+      let cfg:{autoPrint?:boolean;qzPrinterName?:string;terminalToken?:string}|null=null
+      try{cfg=JSON.parse(window.localStorage.getItem('menuhub-print-'+id)||'{}')}catch{cfg=null}
+      const printerConfigured=Boolean(cfg?.qzPrinterName||cfg?.terminalToken)
+      if(cfg?.autoPrint===true&&printerConfigured)void printOrderWithItems(order)
+    }
+    const pollOrders=async()=>{
+      if(polling||!active)return
+      polling=true
+      try{
+        const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100)
+        if(!active||error||!data)return
+        const list=data as AdminOrder[]
+        setOrders(list)
+        if(!initialized){
+          list.forEach(order=>seen.add(String(order.id)))
+          autoPrintSeenIds.current.set(id,seen)
+          initialized=true
+          return
+        }
+        for(const order of [...list].reverse()){
+          const key=String(order.id)
+          if(seen.has(key))continue
+          seen.add(key)
+          processIncomingOrder(order)
+        }
+        autoPrintSeenIds.current.set(id,seen)
+      }finally{polling=false}
+    }
+    void pollOrders()
+    const interval=window.setInterval(()=>{void pollOrders()},5000)
+    const channel=supabase.channel('menuhub-orders-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'pedidos',filter:'empresa_id=eq.'+id},async(payload:any)=>{
+      const insertedId=payload?.new?.id
+      if(insertedId===undefined||insertedId===null)return
+      const key=String(insertedId)
+      if(handled.has(key))return
+      const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).eq('id',insertedId).maybeSingle()
+      if(!active||error||!data)return
+      const order=data as AdminOrder
+      seen.add(key)
+      setOrders(current=>[order,...current.filter(item=>String(item.id)!==key)])
+      processIncomingOrder(order)
+      void pollOrders()
+    }).subscribe()
+    return()=>{active=false;window.clearInterval(interval);void supabase.removeChannel(channel)}
+  },[session,selectedId,qzPrinterName])
   useEffect(()=>{if(session&&selectedId!==null)void loadDetails(selectedId);else{setCats([]);setItems([]);setOrders([])}},[session,selectedId])
   const toggleStoreOrders=async()=>{if(!selected)return;const next=!storeIsOpenNow;const {error}=await supabase.from('empresas').update({status_loja_manual:next,aceita_pedidos:next}).eq('id',selected.id);if(error){notify('Não foi possível alterar o status da loja: '+error.message,true);return}setRestaurants(old=>old.map(r=>r.id===selected.id?{...r,status_loja_manual:next,aceita_pedidos:next}:r));notify(next?'Loja aberta para receber pedidos.':'Loja fechada para novos pedidos.')}
   const saveOpeningHours=async(e:React.FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!selected)return;for(const [day,h] of Object.entries(hoursDraft)){if(!h.closed&&(!h.open||!h.close||h.close<=h.open)){notify('Confira os horários: o fechamento deve ser depois da abertura.',true);return}}const {error}=await supabase.from('empresas').update({horario_funcionamento:hoursDraft,status_loja_manual:null,aceita_pedidos:true}).eq('id',selected.id);if(error){notify('Não foi possível salvar os horários: '+error.message,true);return}setRestaurants(old=>old.map(r=>r.id===selected.id?{...r,horario_funcionamento:hoursDraft,status_loja_manual:null,aceita_pedidos:true}:r));notify('Horários salvos. A loja seguirá a programação automaticamente.')}
