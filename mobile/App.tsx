@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, AppState, FlatList, Image, KeyboardAvoidingView, Platform,
   Pressable, RefreshControl, StatusBar, StyleSheet, Linking, Share,
   Text, TextInput, View, ScrollView, Modal
 } from 'react-native';
@@ -43,7 +43,7 @@ type Order = {
 
 const StatusBarCompat = StatusBar as any;
 WebBrowser.maybeCompleteAuthSession();
-const APP_VERSION = '1.2.8';
+const APP_VERSION = '1.2.9';
 const UPDATED_AT = '07/11/2026';
 function formatOrderCode(id:number,createdAt:string|null){const date=createdAt?new Date(createdAt):new Date();const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'short'}).formatToParts(date);const day=parts.find(p=>p.type==='day')?.value??'01';const month=(parts.find(p=>p.type==='month')?.value??'jan').toLowerCase();let hash=(Number(id)^0x9e3779b9)>>>0;hash=Math.imul(hash^(hash>>>16),0x7feb352d);hash=Math.imul(hash^(hash>>>15),0x846ca68b);hash=(hash^(hash>>>16))>>>0;const suffix=(hash%46656).toString(36).toLowerCase().padStart(3,'0');return 'D'+day+month+'-'+suffix;}
 const GOOGLE_REDIRECT = 'fb3d2ymenu://auth/callback';
@@ -102,6 +102,7 @@ function AppContent() {
   const [counterCustomName,setCounterCustomName]=useState(''); const [counterCustomPrice,setCounterCustomPrice]=useState(''); const [counterCustomQty,setCounterCustomQty]=useState('1');
   const [counterBusy,setCounterBusy]=useState(false);
   const knownOrderIds=useRef<Set<number>|null>(null);
+  const ordersFetchInFlight=useRef(false);
   const [restaurantNameDraft,setRestaurantNameDraft]=useState('');
   const [restaurantSlugDraft,setRestaurantSlugDraft]=useState('');
   const [previewOpen,setPreviewOpen]=useState(false);
@@ -144,6 +145,38 @@ function AppContent() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  const loadOrders = useCallback(async (restaurantId:number) => {
+    if (!supabase || ordersFetchInFlight.current) return;
+    ordersFetchInFlight.current = true;
+    try {
+      const { data, error: ordersError } = await supabase
+        .from('pedidos')
+        .select('id,cliente_nome,cliente_whatsapp,endereco_entrega,total,status,tipo_entrega,forma_pagamento,taxa_entrega,criado_em,observacoes,origem,precisa_troco,troco_para,itens_pedido(id,produto_id,nome_produto,quantidade,preco_unitario,complement_option_ids)')
+        .eq('empresa_id', restaurantId)
+        .order('criado_em', { ascending: false })
+        .limit(1000);
+      if (ordersError) { setError(ordersError.message); return; }
+      const incoming=(data??[]) as Order[];
+      if (knownOrderIds.current===null) {
+        knownOrderIds.current=new Set(incoming.map(order=>order.id));
+      } else {
+        const fresh=incoming.filter(order=>!knownOrderIds.current!.has(order.id));
+        incoming.forEach(order=>knownOrderIds.current!.add(order.id));
+        if(fresh.length){
+          void playOrderBeep();
+          Speech.stop();
+          Speech.speak((fresh.length===1?'Chegou um novo pedido':'Chegaram '+fresh.length+' novos pedidos')+' para seu restaurante.', {language:'pt-BR',rate:0.95});
+        }
+      }
+      setOrders(incoming);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao atualizar os pedidos.');
+    } finally {
+      ordersFetchInFlight.current = false;
+    }
+  }, []);
+
   const loadDashboard = useCallback(async () => {
     if (!supabase || !session?.user) return;
     setError('');
@@ -163,29 +196,39 @@ function AppContent() {
     if(productError) setError(productError.message); else setProducts((productRows??[]) as Product[]);
     if(categoryError) setError(categoryError.message); else setCategories((categoryRows??[]) as Category[]);
     if(groupError) setError(groupError.message); else {const gs=(groupRows??[]) as ComplementGroup[];setGroups(gs);if(gs.length){const {data:opts}=await supabase.from('opcoes_complementos').select('id,grupo_id,nome,preco_adicional,ordem,ativo').in('grupo_id',gs.map(g=>g.id)).order('ordem');setOptions((opts??[]) as ComplementOption[]);}else setOptions([]);}
-    const { data, error: ordersError } = await supabase
-      .from('pedidos')
-      .select('id,cliente_nome,cliente_whatsapp,endereco_entrega,total,status,tipo_entrega,forma_pagamento,taxa_entrega,criado_em,observacoes,origem,precisa_troco,troco_para,itens_pedido(id,produto_id,nome_produto,quantidade,preco_unitario,complement_option_ids)')
-      .eq('empresa_id', chosen.id)
-      .order('criado_em', { ascending: false })
-      .limit(1000);
-    if (ordersError) { setError(ordersError.message); return; }
-    const incoming=(data??[]) as Order[];
-    if(knownOrderIds.current===null){knownOrderIds.current=new Set(incoming.map(order=>order.id));}
-    else {const fresh=incoming.filter(order=>!knownOrderIds.current!.has(order.id));fresh.forEach(order=>knownOrderIds.current!.add(order.id));if(fresh.length){void playOrderBeep();Speech.stop();Speech.speak((fresh.length===1?'Chegou um novo pedido':'Chegaram '+fresh.length+' novos pedidos')+' para '+(chosen.nome||'seu restaurante')+'.', {language:'pt-BR',rate:0.95});}}
-    setOrders(incoming);
-  }, [session]);
+    await loadOrders(chosen.id);
+  }, [session, loadOrders]);
 
   useEffect(() => { if (session) void loadDashboard(); }, [session, loadDashboard]);
 
   useEffect(() => {
     if (!supabase || !restaurant) return;
-    const channel = supabase.channel('mobile-orders-' + restaurant.id)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos', filter: 'empresa_id=eq.' + restaurant.id }, () => {
-        void loadDashboard();
-      }).subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [restaurant, loadDashboard]);
+    const restaurantId = restaurant.id;
+    const channel = supabase.channel('mobile-orders-' + restaurantId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos', filter: 'empresa_id=eq.' + restaurantId }, () => {
+        void loadOrders(restaurantId);
+      })
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') void loadOrders(restaurantId);
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setError('Conexão em tempo real instável. A verificação automática continua ativa.');
+        }
+      });
+
+    // Rede de segurança: busca pedidos novos mesmo se o WebSocket cair ou o Android suspender a conexão.
+    const poll = setInterval(() => {
+      if (AppState.currentState === 'active') void loadOrders(restaurantId);
+    }, 12000);
+    const appState = AppState.addEventListener('change', state => {
+      if (state === 'active') void loadOrders(restaurantId);
+    });
+
+    return () => {
+      clearInterval(poll);
+      appState.remove();
+      void supabase.removeChannel(channel);
+    };
+  }, [restaurant?.id, loadOrders]);
 
   const signInWithGoogle = async () => {
     if (!supabase) return;
