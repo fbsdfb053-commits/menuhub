@@ -81,7 +81,7 @@ internal sealed class MainForm : Form
     {
         var printer = printers.SelectedItem?.ToString();
         if (string.IsNullOrWhiteSpace(printer)) { status.Text = "Selecione uma impressora."; return; }
-        var receipt = "\u001B@\u001Ba\x01\u001BE\x01FB3D2Y MENU\n\u001BE\x00\nTESTE DE IMPRESSAO\nConexao funcionando!\nPapel: 58 mm\n\n\n\u001DV\x00";
+        var receipt = "\u001B@\u001Ba\x01\u001BE\x01\u001B!\x10FB3D2Y MENU\n\u001B!\x00\u001BE\x00\nTESTE DE IMPRESSAO\nConexao funcionando!\nPapel: 58 mm\n\n\n\u001DV\x00";
         if (RawPrinter.Send(printer, receipt, "Teste Fb3d2y Print")) status.Text = "Teste enviado para a impressora.";
         else status.Text = "Falha no teste. Confira a fila do Windows.";
     }
