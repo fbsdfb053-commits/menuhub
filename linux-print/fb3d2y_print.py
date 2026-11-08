@@ -21,7 +21,8 @@ status_callback = None
 
 def printers():
     try:
-        result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True, timeout=5,
+                                env={**os.environ, "LC_ALL": "C", "LANG": "C"})
         names = []
         for line in result.stdout.splitlines():
             parts = line.split()
