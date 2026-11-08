@@ -626,17 +626,18 @@ function AdminView({ onBack }: { onBack: () => void }) {
       const moneyText=(value:number)=>'R$ '+Number(value||0).toFixed(2).replace('.',',');
       const WIDTH=32;
       const wrap=(value:string,indent='')=>{const words=cleanText(value).split(' ');const lines:string[]=[];let line=indent;for(const word of words){if(line.length>indent.length&&line.length+1+word.length>WIDTH){lines.push(line);line=indent;}let rest=word;while(rest.length>WIDTH-line.length){const take=WIDTH-line.length;line+=rest.slice(0,take);lines.push(line);rest=rest.slice(take);line=indent;}if(rest){if(line.length>indent.length)line+=' ';line+=rest;}}if(line.length>indent.length||!lines.length)lines.push(line);return lines;};
-      const normal=(value:string)=>'\x1B\x45\x00\x1B\x21\x00'+value+'\n';
-      const bold=(value:string)=>'\x1B\x21\x00\x1B\x45\x01\x1B\x47\x01'+value+'\n\x1B\x47\x00\x1B\x45\x00';
+      const normal=(value:string)=>'\x1B\x47\x00\x1B\x45\x00\x1B\x21\x00'+value+'\n';
+      const bold=(value:string)=>'\x1B\x21\x00\x1B\x45\x01\x1B\x47\x01'+value+'\n\x1B\x47\x00\x1B\x45\x00\x1B\x21\x00';
       const centered=(value:string)=>'\x1B\x61\x01'+bold(value)+'\x1B\x61\x00';
-      const restaurantTitle=(value:string)=>'\x1B\x61\x01\x1B\x45\x01\x1B\x47\x01\x1D\x21\x11'+value+'\n\x1D\x21\x00\x1B\x47\x00\x1B\x45\x00\x1B\x61\x00';
+      const centeredNormal=(value:string)=>'\x1B\x61\x01'+normal(value)+'\x1B\x61\x00';
+      const restaurantTitle=(value:string)=>'\x1B\x61\x01\x1B\x45\x01\x1B\x47\x01\x1D\x21\x10'+value+'\n\x1D\x21\x00\x1B\x47\x00\x1B\x45\x00\x1B\x61\x00';
       const rule='-'.repeat(WIDTH);
       let content='\x1B\x40\x1B\x33\x18';
       const restaurantName=cleanText(storeName).toUpperCase();
-      const titleLines=wrap(restaurantName).flatMap(line=>{if(line.length<=16)return [line];const parts:string[]=[];for(let i=0;i<line.length;i+=16)parts.push(line.slice(i,i+16));return parts;});
+      const titleLines=wrap(restaurantName);
       for(const line of titleLines) content+=restaurantTitle(line);
       content+=centered('PEDIDO '+publicOrderCode);
-      content+=centered(new Date(o.criado_em).toLocaleString('pt-BR'));
+      content+=centeredNormal(new Date(o.criado_em).toLocaleString('pt-BR'));
       content+=normal(rule);
       content+=bold('CLIENTE');
       for(const line of wrap(o.cliente_nome)) content+=normal(line);
@@ -664,6 +665,8 @@ function AdminView({ onBack }: { onBack: () => void }) {
       content+=bold('PAGAMENTO: '+cleanText(o.forma_pagamento||'Pix').toUpperCase());
       content+=normal(rule);
       content+=centered('OBRIGADO PELA PREFERENCIA!');
+      content+=normal('');
+      for(const line of wrap('A equipe do(a) '+storeName+' deseja a voce um Natal cheio de alegria e um Ano Novo de muitas realizacoes. Boas festas!')) content+=normal(line);
       content+='\x1B\x32\x1B\x21\x00\x1B\x45\x00\n\n\x1D\x56\x00';
       const destination=await sendPrintTerminal(content,activeTerminalToken);notify('Nota '+publicOrderCode+' enviada para '+destination+'.');return
     }catch(err){if(w)w.close();notify('Falha ao imprimir pelo Fb3d2y Print: '+(err instanceof Error?err.message:'erro desconhecido'),true);return}}
