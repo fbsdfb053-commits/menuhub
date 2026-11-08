@@ -2,7 +2,7 @@ name: Build and release Fb3d2y Print
 on:
   workflow_dispatch:
   push:
-    branches: [feat/fb3d2yprint-linux-default]
+    branches: [main, feat/fb3d2yprint-linux-default]
     paths:
       - 'linux-print/**'
       - 'windows-print/**'
