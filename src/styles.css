@@ -2759,8 +2759,8 @@ img, video, canvas, svg { max-width: 100%; }
   .hero-cover--image {
     height: auto;
     min-height: 0;
-    background-image: none !important;
-    background-color: transparent !important;
+    /* No celular, usa somente a tag img; remove totalmente o banner de fundo duplicado. */
+    background: none !important;
     overflow: visible;
   }
   .hero-cover-image {
