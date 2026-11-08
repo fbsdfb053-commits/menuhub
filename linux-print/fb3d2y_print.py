@@ -71,7 +71,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(404, {"ok": False, "error": "Rota não encontrada."}, origin)
         if origin and origin not in ALLOWED_ORIGINS:
             return self.respond(403, {"ok": False, "error": "Origem não autorizada."})
-        self.respond(200, {"ok": True, "app": "Fb3d2y Print", "version": "0.2.0",
+        self.respond(200, {"ok": True, "app": "Fb3d2y Print", "version": "0.2.1",
                            "printer": selected_printer}, origin)
     def do_POST(self):
         origin = self.headers.get("Origin")
@@ -136,7 +136,7 @@ def main():
     ttk.Button(buttons, text="Atualizar impressoras", command=refresh).pack(side="left", padx=(0,8))
     def test():
         try:
-            send_raw("\x1b@\x1ba\x01\x1bE\x01FB3D2Y MENU\n\x1bE\x00\nTESTE DE IMPRESSAO\nConexao funcionando!\nPapel: 50 mm\n\n\n\x1dV\x00")
+            send_raw("\x1b@\x1ba\x01\x1bE\x01\x1b!\x10FB3D2Y MENU\n\x1b!\x00\x1bE\x00\nTESTE DE IMPRESSAO\nConexao funcionando!\nPapel: 58 mm\n\n\n\x1dV\x00")
             status.config(text="Teste enviado para " + selected_printer)
         except Exception as exc:
             messagebox.showerror("Fb3d2y Print", str(exc))
