@@ -460,7 +460,8 @@ type AdminComplementOption = {id:number;nome:string;preco_adicional:number;image
 type AdminComplementGroup = {id:number;empresa_id:number;nome:string;descricao:string|null;ordem:number;ativo:boolean;max_selecoes:number;opcoes_complementos:AdminComplementOption[]}
 const EMPTY_GROUP_IDS: number[] = []
 const EMPTY_GROUP_LIMITS: Record<number, number> = {}
-type AdminOrder = { id:number; cliente_nome:string; cliente_whatsapp:string; total:number; status:string; tipo_entrega:string; endereco_entrega:string|null; criado_em:string; origem?:string|null; forma_pagamento?:string|null; observacoes?:string|null; precisa_troco?:boolean|null; troco_para?:number|null; regiao_entrega?:string|null; taxa_entrega?:number|null }
+type AdminOrderLine = { id:number; produto_id?:number|null; nome_produto:string|null; quantidade:number; preco_unitario:number };
+type AdminOrder = { id:number; cliente_nome:string; cliente_whatsapp:string; total:number; status:string; tipo_entrega:string; endereco_entrega:string|null; criado_em:string; origem?:string|null; forma_pagamento?:string|null; observacoes?:string|null; precisa_troco?:boolean|null; troco_para?:number|null; regiao_entrega?:string|null; taxa_entrega?:number|null; itens_pedido?:AdminOrderLine[] }
 function makeSlug(value:string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,55) }
 function AdminView({ onBack }: { onBack: () => void }) {
   const [session,setSession]=useState<Session|null>(null), [authLoading,setAuthLoading]=useState(true), [activeTab,setActiveTab]=useState('dashboard')
@@ -513,8 +514,8 @@ function AdminView({ onBack }: { onBack: () => void }) {
   useEffect(()=>{if(session)void loadRestaurants()},[session])
   useEffect(()=>{const config=(restaurants.find(r=>r.id===selectedId) as (AdminRestaurant & {config_entrega?:{name:string;fee:number;places:string[];negotiate?:boolean}[]})|undefined)?.config_entrega??[];const levels=[1,2,3].map(n=>config.find(x=>String(x.name??'').startsWith('Nível '+n))?.places?.join(', ')??'');const fees=[1,2,3].map((n,i)=>{const value=config.find(x=>String(x.name??'').startsWith('Nível '+n))?.fee;return Number.isFinite(Number(value))&&Number(value)>=0?Number(value):[5,10,15][i]});setDeliveryDraft(levels);setDeliveryFees(fees)},[restaurants,selectedId])
   useEffect(()=>{if(!session)return;let alive=true;void fetch('/api/assinatura',{headers:{Authorization:'Bearer '+session.access_token}}).then(async response=>{const data=await response.json();if(!response.ok)throw new Error(data.error||'Não foi possível consultar a assinatura.');if(alive){setSubscription(data);setSubscriptionError('')}}).catch(error=>{if(alive)setSubscriptionError(error instanceof Error?error.message:'Não foi possível consultar a assinatura.')});return()=>{alive=false}},[session])
-  const loadDetails=async(id:number)=>{setBusy(true);const [c,p,o,g,links]=await Promise.all([supabase.from('categorias').select('id,nome,ordem').eq('empresa_id',id).order('ordem'),supabase.from('produtos').select('id,nome,descricao,preco,categoria_id,imagem_url,disponivel,ordem,max_complementos').eq('empresa_id',id).order('ordem'),supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100),supabase.from('grupos_complementos').select('id,empresa_id,nome,descricao,ordem,ativo,max_selecoes,opcoes_complementos(id,nome,preco_adicional,imagem_url,ativo,ordem)').eq('empresa_id',id).order('ordem'),supabase.from('produto_grupos_complementos').select('produto_id,grupo_id')]);setBusy(false);if(c.error||p.error||o.error||g.error||links.error){notify('Erro ao carregar dados. Para Complementos, execute supabase/07_complementos.sql no Supabase de teste.',true);if(!g.error&&!links.error){setComplementGroups((g.data??[]) as unknown as AdminComplementGroup[])}return}setCats((c.data??[]) as AdminCategory[]);setItems((p.data??[]) as AdminProduct[]);setOrders((o.data??[]) as AdminOrder[]);setComplementGroups((g.data??[]) as unknown as AdminComplementGroup[]);const map:Record<number,number[]>={};for(const row of links.data??[]){const pid=Number(row.produto_id),gid=Number(row.grupo_id);(map[pid]??=[]).push(gid)}setProductGroupLinks(map)}
-  const refreshOrders=async(id:number)=>{const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100);if(!error&&data)setOrders(data as AdminOrder[])}
+  const loadDetails=async(id:number)=>{setBusy(true);const [c,p,o,g,links]=await Promise.all([supabase.from('categorias').select('id,nome,ordem').eq('empresa_id',id).order('ordem'),supabase.from('produtos').select('id,nome,descricao,preco,categoria_id,imagem_url,disponivel,ordem,max_complementos').eq('empresa_id',id).order('ordem'),supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega,itens_pedido(id,produto_id,nome_produto,quantidade,preco_unitario)').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100),supabase.from('grupos_complementos').select('id,empresa_id,nome,descricao,ordem,ativo,max_selecoes,opcoes_complementos(id,nome,preco_adicional,imagem_url,ativo,ordem)').eq('empresa_id',id).order('ordem'),supabase.from('produto_grupos_complementos').select('produto_id,grupo_id')]);setBusy(false);if(c.error||p.error||o.error||g.error||links.error){notify('Erro ao carregar dados. Para Complementos, execute supabase/07_complementos.sql no Supabase de teste.',true);if(!g.error&&!links.error){setComplementGroups((g.data??[]) as unknown as AdminComplementGroup[])}return}setCats((c.data??[]) as AdminCategory[]);setItems((p.data??[]) as AdminProduct[]);setOrders((o.data??[]) as AdminOrder[]);setComplementGroups((g.data??[]) as unknown as AdminComplementGroup[]);const map:Record<number,number[]>={};for(const row of links.data??[]){const pid=Number(row.produto_id),gid=Number(row.grupo_id);(map[pid]??=[]).push(gid)}setProductGroupLinks(map)}
+  const refreshOrders=async(id:number)=>{const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega,itens_pedido(id,produto_id,nome_produto,quantidade,preco_unitario)').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100);if(!error&&data)setOrders(data as AdminOrder[])}
   const autoPrintSeenIds=useRef(new Map<number,Set<string>>())
   const autoPrintHandledIds=useRef(new Map<number,Set<string>>())
   const orderAudioRef=useRef<HTMLAudioElement|null>(null)
@@ -542,7 +543,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
       if(polling||!active)return
       polling=true
       try{
-        const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100)
+        const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega,itens_pedido(id,produto_id,nome_produto,quantidade,preco_unitario)').eq('empresa_id',id).order('criado_em',{ascending:false}).limit(100)
         if(!active||error||!data)return
         const list=data as AdminOrder[]
         setOrders(list)
@@ -568,7 +569,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
       if(insertedId===undefined||insertedId===null)return
       const key=String(insertedId)
       if(handled.has(key))return
-      const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega').eq('empresa_id',id).eq('id',insertedId).maybeSingle()
+      const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega,itens_pedido(id,produto_id,nome_produto,quantidade,preco_unitario)').eq('empresa_id',id).eq('id',insertedId).maybeSingle()
       if(!active||error||!data)return
       const order=data as AdminOrder
       seen.add(key)
@@ -953,6 +954,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
 
 function SalesReport({orders,onRefresh}:{orders:AdminOrder[];onRefresh:()=>void}) {
   const [period,setPeriod]=useState<SalesPeriod>(1)
+  const [productSort,setProductSort]=useState<'quantity'|'revenue'|'name'>('quantity')
   const now = new Date()
   const start = new Date(now)
   start.setHours(0,0,0,0)
@@ -961,28 +963,44 @@ function SalesReport({orders,onRefresh}:{orders:AdminOrder[];onRefresh:()=>void}
   const periodOrders = orders.filter(order=>{const date=new Date(order.criado_em);return date>=start&&date<=now&&order.status!=='Cancelado'})
   const revenue = periodOrders.reduce((sum,order)=>sum+Number(order.total||0),0)
   const average = periodOrders.length ? revenue/periodOrders.length : 0
+  const products = new Map<string,{name:string;quantity:number;revenue:number}>()
+  periodOrders.forEach(order=>(order.itens_pedido??[]).forEach(line=>{
+    const name=(line.nome_produto??'Produto removido').trim()||'Produto removido'
+    const key=line.produto_id!=null?'id:'+line.produto_id:'name:'+name.toLocaleLowerCase('pt-BR')
+    const current=products.get(key)??{name,quantity:0,revenue:0}
+    current.quantity+=Number(line.quantidade)||0
+    current.revenue+=(Number(line.quantidade)||0)*(Number(line.preco_unitario)||0)
+    products.set(key,current)
+  }))
+  const productRows=[...products.values()].sort((a,b)=>productSort==='revenue'?b.revenue-a.revenue:productSort==='name'?a.name.localeCompare(b.name,'pt-BR'):b.quantity-a.quantity)
+  const productUnits=productRows.reduce((sum,p)=>sum+p.quantity,0)
+  const productRevenue=productRows.reduce((sum,p)=>sum+p.revenue,0)
   const days = Array.from({length:period},(_,index)=>{const date=new Date(start);date.setDate(start.getDate()+index);return {key:dateKey(date),label:period===7?date.toLocaleDateString('pt-BR',{weekday:'short'}):date.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}),total:0,count:0}})
   const daily = new Map(days.map(day=>[day.key,day]))
   periodOrders.forEach(order=>{const day=daily.get(dateKey(new Date(order.criado_em)));if(day){day.total+=Number(order.total||0);day.count+=1}})
   const maxDay = Math.max(1,...days.map(day=>day.total))
   const statuses = ['Novo','Aceito','Preparando','Em entrega','Retirada disponível','Concluído']
   const exportCsv = () => {
-    const rows = [['Pedido','Data','Cliente','Tipo','Status','Total'],...periodOrders.map(order=>[formatPublicOrderCode(order.id,order.criado_em),new Date(order.criado_em).toLocaleString('pt-BR'),order.cliente_nome,order.tipo_entrega,order.status,Number(order.total).toFixed(2).replace('.',',')])]
+    const rows = [['Produto','Unidades vendidas','Receita'],...productRows.map(p=>[p.name,String(p.quantity),p.revenue.toFixed(2).replace('.',',')])]
     const csv = '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n')
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}))
-    const link=document.createElement('a');link.href=url;link.download='relatorio-vendas-'+period+'-dias.csv';link.click();URL.revokeObjectURL(url)
+    const link=document.createElement('a');link.href=url;link.download='vendas-por-produto-'+period+'-dias.csv';link.click();URL.revokeObjectURL(url)
   }
-  return <div className="admin-content sales-report"><div className="admin-heading"><div><span className="eyebrow">desempenho do negócio</span><h1>Relatório de vendas</h1><p>Acompanhe faturamento e pedidos do menu selecionado.</p></div><div className="sales-report__actions"><button className="secondary-button" type="button" onClick={onRefresh}>Atualizar dados</button><button className="primary-button" type="button" onClick={exportCsv} disabled={periodOrders.length===0}>Exportar CSV</button></div></div>
+  return <div className="admin-content sales-report"><div className="admin-heading"><div><span className="eyebrow">desempenho do negócio</span><h1>Relatório de vendas</h1><p>Acompanhe faturamento, pedidos e desempenho de cada produto.</p></div><div className="sales-report__actions"><button className="secondary-button" type="button" onClick={onRefresh}>Atualizar dados</button><button className="primary-button" type="button" onClick={exportCsv} disabled={productRows.length===0}>Exportar produtos CSV</button></div></div>
     {orders.length>=100&&<p className="sales-report__notice">O painel carregou os 100 pedidos mais recentes. Este relatório considera apenas esses pedidos.</p>}
     <div className="sales-period" role="group" aria-label="Período do relatório">{([1,7,30,90] as SalesPeriod[]).map(value=><button key={value} type="button" className={period===value?'sales-period__button sales-period__button--active':'sales-period__button'} onClick={()=>setPeriod(value)}>{value===1?'Hoje':value+' dias'}</button>)}</div>
     <div className="stats-grid sales-stats"><StatCard value={formatPrice(revenue)} label="vendas não canceladas" icon={<BarChart3 size={17}/>} /><StatCard value={String(periodOrders.length)} label="pedidos no período" icon={<ShoppingBag size={17}/>} /><StatCard value={formatPrice(average)} label="ticket médio" icon={<Store size={17}/>} /></div>
+    <section className="admin-panel sales-table-panel"><div className="panel-heading"><div><span className="eyebrow">desempenho por item</span><h2>Vendas por produto</h2></div><span>{productRows.length} produtos</span></div>
+      <div className="sales-period" role="group" aria-label="Ordenar produtos"><button type="button" className={productSort==='quantity'?'sales-period__button sales-period__button--active':'sales-period__button'} onClick={()=>setProductSort('quantity')}>Mais vendidos</button><button type="button" className={productSort==='revenue'?'sales-period__button sales-period__button--active':'sales-period__button'} onClick={()=>setProductSort('revenue')}>Maior receita</button><button type="button" className={productSort==='name'?'sales-period__button sales-period__button--active':'sales-period__button'} onClick={()=>setProductSort('name')}>Nome</button></div>
+      <div className="stats-grid sales-stats"><StatCard value={String(productUnits)} label="unidades vendidas" icon={<Package size={17}/>} /><StatCard value={formatPrice(productRevenue)} label="receita dos produtos" icon={<BarChart3 size={17}/>} /></div>
+      {productRows.length===0?<p>Nenhum item vendido no período selecionado.</p>:<div className="sales-table-wrap"><table className="sales-table"><thead><tr><th>Produto</th><th>Unidades vendidas</th><th>Receita</th></tr></thead><tbody>{productRows.map((product,index)=><tr key={product.name+'-'+index}><td>{product.name}</td><td>{product.quantity}</td><td>{formatPrice(product.revenue)}</td></tr>)}</tbody><tfoot><tr><th>Total</th><th>{productUnits}</th><th>{formatPrice(productRevenue)}</th></tr></tfoot></table></div>}
+    </section>
     <section className="admin-panel sales-chart-panel"><div className="panel-heading"><div><span className="eyebrow">evolução</span><h2>Vendas por dia</h2></div><span>{period} dias</span></div>{periodOrders.length===0?<p>Não há pedidos não cancelados nesse período.</p>:<div className="sales-chart" role="img" aria-label={'Gráfico de vendas dos últimos '+period+' dias'}>{days.map(day=><div className="sales-chart__column" key={day.key} title={day.label+': '+formatPrice(day.total)+' ('+day.count+' pedidos)'}><span className="sales-chart__value">{day.total>0?formatPrice(day.total):''}</span><div className="sales-chart__track"><div className="sales-chart__bar" style={{height:(day.total/maxDay*100)+'%'}}/></div><small>{day.label}</small></div>)}</div>}</section>
     <section className="admin-panel sales-status-panel"><div className="panel-heading"><div><span className="eyebrow">operação</span><h2>Status dos pedidos</h2></div></div><div className="sales-status-list">{statuses.map(status=>{const count=periodOrders.filter(order=>order.status===status).length;return <div className="sales-status-row" key={status}><span>{status}</span><div className="sales-status-track"><div style={{width:(count/Math.max(1,periodOrders.length)*100)+'%'}}/></div><strong>{count}</strong></div>})}<div className="sales-status-row sales-status-row--muted"><span>Cancelados (fora do faturamento)</span><div className="sales-status-track"><div style={{width:(orders.filter(order=>{const date=new Date(order.criado_em);return date>=start&&date<=now&&order.status==='Cancelado'}).length/Math.max(1,orders.filter(order=>{const date=new Date(order.criado_em);return date>=start&&date<=now}).length)*100)+'%'}}/></div><strong>{orders.filter(order=>{const date=new Date(order.criado_em);return date>=start&&date<=now&&order.status==='Cancelado'}).length}</strong></div></div></section>
     <section className="admin-panel sales-table-panel"><div className="panel-heading"><div><span className="eyebrow">movimentações</span><h2>Pedidos considerados</h2></div><span>{periodOrders.length} registros</span></div>{periodOrders.length===0?<p>Nenhuma venda para exibir.</p>:<div className="sales-table-wrap"><table className="sales-table"><thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Status</th><th>Total</th></tr></thead><tbody>{[...periodOrders].sort((a,b)=>new Date(b.criado_em).getTime()-new Date(a.criado_em).getTime()).map(order=><tr key={order.id}><td>{formatPublicOrderCode(order.id,order.criado_em)}</td><td>{new Date(order.criado_em).toLocaleDateString('pt-BR')}</td><td>{order.cliente_nome}</td><td><span className="sales-order-status">{order.status}</span></td><td>{formatPrice(Number(order.total))}</td></tr>)}</tbody></table></div>}</section>
-    <p className="sales-report__footnote">O valor exibido soma pedidos que não estão cancelados; não representa confirmação de pagamento. Os dados são os pedidos disponíveis no painel.</p>
+    <p className="sales-report__footnote">O valor por produto soma quantidade × preço unitário dos itens dos pedidos não cancelados. A taxa de entrega não entra na receita dos produtos.</p>
   </div>
 }
-
 function RestaurantSettings({restaurant,saving,onSave}:{restaurant:AdminRestaurant;saving:boolean;onSave:(e:React.FormEvent<HTMLFormElement>,form:Record<string,unknown>)=>Promise<void>}) {
   const [form,setForm]=useState({
     nome:restaurant.nome, descricao:restaurant.descricao??'', cnpj:restaurant.cnpj??'',
