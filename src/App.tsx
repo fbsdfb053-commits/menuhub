@@ -153,7 +153,8 @@ function RestaurantHero({ restaurant }: { restaurant: Restaurant }) {
   }
   return (
     <section className="restaurant-hero">
-      <div className="hero-cover" style={coverStyle}>
+      <div className={`hero-cover ${restaurant.coverUrl ? "hero-cover--image" : ""}`} style={coverStyle}>
+        {restaurant.coverUrl && <img className="hero-cover-image" src={restaurant.coverUrl} alt={`Banner de ${restaurant.name}`} />}
         {!restaurant.coverUrl && <><span className="cover-orb cover-orb--one" /><span className="cover-orb cover-orb--two" /><span className="cover-swoosh">{restaurant.name.split(' ')[0].toLowerCase()}</span></>}
         <div className="cover-topline"><span className="cover-chip">menu digital</span><button className="icon-button icon-button--light" type="button" aria-label="Compartilhar menu" onClick={share}><Share2 size={16} /></button></div>
       </div>
