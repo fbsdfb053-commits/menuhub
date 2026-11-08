@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: fb3d2y-menu-android-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android-apk:
     name: Gerar APK Android
