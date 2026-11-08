@@ -599,7 +599,6 @@ function AdminView({ onBack }: { onBack: () => void }) {
   const savePrinterSettings=()=>{if(!selectedId||!terminalToken.trim()){notify('Conecte o Fb3d2y Print antes de salvar.',true);return}window.localStorage.setItem('menuhub-print-'+selectedId,JSON.stringify({name:printerName.trim()||selected?.nome||'Restaurante',terminalToken:terminalToken.trim(),autoPrint,receiptSizes}));notify(autoPrint?'Configurações e tamanhos salvos. Impressão automática ativada neste computador.':'Configurações e tamanhos da notinha salvos neste dispositivo.')}
   const printOrderWithItems=async(o:AdminOrder)=>{
     const cfg=(()=>{try{return JSON.parse(window.localStorage.getItem('menuhub-print-'+(selectedId??''))||'{}') as {name?:string;logo?:string;terminalToken?:string;receiptSizes?:{restaurant?:number;heading?:number;body?:number}}}catch{return {}}})();
-    const printSizes={restaurant:2,heading:2,body:1};
     const printSizes={restaurant:Math.min(4,Math.max(1,Number(cfg.receiptSizes?.restaurant??receiptSizes.restaurant))),heading:Math.min(4,Math.max(1,Number(cfg.receiptSizes?.heading??receiptSizes.heading))),body:Math.min(4,Math.max(1,Number(cfg.receiptSizes?.body??receiptSizes.body)))};
     const activeTerminalToken=cfg.terminalToken||terminalToken;
     const usePrintTerminal=Boolean(activeTerminalToken);
