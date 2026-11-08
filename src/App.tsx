@@ -622,17 +622,15 @@ function AdminView({ onBack }: { onBack: () => void }) {
     const categoryGroups=[...new Set(groupedItems.map(x=>x.categoria))];
     const publicOrderCode=formatPublicOrderCode(o.id,o.criado_em);
     if(directPrint){try{
-      const cleanText=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[<>]/g,'');
-      const moneyText=(value:number)=>'R$ '+Number(value||0).toFixed(2).replace('.',',');
-      const cleanText=(value:string)=>value.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[<>]/g,'').replace(/\\s+/g,' ').trim();
+      const cleanText=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[<>]/g,'').replace(/\s+/g,' ').trim();
       const moneyText=(value:number)=>'R$ '+Number(value||0).toFixed(2).replace('.',',');
       const WIDTH=32;
       const wrap=(value:string,indent='')=>{const text=cleanText(value);const limit=WIDTH-indent.length;const parts:string[]=[];for(let i=0;i<text.length;i+=limit)parts.push(indent+text.slice(i,i+limit));return parts.length?parts:[''];};
-      const normal=(value:string)=>'\\x1B\\x45\\x00\\x1B\\x21\\x00'+value+'\\n';
-      const bold=(value:string)=>'\\x1B\\x45\\x01\\x1B\\x21\\x00'+value+'\\n\\x1B\\x45\\x00';
-      const centered=(value:string)=>'\\x1B\\x61\\x01'+bold(value)+'\\x1B\\x61\\x00';
+      const normal=(value:string)=>'\x1B\x45\x00\x1B\x21\x00'+value+'\n';
+      const bold=(value:string)=>'\x1B\x45\x01\x1B\x21\x00'+value+'\n\x1B\x45\x00';
+      const centered=(value:string)=>'\x1B\x61\x01'+bold(value)+'\x1B\x61\x00';
       const rule='-'.repeat(WIDTH);
-      let content='\\x1B\\x40\\x1B\\x33\\x18';
+      let content='\x1B\x40\x1B\x33\x18';
       for(const line of wrap(storeName.toUpperCase())) content+=centered(line);
       content+=centered('PEDIDO '+publicOrderCode);
       content+=centered(new Date(o.criado_em).toLocaleString('pt-BR'));
@@ -663,8 +661,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
       content+=bold('PAGAMENTO: '+cleanText(o.forma_pagamento||'Pix').toUpperCase());
       content+=normal(rule);
       content+=centered('OBRIGADO PELA PREFERENCIA!');
-      content+='\\x1B\\x32\\x1B\\x21\\x00\\x1B\\x45\\x00\\n\\n\\x1D\\x56\\x00';
-      const content;
+      content+='\x1B\x32\x1B\x21\x00\x1B\x45\x00\n\n\x1D\x56\x00';
       const destination=await sendPrintTerminal(content,activeTerminalToken);notify('Nota '+publicOrderCode+' enviada para '+destination+'.');return
     }catch(err){if(w)w.close();notify('Falha ao imprimir pelo Fb3d2y Print: '+(err instanceof Error?err.message:'erro desconhecido'),true);return}}
     if(!w)return;
