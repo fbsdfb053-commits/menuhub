@@ -1,0 +1,85 @@
+name: Build and release Fb3d2y Print
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/fb3d2yprint-linux-default]
+    paths:
+      - 'linux-print/**'
+      - 'windows-print/**'
+      - '.github/workflows/fb3d2y-print-release.yml'
+permissions:
+  contents: write
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Debian package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$PWD/pkgroot"
+          mkdir -p "$ROOT/DEBIAN" "$ROOT/opt/fb3d2y-print" "$ROOT/usr/bin" "$ROOT/usr/share/applications"
+          install -m 755 linux-print/fb3d2y_print.py "$ROOT/opt/fb3d2y-print/fb3d2y_print.py"
+          cat > "$ROOT/DEBIAN/control" <<'EOF'
+          Package: fb3d2y-print
+          Version: 0.2.0
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Depends: python3, python3-tk, cups-client
+          Maintainer: Fb3d2y Menu
+          Description: Terminal local de impressão para Fb3d2y Menu
+           Recebe comandas do site e imprime por CUPS.
+          EOF
+          cat > "$ROOT/usr/bin/fb3d2y-print" <<'EOF'
+          #!/bin/sh
+          exec /usr/bin/python3 /opt/fb3d2y-print/fb3d2y_print.py
+          EOF
+          chmod 755 "$ROOT/usr/bin/fb3d2y-print"
+          cat > "$ROOT/usr/share/applications/fb3d2y-print.desktop" <<'EOF'
+          [Desktop Entry]
+          Name=Fb3d2y Print
+          Comment=Terminal de impressão do Fb3d2y Menu
+          Exec=fb3d2y-print
+          Icon=printer
+          Terminal=false
+          Type=Application
+          Categories=Utility;Office;
+          EOF
+          dpkg-deb --build --root-owner-group "$ROOT" fb3d2y-print-linux-amd64.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fb3d2y-Print-Linux-amd64
+          path: fb3d2y-print-linux-amd64.deb
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publish Windows app
+        run: dotnet publish .\windows-print\Fb3d2yPrint.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fb3d2y-Print-Windows-x64
+          path: windows-print/bin/Release/net8.0-windows/win-x64/publish/Fb3d2yPrint.exe
+          if-no-files-found: error
+  release:
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-files
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: fb3d2y-print-v0.2.${{ github.run_number }}
+          name: Fb3d2y Print v0.2.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: |
+            release-files/Fb3d2y-Print-Linux-amd64/fb3d2y-print-linux-amd64.deb
+            release-files/Fb3d2y-Print-Windows-x64/Fb3d2yPrint.exe

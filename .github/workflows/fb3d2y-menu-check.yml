@@ -1,0 +1,36 @@
+name: Validate Fb3d2y Menu and Fb3d2y Print
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/fb3d2yprint-linux-default]
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'linux-print/**'
+      - '.github/workflows/fb3d2y-menu-check.yml'
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile linux-print/fb3d2y_print.py
+      - name: Validate Debian package build
+        run: |
+          mkdir -p pkg/DEBIAN pkg/opt/fb3d2y-print
+          cp linux-print/fb3d2y_print.py pkg/opt/fb3d2y-print/
+          printf 'Package: fb3d2y-print\nVersion: 0.2.0\nArchitecture: amd64\nMaintainer: Fb3d2y Menu\nDescription: Fb3d2y Print\nDepends: python3, python3-tk, cups-client\n' > pkg/DEBIAN/control
+          dpkg-deb --build --root-owner-group pkg fb3d2y-print-test.deb
