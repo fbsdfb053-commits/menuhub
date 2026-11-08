@@ -2741,3 +2741,56 @@ img, video, canvas, svg { max-width: 100%; }
  .admin-order-actions button svg{width:12px;height:12px}
  .admin-order-actions button.order-move-button{font-size:8px!important}
 }
+
+
+/* Ajustes responsivos do banner do cardápio */
+@media (max-width: 640px) {
+  .restaurant-hero { padding-bottom: 14px; }
+  .hero-cover {
+    height: clamp(170px, 48vw, 220px);
+    min-height: 170px;
+    border-radius: 0 0 18px 18px;
+    background-position: center center !important;
+    background-size: cover !important;
+  }
+  .cover-topline { inset: 12px 12px auto; }
+  .cover-chip { padding: 6px 9px; font-size: 8px; }
+  .restaurant-identity {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: -27px 16px 0;
+  }
+  .restaurant-avatar {
+    width: 62px;
+    height: 62px;
+    flex: 0 0 62px;
+    border-width: 4px;
+    border-radius: 13px;
+    font-size: 34px;
+  }
+  .identity-copy {
+    flex: 1 1 calc(100% - 76px);
+    min-width: 0;
+    padding-top: 30px;
+  }
+  .identity-title-row h1 {
+    font-size: clamp(19px, 5.4vw, 23px);
+    overflow-wrap: anywhere;
+  }
+  .identity-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 10px;
+  }
+  .identity-meta a, .identity-meta span { max-width: 100%; overflow-wrap: anywhere; }
+  .status-pill {
+    margin: 0 0 0 72px;
+    align-self: flex-start;
+    padding: 7px 9px;
+    font-size: 9px;
+  }
+  .restaurant-description { margin: 12px 16px 8px; }
+  .restaurant-hours { margin: 0 16px; }
+}
