@@ -2743,6 +2743,9 @@ img, video, canvas, svg { max-width: 100%; }
 }
 
 
+/* Imagem do banner preservada na proporção original em telas pequenas */
+.hero-cover-image { display: none; }
+
 /* Ajustes responsivos do banner do cardápio */
 @media (max-width: 640px) {
   .restaurant-hero { padding-bottom: 14px; }
@@ -2752,6 +2755,24 @@ img, video, canvas, svg { max-width: 100%; }
     border-radius: 0 0 18px 18px;
     background-position: center center !important;
     background-size: cover !important;
+  }
+  .hero-cover--image {
+    height: auto;
+    min-height: 0;
+    background-image: none !important;
+    background-color: transparent !important;
+    overflow: visible;
+  }
+  .hero-cover-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+    border-radius: 0 0 18px 18px;
+  }
+  .hero-cover--image + .restaurant-identity {
+    margin-top: 12px;
   }
   .cover-topline { inset: 12px 12px auto; }
   .cover-chip { padding: 6px 9px; font-size: 8px; }
