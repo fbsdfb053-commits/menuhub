@@ -43,7 +43,7 @@ type Order = {
 
 const StatusBarCompat = StatusBar as any;
 WebBrowser.maybeCompleteAuthSession();
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 const UPDATED_AT = '08/11/2026';
 function formatOrderCode(id:number,createdAt:string|null){const date=createdAt?new Date(createdAt):new Date();const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'short'}).formatToParts(date);const day=parts.find(p=>p.type==='day')?.value??'01';const month=(parts.find(p=>p.type==='month')?.value??'jan').toLowerCase();let hash=(Number(id)^0x9e3779b9)>>>0;hash=Math.imul(hash^(hash>>>16),0x7feb352d);hash=Math.imul(hash^(hash>>>15),0x846ca68b);hash=(hash^(hash>>>16))>>>0;const suffix=(hash%46656).toString(36).toLowerCase().padStart(3,'0');return 'D'+day+month+'-'+suffix;}
 const GOOGLE_REDIRECT = 'fb3d2ymenu://auth/callback';
@@ -270,7 +270,7 @@ function AppContent() {
       const releases = await response.json();
       const candidates = (Array.isArray(releases) ? releases : []).filter((item:any) =>
         !item.draft && !item.prerelease &&
-        /^v\\d+\\.\\d+\\.\\d+$/.test(String(item.tag_name || '')) &&
+        /^v\d+\.\d+\.\d+$/.test(String(item.tag_name || '')) &&
         (item.assets || []).some((asset:any) => String(asset.name).toLowerCase().endsWith('.apk'))
       );
       candidates.sort((a:any,b:any) => {
