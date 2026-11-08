@@ -111,6 +111,7 @@ function AppContent() {
   const [paperWidth,setPaperWidth]=useState<'58'|'80'>('58');
   const [hoursDraft,setHoursDraft]=useState<Record<string,OpeningDay>>({});
   const [reportPeriod,setReportPeriod]=useState<1|7|30|90>(30);
+  const [reportProductSort,setReportProductSort]=useState<'quantity'|'revenue'|'name'>('quantity');
   const [keepAwake,setKeepAwake]=useState(false);
   const [editorOpen,setEditorOpen]=useState(false);
   const [editingProduct,setEditingProduct]=useState<Product|null>(null);
@@ -463,6 +464,20 @@ function AppContent() {
     });
   }, [orders, reportPeriod]);
   const reportTotal = useMemo(() => reportOrders.reduce((sum,o)=>sum+Number(o.total||0),0),[reportOrders]);
+  const reportProducts = useMemo(() => {
+    const grouped=new Map<string,{name:string;quantity:number;revenue:number}>();
+    reportOrders.filter(order=>(order.status??'').toLocaleLowerCase('pt-BR')!=='cancelado').forEach(order=>(order.itens_pedido??[]).forEach(line=>{
+      const name=(line.nome_produto??'Produto removido').trim()||'Produto removido';
+      const key=line.produto_id!=null?'id:'+line.produto_id:'name:'+name.toLocaleLowerCase('pt-BR');
+      const current=grouped.get(key)??{name,quantity:0,revenue:0};
+      current.quantity+=Number(line.quantidade)||0;
+      current.revenue+=(Number(line.quantidade)||0)*(Number(line.preco_unitario)||0);
+      grouped.set(key,current);
+    }));
+    return [...grouped.values()].sort((a,b)=>reportProductSort==='revenue'?b.revenue-a.revenue:reportProductSort==='name'?a.name.localeCompare(b.name,'pt-BR'):b.quantity-a.quantity);
+  },[reportOrders,reportProductSort]);
+  const reportProductUnits=useMemo(()=>reportProducts.reduce((sum,p)=>sum+p.quantity,0),[reportProducts]);
+  const reportProductRevenue=useMemo(()=>reportProducts.reduce((sum,p)=>sum+p.revenue,0),[reportProducts]);
   const todayTotal = useMemo(() => {
     const today = new Date().toDateString();
     return orders.filter(o => o.criado_em && new Date(o.criado_em).toDateString() === today)
@@ -506,7 +521,20 @@ function AppContent() {
           {products.map(p=><Pressable key={p.id} style={[styles.productCard,darkMode&&styles.darkCard]} onPress={()=>openProductEditor(p)}><View style={{flex:1}}><Text style={[styles.customer,darkMode&&styles.darkText]}>{p.nome}</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{p.descricao||'Sem descrição'} · {money(Number(p.preco))}</Text></View><Pressable style={[styles.statusPill,{backgroundColor:p.disponivel?'#E8F7EF':'#FCE9E6'}]} onPress={()=>toggleProduct(p)}><Text style={[styles.statusText,{color:p.disponivel?'#247A4B':'#B42318'}]}>{p.disponivel?'Disponível':'Pausado'}</Text></Pressable></Pressable>)}
           {!products.length&&<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
           <View style={{flexDirection:'row',gap:8}}><Pressable style={[styles.secondaryButton,{flex:1}]} onPress={()=>openCategory(null)}><Text style={styles.secondaryButtonText}>+ Categoria</Text></Pressable><Pressable style={[styles.secondaryButton,{flex:1}]} onPress={()=>setComplementsModal(true)}><Text style={styles.secondaryButtonText}>Complementos</Text></Pressable></View>
-        </ScrollView> : tab==='relatorios' ? <ScrollView contentContainerStyle={styles.listContent}><Text style={styles.sectionTitle}>Relatórios</Text><View style={styles.periodRow}>{([1,7,30,90] as const).map(value=><Pressable key={value} onPress={()=>setReportPeriod(value)} style={[styles.periodChip,reportPeriod===value&&styles.periodChipActive]}><Text style={[styles.periodChipText,reportPeriod===value&&styles.periodChipTextActive]}>{value===1?'Hoje':value+' dias'}</Text></Pressable>)}</View><View style={[styles.revenueCard,darkMode&&styles.darkRevenue]}><Text style={[styles.revenueLabel,darkMode&&styles.darkMuted]}>VENDAS · {reportPeriod===1?'HOJE':`ÚLTIMOS ${reportPeriod} DIAS`}</Text><Text style={[styles.revenueValue,darkMode&&styles.darkText]}>{money(reportTotal)}</Text></View><View style={styles.statsRow}><View style={[styles.statCard,darkMode&&styles.darkCard]}><Text style={[styles.statLabel,darkMode&&styles.darkMuted]}>PEDIDOS NO PERÍODO</Text><Text style={[styles.statValue,darkMode&&styles.darkText]}>{reportOrders.length}</Text></View><View style={[styles.statCard,darkMode&&styles.darkCard]}><Text style={[styles.statLabel,darkMode&&styles.darkMuted]}>TICKET MÉDIO</Text><Text style={[styles.statValue,darkMode&&styles.darkText]}>{money(reportOrders.length?reportTotal/reportOrders.length:0)}</Text></View></View><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>Valores calculados com os pedidos registrados no período selecionado.</Text></ScrollView> : <FlatList
+        {tab==='relatorios' ? <ScrollView contentContainerStyle={styles.listContent}>
+          <Text style={[styles.sectionTitle,darkMode&&styles.darkText]}>Relatórios</Text>
+          <View style={styles.periodRow}>{([1,7,30,90] as const).map(value=><Pressable key={value} onPress={()=>setReportPeriod(value)} style={[styles.periodChip,reportPeriod===value&&styles.periodChipActive]}><Text style={[styles.periodChipText,reportPeriod===value&&styles.periodChipTextActive]}>{value===1?'Hoje':value+' dias'}</Text></Pressable>)}</View>
+          <View style={[styles.revenueCard,darkMode&&styles.darkRevenue]}><Text style={[styles.revenueLabel,darkMode&&styles.darkMuted]}>VENDAS · {reportPeriod===1?'HOJE':`ÚLTIMOS ${reportPeriod} DIAS`}</Text><Text style={[styles.revenueValue,darkMode&&styles.darkText]}>{money(reportTotal)}</Text></View>
+          <View style={styles.statsRow}><View style={[styles.statCard,darkMode&&styles.darkCard]}><Text style={[styles.statLabel,darkMode&&styles.darkMuted]}>PEDIDOS NO PERÍODO</Text><Text style={[styles.statValue,darkMode&&styles.darkText]}>{reportOrders.length}</Text></View><View style={[styles.statCard,darkMode&&styles.darkCard]}><Text style={[styles.statLabel,darkMode&&styles.darkMuted]}>TICKET MÉDIO</Text><Text style={[styles.statValue,darkMode&&styles.darkText]}>{money(reportOrders.length?reportTotal/reportOrders.length:0)}</Text></View></View>
+          <View style={{marginTop:18,gap:12}}>
+            <View style={styles.sectionHead}><Text style={[styles.sectionTitle,darkMode&&styles.darkText]}>Vendas por produto</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{reportProducts.length} produtos</Text></View>
+            <View style={styles.periodRow}>{([{key:'quantity',label:'Mais vendidos'},{key:'revenue',label:'Maior receita'},{key:'name',label:'Nome'}] as const).map(option=><Pressable key={option.key} onPress={()=>setReportProductSort(option.key)} style={[styles.periodChip,reportProductSort===option.key&&styles.periodChipActive]}><Text style={[styles.periodChipText,reportProductSort===option.key&&styles.periodChipTextActive]}>{option.label}</Text></Pressable>)}</View>
+            <View style={[styles.statsRow,{marginTop:0}]}><View style={[styles.statCard,darkMode&&styles.darkCard]}><Text style={[styles.statLabel,darkMode&&styles.darkMuted]}>UNIDADES VENDIDAS</Text><Text style={[styles.statValue,darkMode&&styles.darkText]}>{reportProductUnits}</Text></View><View style={[styles.statCard,darkMode&&styles.darkCard]}><Text style={[styles.statLabel,darkMode&&styles.darkMuted]}>RECEITA DOS PRODUTOS</Text><Text style={[styles.statValue,darkMode&&styles.darkText]}>{money(reportProductRevenue)}</Text></View></View>
+            {reportProducts.length===0?<Text style={[styles.emptyText,darkMode&&styles.darkMuted]}>Nenhum produto vendido no período selecionado.</Text>:reportProducts.map((product,index)=><View key={product.name+'-'+index} style={[styles.productCard,darkMode&&styles.darkCard,{alignItems:'center'}]}><View style={{flex:1}}><Text style={[styles.customer,darkMode&&styles.darkText]}>{product.name}</Text><Text style={[styles.orderMeta,darkMode&&styles.darkMuted]}>{product.quantity} unidades vendidas</Text></View><Text style={{fontWeight:'900',color:'#D66F3C'}}>{money(product.revenue)}</Text></View>)}
+            <View style={[styles.productCard,darkMode&&styles.darkCard,{justifyContent:'space-between'}]}><Text style={[styles.customer,darkMode&&styles.darkText]}>Total</Text><View style={{alignItems:'flex-end'}}><Text style={[styles.customer,darkMode&&styles.darkText]}>{reportProductUnits} unidades</Text><Text style={{fontWeight:'900',color:'#D66F3C'}}>{money(reportProductRevenue)}</Text></View></View>
+          </View>
+          <Text style={[styles.orderMeta,darkMode&&styles.darkMuted,{marginTop:12}]}>A receita por produto considera quantidade × preço unitário dos itens de pedidos não cancelados. A taxa de entrega não é incluída.</Text>
+        </ScrollView> : <FlatList
           data={tab==='pedidos'?orders:[]}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={styles.listContent}
