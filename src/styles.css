@@ -2680,3 +2680,64 @@ img, video, canvas, svg { max-width: 100%; }
 .app-android-download{display:inline-flex;align-items:center;gap:10px;width:max-content;max-width:100%;margin-top:12px;padding:9px 13px;border:1px solid #dce9df;border-radius:10px;background:#f3fbf5;color:#23834a;text-decoration:none;transition:background .2s,border-color .2s}.app-android-download:hover{background:#e8f7ec;border-color:#a8d9b7}.app-android-logo{width:25px;height:25px;flex:0 0 25px}.app-android-copy{display:grid;gap:2px}.app-android-copy strong{font-size:12px;line-height:1.2;font-weight:700}.app-android-copy small{font-size:9px;line-height:1.2;color:#688174}.app-android-download>svg:last-child{width:15px;height:15px}.app-update-date{font-size:9px;margin-top:5px}
 .order-print-button{display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;cursor:pointer}.order-print-button span{font-size:10px}.admin-order-actions .order-move-button{white-space:nowrap}
 @media(max-width:900px){.app-android-download{padding:8px 10px}.app-android-logo{width:22px;height:22px;flex-basis:22px}.app-android-copy strong{font-size:11px}.app-android-copy small{font-size:8px}.order-print-button{padding:6px 5px}.order-print-button span{font-size:9px}}
+
+
+/* Ações dos pedidos: botões organizados em grade, com respiro e hierarquia visual */
+.admin-orders-table th:nth-child(1),.admin-orders-table td:nth-child(1){width:8%!important}
+.admin-orders-table th:nth-child(2),.admin-orders-table td:nth-child(2){width:16%!important}
+.admin-orders-table th:nth-child(3),.admin-orders-table td:nth-child(3){width:13%!important}
+.admin-orders-table th:nth-child(4),.admin-orders-table td:nth-child(4){width:9%!important}
+.admin-orders-table th:nth-child(5),.admin-orders-table td:nth-child(5){width:11%!important}
+.admin-orders-table th:nth-child(6),.admin-orders-table td:nth-child(6){width:7%!important}
+.admin-orders-table th:nth-child(7),.admin-orders-table td:nth-child(7){width:8%!important}
+.admin-orders-table th:nth-child(8),.admin-orders-table td:nth-child(8){width:9%!important}
+.admin-orders-table th:nth-child(9),.admin-orders-table td:nth-child(9){width:19%!important}
+.admin-order-actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;
+  gap:7px!important;
+  padding:7px;
+  border:1px solid #edf0ed;
+  border-radius:12px;
+  background:#f8faf8;
+}
+.admin-order-actions button{
+  box-sizing:border-box;
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  width:100%!important;
+  min-width:0!important;
+  min-height:34px!important;
+  height:34px!important;
+  padding:0 7px!important;
+  border:1px solid transparent!important;
+  border-radius:9px!important;
+  font:700 10px/1 'DM Sans',Arial,sans-serif!important;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease,background .15s ease;
+}
+.admin-order-actions button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 3px 8px rgba(31,55,39,.10)}
+.admin-order-actions button:active:not(:disabled){transform:translateY(0)}
+.admin-order-actions button.order-edit-button{color:#245b82!important;background:#edf6ff!important;border-color:#d8eafb!important}
+.admin-order-actions button.order-cancel-button{color:#a8323d!important;background:#fff0f1!important;border-color:#f5dadd!important}
+.admin-order-actions button.order-print-button{color:#76502a!important;background:#fff6e8!important;border-color:#f4e4c7!important}
+.admin-order-actions button.order-move-button{color:#fff!important;background:#e87527!important;border-color:#e87527!important;min-width:0!important;font-size:10px!important}
+.admin-order-actions button.order-move-button--finished{color:#fff!important;background:#23834b!important;border-color:#23834b!important;min-width:0!important}
+.admin-order-actions button:disabled{opacity:.48;cursor:not-allowed;box-shadow:none}
+@media(max-width:900px){
+ .admin-order-actions{gap:5px!important;padding:5px;border-radius:10px}
+ .admin-order-actions button{min-height:30px!important;height:30px!important;padding:0 4px!important;gap:3px;font-size:9px!important}
+ .admin-order-actions button svg{width:13px;height:13px}
+ .admin-order-actions button.order-move-button{min-width:0!important;font-size:9px!important}
+ .admin-order-actions button.order-move-button--finished{min-width:0!important}
+}
+@media(max-width:560px){
+ .admin-order-actions{gap:4px!important;padding:4px}
+ .admin-order-actions button{min-height:27px!important;height:27px!important;font-size:8px!important}
+ .admin-order-actions button svg{width:12px;height:12px}
+ .admin-order-actions button.order-move-button{font-size:8px!important}
+}
