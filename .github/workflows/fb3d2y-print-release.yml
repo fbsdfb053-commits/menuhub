@@ -2,7 +2,7 @@ name: Build and release Fb3d2y Print
 on:
   workflow_dispatch:
   push:
-    branches: [main, feat/fb3d2yprint-linux-default]
+    branches: [main, feat/fb3d2yprint-linux-default, feat/receipt-58mm-bold-layout]
     paths:
       - 'linux-print/**'
       - 'windows-print/**'
@@ -23,7 +23,7 @@ jobs:
           install -m 755 linux-print/fb3d2y_print.py "$ROOT/opt/fb3d2y-print/fb3d2y_print.py"
           cat > "$ROOT/DEBIAN/control" <<'EOF'
           Package: fb3d2y-print
-          Version: 0.2.0
+          Version: 0.2.1
           Section: utils
           Priority: optional
           Architecture: amd64
