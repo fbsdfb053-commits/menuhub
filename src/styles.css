@@ -2646,3 +2646,28 @@ img, video, canvas, svg { max-width: 100%; }
 .fbprint-platform-icon--windows{background:#e8f3ff;color:#1672c4}
 .fbprint-platform-icon--linux{background:#fff0df;color:#c36b16}
 @media(max-width:640px){.fbprint-download-grid{grid-template-columns:1fr}.fbprint-download-card{padding:13px}}
+
+
+/* Pedidos: tabela compacta sem rolagem horizontal e ações em sequência */
+.admin-orders-table-wrap{overflow-x:hidden!important}
+.admin-orders-table{width:100%!important;min-width:0!important;table-layout:fixed!important}
+.admin-orders-table th,.admin-orders-table td{padding:9px 6px!important;white-space:normal!important;overflow-wrap:anywhere}
+.admin-orders-table th:nth-child(1),.admin-orders-table td:nth-child(1){width:8%}
+.admin-orders-table th:nth-child(2),.admin-orders-table td:nth-child(2){width:17%}
+.admin-orders-table th:nth-child(3),.admin-orders-table td:nth-child(3){width:12%}
+.admin-orders-table th:nth-child(4),.admin-orders-table td:nth-child(4){width:9%}
+.admin-orders-table th:nth-child(5),.admin-orders-table td:nth-child(5){width:12%}
+.admin-orders-table th:nth-child(6),.admin-orders-table td:nth-child(6){width:8%}
+.admin-orders-table th:nth-child(7),.admin-orders-table td:nth-child(7){width:9%}
+.admin-orders-table th:nth-child(8),.admin-orders-table td:nth-child(8){width:9%}
+.admin-orders-table th:nth-child(9),.admin-orders-table td:nth-child(9){width:16%}
+.admin-order-customer{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-order-phone{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-order-note{display:-webkit-box;max-width:100%;margin-top:3px;overflow:hidden;white-space:normal;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:2;color:#879188;font-size:9px;line-height:1.25}
+.admin-order-actions{display:flex!important;align-items:center;justify-content:flex-start;flex-wrap:nowrap!important;gap:4px!important}
+.admin-order-actions button{flex:0 0 28px;width:28px!important;height:28px!important;min-width:28px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;border:1px solid #dce5dc;border-radius:7px;background:#fff;cursor:pointer}
+.admin-order-actions .order-edit-button{color:#145b5b}
+.admin-order-actions .order-cancel-button{color:#b42332;border-color:#f1d4d7}
+.admin-order-actions .order-move-button{color:#fff;background:#e87527;border-color:#e87527}
+.admin-order-actions button:disabled{opacity:.35;cursor:not-allowed}
+@media(max-width:900px){.admin-orders-table th,.admin-orders-table td{padding:8px 4px!important;font-size:10px!important}.admin-order-actions{gap:3px!important}.admin-order-actions button{flex-basis:25px;width:25px!important;min-width:25px;height:25px!important}}
