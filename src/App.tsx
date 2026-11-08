@@ -625,7 +625,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
       const cleanText=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[<>]/g,'').replace(/\s+/g,' ').trim();
       const moneyText=(value:number)=>'R$ '+Number(value||0).toFixed(2).replace('.',',');
       const WIDTH=32;
-      const wrap=(value:string,indent='')=>{const text=cleanText(value);const limit=WIDTH-indent.length;const parts:string[]=[];for(let i=0;i<text.length;i+=limit)parts.push(indent+text.slice(i,i+limit));return parts.length?parts:[''];};
+      const wrap=(value:string,indent='')=>{const words=cleanText(value).split(' ');const lines:string[]=[];let line=indent;for(const word of words){if(line.length>indent.length&&line.length+1+word.length>WIDTH){lines.push(line);line=indent;}let rest=word;while(rest.length>WIDTH-line.length){const take=WIDTH-line.length;line+=rest.slice(0,take);lines.push(line);rest=rest.slice(take);line=indent;}if(rest){if(line.length>indent.length)line+=' ';line+=rest;}}if(line.length>indent.length||!lines.length)lines.push(line);return lines;};
       const normal=(value:string)=>'\x1B\x45\x00\x1B\x21\x00'+value+'\n';
       const bold=(value:string)=>'\x1B\x45\x01\x1B\x21\x00'+value+'\n\x1B\x45\x00';
       const centered=(value:string)=>'\x1B\x61\x01'+bold(value)+'\x1B\x61\x00';
