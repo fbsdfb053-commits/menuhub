@@ -790,7 +790,7 @@ const defaultWhatsAppBotConfig: WhatsAppBotConfig = {
 }
 function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:number|null;restaurantName:string;notify:(message:string,error?:boolean)=>void}) {
   const [config,setConfig]=useState<WhatsAppBotConfig>(defaultWhatsAppBotConfig)
-  const [activeStatusTab,setActiveStatusTab]=useState<'preparing'|'ready'|'delivery'|'pickup'>('preparing')
+  const [activeStatusTab,setActiveStatusTab]=useState<'preparing'|'delivery'|'pickup'>('preparing')
   const [loading,setLoading]=useState(false)
   const [saving,setSaving]=useState(false)
   const [tableMissing,setTableMissing]=useState(false)
@@ -936,13 +936,11 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
         <div className="whatsapp-status-tabs" role="tablist" aria-label="Etapas de atualização do pedido" style={{display:'flex',flexWrap:'wrap',gap:8}}>
           {([
             ['preparing','Mover para preparo'],
-            ['ready','Pedido pronto'],
             ['delivery','Pedido em entrega'],
             ['pickup','Retirada disponível'],
           ] as const).map(([key,label])=><button key={key} type="button" role="tab" aria-selected={activeStatusTab===key} className={activeStatusTab===key?'primary-button':'secondary-button'} onClick={()=>setActiveStatusTab(key)}>{label}</button>)}
         </div>
         {activeStatusTab==='preparing'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusPreparing} onChange={e=>update({statusPreparing:e.target.checked})}/><span>Enviar aviso ao mover para preparo</span></label><textarea aria-label="Mensagem ao mover para preparo" rows={3} maxLength={1000} value={config.messagePreparing} onChange={e=>update({messagePreparing:e.target.value})}/></div>}
-        {activeStatusTab==='ready'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusReady} onChange={e=>update({statusReady:e.target.checked})}/><span>Enviar aviso quando o pedido estiver pronto</span></label><textarea aria-label="Mensagem de pedido pronto" rows={3} maxLength={1000} value={config.messageReady} onChange={e=>update({messageReady:e.target.value})}/></div>}
         {activeStatusTab==='delivery'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusOutForDelivery} onChange={e=>update({statusOutForDelivery:e.target.checked})}/><span>Enviar aviso quando sair para entrega</span></label><textarea aria-label="Mensagem de pedido em entrega" rows={3} maxLength={1000} value={config.messageOutForDelivery} onChange={e=>update({messageOutForDelivery:e.target.value})}/></div>}
         {activeStatusTab==='pickup'&&<div className="whatsapp-status-editor"><label className="whatsapp-toggle"><input type="checkbox" checked={config.statusPickupReady} onChange={e=>update({statusPickupReady:e.target.checked})}/><span>Enviar aviso quando estiver disponível para retirada</span></label><textarea aria-label="Mensagem de retirada disponível" rows={3} maxLength={1000} value={config.messagePickupReady} onChange={e=>update({messagePickupReady:e.target.value})}/></div>}
         <div className="whatsapp-template-note"><strong>Importante sobre envios</strong><p>Para iniciar mensagens fora da janela de atendimento do WhatsApp, a Meta normalmente exige modelos aprovados. A integração final precisa mapear cada status para um modelo permitido e respeitar as regras de consentimento e envio.</p></div>
@@ -967,7 +965,7 @@ function SalesReport({orders,onRefresh}:{orders:AdminOrder[];onRefresh:()=>void}
   const daily = new Map(days.map(day=>[day.key,day]))
   periodOrders.forEach(order=>{const day=daily.get(dateKey(new Date(order.criado_em)));if(day){day.total+=Number(order.total||0);day.count+=1}})
   const maxDay = Math.max(1,...days.map(day=>day.total))
-  const statuses = ['Novo','Aceito','Preparando','Pronto','Concluído']
+  const statuses = ['Novo','Aceito','Preparando','Em entrega','Retirada disponível','Concluído']
   const exportCsv = () => {
     const rows = [['Pedido','Data','Cliente','Tipo','Status','Total'],...periodOrders.map(order=>[formatPublicOrderCode(order.id,order.criado_em),new Date(order.criado_em).toLocaleString('pt-BR'),order.cliente_nome,order.tipo_entrega,order.status,Number(order.total).toFixed(2).replace('.',',')])]
     const csv = '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(';')).join('\r\n')
