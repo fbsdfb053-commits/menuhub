@@ -355,7 +355,6 @@ function MenuView({ data, isDemo, onPlaceOrder }: MenuViewProps) {
 
   return (
     <div className="app-shell" style={{ '--accent': restaurant.accent } as CSSProperties}>
-      <RestaurantHeader showAccount={isDemo} />
       <main className="menu-main">
         <RestaurantHero restaurant={restaurant} />
         <CategoryNav categories={menuCategories} selected={selectedCategory} onSelect={setSelectedCategory} />
