@@ -264,9 +264,22 @@ function AppContent() {
     if (Platform.OS !== 'android') { if (!silent) Alert.alert('Atualização', 'A instalação pelo aplicativo está disponível no Android.'); return; }
     setUpdateBusy(true);
     try {
-      const response = await fetch('https://api.github.com/repos/fbsdfb053-commits/menuhub/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
-      if (!response.ok) throw new Error(response.status === 404 ? 'Ainda não há uma versão publicada para atualização.' : 'Não foi possível consultar as atualizações. Tente novamente.');
-      const release = await response.json();
+      const response = await fetch('https://api.github.com/repos/fbsdfb053-commits/menuhub/releases?per_page=50', { headers: { Accept: 'application/vnd.github+json' } });
+      if (!response.ok) throw new Error('Não foi possível consultar as atualizações. Tente novamente.');
+      const releases = await response.json();
+      const candidates = (Array.isArray(releases) ? releases : []).filter((item:any) =>
+        !item.draft && !item.prerelease &&
+        /^v\\d+\\.\\d+\\.\\d+$/.test(String(item.tag_name || '')) &&
+        (item.assets || []).some((asset:any) => String(asset.name).toLowerCase().endsWith('.apk'))
+      );
+      candidates.sort((a:any,b:any) => {
+        const av=String(a.tag_name).replace(/^v/i,'').split('.').map(Number);
+        const bv=String(b.tag_name).replace(/^v/i,'').split('.').map(Number);
+        for(let i=0;i<3;i++){if((av[i]||0)!==(bv[i]||0))return (bv[i]||0)-(av[i]||0);}
+        return 0;
+      });
+      const release = candidates[0];
+      if (!release) throw new Error('Ainda não há uma versão Android publicada para atualização.');
       const latest = String(release.tag_name || '').replace(/^v/i, '');
       const currentParts = APP_VERSION.split('.').map(Number);
       const latestParts = latest.split('.').map(Number);
