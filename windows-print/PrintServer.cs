@@ -77,7 +77,7 @@ internal sealed class PrintServer : IDisposable
 
                 if (method == "GET" && path == "/health")
                 {
-                    await Respond(stream, 200, new { ok = true, app = "Fb3d2y Print", version = "0.1.0", printer = printer() }, allowedOrigin);
+                    await Respond(stream, 200, new { ok = true, app = "Fb3d2y Print", version = "0.2.1", printer = printer() }, allowedOrigin);
                     return;
                 }
 
