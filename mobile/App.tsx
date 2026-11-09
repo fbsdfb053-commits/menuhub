@@ -265,23 +265,22 @@ function AppContent() {
     if (Platform.OS !== 'android') { if (!silent) Alert.alert('Atualização', 'A instalação pelo aplicativo está disponível no Android.'); return; }
     setUpdateBusy(true);
     try {
-      const response = await fetch('https://api.github.com/repos/fbsdfb053-commits/menuhub/releases?per_page=50', { headers: { Accept: 'application/vnd.github+json' } });
-      if (!response.ok) throw new Error('Não foi possível consultar as atualizações. Tente novamente.');
-      const releases = await response.json();
-      const candidates = (Array.isArray(releases) ? releases : []).filter((item:any) =>
-        !item.draft && !item.prerelease &&
-        /^v\d+\.\d+\.\d+$/.test(String(item.tag_name || '')) &&
-        (item.assets || []).some((asset:any) => String(asset.name).toLowerCase().endsWith('.apk'))
-      );
-      candidates.sort((a:any,b:any) => {
-        const av=String(a.tag_name).replace(/^v/i,'').split('.').map(Number);
-        const bv=String(b.tag_name).replace(/^v/i,'').split('.').map(Number);
-        for(let i=0;i<3;i++){if((av[i]||0)!==(bv[i]||0))return (bv[i]||0)-(av[i]||0);}
-        return 0;
-      });
-      const release = candidates[0];
-      if (!release) throw new Error('Ainda não há uma versão Android publicada para atualização.');
-      const latest = String(release.tag_name || '').replace(/^v/i, '');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      let manifest:any;
+      try {
+        const response = await fetch('https://raw.githubusercontent.com/fbsdfb053-commits/menuhub/app-android/mobile/update.json?refresh=1.3.3', {
+          headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error('Servidor de atualização respondeu ' + response.status + '.');
+        manifest = await response.json();
+      } finally { clearTimeout(timeout); }
+      const latest = String(manifest?.version || '');
+      const apkUrl = String(manifest?.apk_url || '');
+      if (!/^\\d+\\.\\d+\\.\\d+$/.test(latest) || !apkUrl.startsWith('https://github.com/')) {
+        throw new Error('O arquivo de atualização está incompleto.');
+      }
       const currentParts = APP_VERSION.split('.').map(Number);
       const latestParts = latest.split('.').map(Number);
       const newer = latestParts.some((n:number, i:number) => n > (currentParts[i] || 0) && latestParts.slice(0,i).every((v:number,j:number)=>v===(currentParts[j]||0)));
@@ -291,16 +290,14 @@ function AppContent() {
         if (!silent) Alert.alert('Tudo atualizado', 'Você já está usando a versão mais recente do Fb3d2y Menu (v' + APP_VERSION + ').');
         return;
       }
-      const apk = (release.assets || []).find((asset:any) => String(asset.name).toLowerCase().endsWith('.apk'));
-      if (!apk?.browser_download_url) throw new Error('A nova versão foi encontrada, mas o arquivo de instalação ainda não está disponível.');
       setUpdateAvailable(true);
       setLatestAvailableVersion(latest);
       if (!silent) Alert.alert('Atualização disponível', 'Versão ' + latest + ' disponível. O app vai baixar o arquivo e abrir o instalador do Android.', [
         { text: 'Agora não', style: 'cancel' },
-        { text: 'Baixar e instalar', onPress: () => { void downloadAndInstallUpdate(apk.browser_download_url, latest); } }
+        { text: 'Baixar e instalar', onPress: () => { void downloadAndInstallUpdate(apkUrl, latest); } }
       ]);
     } catch (err) {
-      if (!silent) Alert.alert('Verificar atualizações', err instanceof Error ? err.message : 'Não foi possível verificar agora.');
+      if (!silent) Alert.alert('Verificar atualizações', err instanceof Error ? (err.name === 'AbortError' ? 'A consulta demorou demais. Verifique sua internet e tente novamente.' : err.message) : 'Não foi possível verificar agora.');
     } finally { setUpdateBusy(false); }
   };
 
