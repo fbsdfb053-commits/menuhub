@@ -519,6 +519,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
   const autoPrintSeenIds=useRef(new Map<number,Set<string>>())
   const autoPrintHandledIds=useRef(new Map<number,Set<string>>())
   const orderAudioRef=useRef<HTMLAudioElement|null>(null)
+  const pendingOrderAlertRef=useRef(false)
   useEffect(()=>{
     if(!session||selectedId===null)return
     const id=selectedId
@@ -530,10 +531,14 @@ function AdminView({ onBack }: { onBack: () => void }) {
     const processIncomingOrder=(order:AdminOrder)=>{
       const key=String(order.id)
       if(handled.has(key))return
+      if(String(order.status??'').trim().toLocaleLowerCase('pt-BR')!=='novo'){handled.add(key);return}
       handled.add(key)
-      if(String(order.status??'').trim().toLocaleLowerCase('pt-BR')!=='novo')return
       playOrderAlert()
-      notify('Novo pedido recebido! '+formatPublicOrderCode(order.id,order.criado_em))
+      const orderCode=formatPublicOrderCode(order.id,order.criado_em)
+      notify('Novo pedido recebido! '+orderCode)
+      if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+        try{new Notification('Novo pedido recebido',{body:'Pedido '+orderCode,tag:'fb3d2y-order-'+key})}catch{}
+      }
       let cfg:{autoPrint?:boolean;terminalToken?:string}|null=null
       try{cfg=JSON.parse(window.localStorage.getItem('menuhub-print-'+id)||'{}')}catch{cfg=null}
       const printerConfigured=Boolean(cfg?.terminalToken)
@@ -560,8 +565,18 @@ function AdminView({ onBack }: { onBack: () => void }) {
           processIncomingOrder(order)
         }
         autoPrintSeenIds.current.set(id,seen)
+      }catch{
+        // A próxima verificação ou reconexão recupera os pedidos sem interromper o painel.
       }finally{polling=false}
     }
+    const onVisibilityChange=()=>{
+      if(document.visibilityState!=='visible')return
+      void pollOrders()
+      if(pendingOrderAlertRef.current&&orderAudioRef.current){
+        void orderAudioRef.current.play().then(()=>{pendingOrderAlertRef.current=false}).catch(()=>undefined)
+      }
+    }
+    document.addEventListener('visibilitychange',onVisibilityChange)
     void pollOrders()
     const interval=window.setInterval(()=>{void pollOrders()},5000)
     const channel=supabase.channel('menuhub-orders-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'pedidos',filter:'empresa_id=eq.'+id},async(payload:any)=>{
@@ -570,14 +585,17 @@ function AdminView({ onBack }: { onBack: () => void }) {
       const key=String(insertedId)
       if(handled.has(key))return
       const {data,error}=await supabase.from('pedidos').select('id,cliente_nome,cliente_whatsapp,total,status,tipo_entrega,endereco_entrega,criado_em,origem,forma_pagamento,observacoes,precisa_troco,troco_para,regiao_entrega,taxa_entrega,itens_pedido(id,produto_id,nome_produto,quantidade,preco_unitario)').eq('empresa_id',id).eq('id',insertedId).maybeSingle()
-      if(!active||error||!data)return
+      if(!active)return
+      if(error||!data){void pollOrders();return}
       const order=data as AdminOrder
       seen.add(key)
       setOrders(current=>[order,...current.filter(item=>String(item.id)!==key)])
       processIncomingOrder(order)
       void pollOrders()
-    }).subscribe()
-    return()=>{active=false;window.clearInterval(interval);void supabase.removeChannel(channel)}
+    }).subscribe((status)=>{
+      if(status==='SUBSCRIBED')void pollOrders()
+    })
+    return()=>{active=false;document.removeEventListener('visibilitychange',onVisibilityChange);window.clearInterval(interval);void supabase.removeChannel(channel)}
   },[session,selectedId])
   useEffect(()=>{if(session&&selectedId!==null)void loadDetails(selectedId);else{setCats([]);setItems([]);setOrders([])}},[session,selectedId])
   const toggleStoreOrders=async()=>{if(!selected)return;const next=!storeIsOpenNow;const {error}=await supabase.from('empresas').update({status_loja_manual:next,aceita_pedidos:next}).eq('id',selected.id);if(error){notify('Não foi possível alterar o status da loja: '+error.message,true);return}setRestaurants(old=>old.map(r=>r.id===selected.id?{...r,status_loja_manual:next,aceita_pedidos:next}:r));notify(next?'Loja aberta para receber pedidos.':'Loja fechada para novos pedidos.')}
