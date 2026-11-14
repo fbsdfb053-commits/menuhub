@@ -632,7 +632,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
       const moneyText=(value:number)=>'R$ '+Number(value||0).toFixed(2).replace('.',',');
       const WIDTH=32;
       const wrap=(value:string,indent='')=>{const words=cleanText(value).split(' ');const lines:string[]=[];let line=indent;for(const word of words){if(line.length>indent.length&&line.length+1+word.length>WIDTH){lines.push(line);line=indent;}let rest=word;while(rest.length>WIDTH-line.length){const take=WIDTH-line.length;line+=rest.slice(0,take);lines.push(line);rest=rest.slice(take);line=indent;}if(rest){if(line.length>indent.length)line+=' ';line+=rest;}}if(line.length>indent.length||!lines.length)lines.push(line);return lines;};
-      const sizeCommand=(height:number)=>String.fromCharCode(0x1D,0x21,Math.max(1,Math.min(4,height))-1);
+      const sizeCommand=(height:number)=>String.fromCharCode(0x1D,0x21,(Math.max(1,Math.min(4,height))-1)<<4);
       const normal=(value:string)=>'\x1B\x4D\x00'+sizeCommand(printSizes.body)+'\x1B\x47\x00\x1B\x45\x00'+value+'\n'+sizeCommand(1);
       const bold=(value:string)=>'\x1B\x4D\x00'+sizeCommand(printSizes.heading)+'\x1B\x45\x01\x1B\x47\x01'+value+'\n'+sizeCommand(1)+'\x1B\x4D\x00\x1B\x47\x00\x1B\x45\x00\x1B\x21\x00';
       const centered=(value:string)=>'\x1B\x61\x01'+bold(value)+'\x1B\x61\x00';
