@@ -7,7 +7,6 @@ $g.Clear([System.Drawing.Color]::Transparent)
 $orange = [System.Drawing.Color]::FromArgb(230,103,32)
 $white = [System.Drawing.Color]::White
 $bg = New-Object System.Drawing.SolidBrush($orange)
-$g.FillRoundedRectangle = $null
 $path = New-Object System.Drawing.Drawing2D.GraphicsPath
 $path.AddArc(2,2,18,18,180,90); $path.AddArc(44,2,18,18,270,90); $path.AddArc(44,44,18,18,0,90); $path.AddArc(2,44,18,18,90,90); $path.CloseFigure()
 $g.FillPath($bg,$path)
@@ -24,7 +23,7 @@ $out = Join-Path $PSScriptRoot "fb3d2y-print.ico"
 $fs = [System.IO.File]::Create($out)
 $bw = New-Object System.IO.BinaryWriter($fs)
 $bw.Write([UInt16]0); $bw.Write([UInt16]1); $bw.Write([UInt16]1)
-$bw.Write([Byte]0); $bw.Write([Byte]0); $bw.Write([Byte]0); $bw.Write([Byte]0)
+$bw.Write([Byte]64); $bw.Write([Byte]64); $bw.Write([Byte]0); $bw.Write([Byte]0)
 $bw.Write([UInt16]1); $bw.Write([UInt16]32); $bw.Write([UInt32]$png.Length)
 $bw.Write([UInt32]22); $bw.Write($png)
 $bw.Close(); $fs.Close()
