@@ -13,7 +13,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\artifacts
 OutputBaseFilename=Fb3d2yPrint-Setup
-SetupIconFile=..\fb3d2y-print.ico
+SetupIconFile=windows-print\fb3d2y-print.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesInstallIn64BitMode=x64
 ArchitecturesAllowed=x64
@@ -23,7 +23,7 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Files]
-Source: "..\bin\Release\net8.0-windows\win-x64\publish\Fb3d2yPrint.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "windows-print\bin\Release\net8.0-windows\win-x64\publish\Fb3d2yPrint.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Fb3d2y Print"; Filename: "{app}\{#MyAppExeName}"
