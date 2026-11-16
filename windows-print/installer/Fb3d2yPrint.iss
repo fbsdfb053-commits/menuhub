@@ -1,5 +1,5 @@
 #define MyAppName "Fb3d2y Print"
-#define MyAppVersion "0.2.8"
+#define MyAppVersion "0.2.9"
 #define MyAppPublisher "Fb3d2y Menu"
 #define MyAppExeName "Fb3d2yPrint.exe"
 #define RepoRoot GetEnv("GITHUB_WORKSPACE")
