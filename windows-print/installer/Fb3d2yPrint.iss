@@ -2,6 +2,7 @@
 #define MyAppVersion "0.2.8"
 #define MyAppPublisher "Fb3d2y Menu"
 #define MyAppExeName "Fb3d2yPrint.exe"
+#define RepoRoot GetEnv("GITHUB_WORKSPACE")
 
 [Setup]
 AppId={{A4C9E32D-8D14-4B3B-9D0A-2F3B7C9A0288}
@@ -11,9 +12,9 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\Fb3d2y Print
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-OutputDir=..\..\artifacts
+OutputDir={#RepoRoot}\artifacts
 OutputBaseFilename=Fb3d2yPrint-Setup
-SetupIconFile=windows-print\fb3d2y-print.ico
+SetupIconFile={#RepoRoot}\windows-print\fb3d2y-print.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesInstallIn64BitMode=x64
 ArchitecturesAllowed=x64
@@ -23,7 +24,7 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Files]
-Source: "windows-print\bin\Release\net8.0-windows\win-x64\publish\Fb3d2yPrint.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#RepoRoot}\windows-print\bin\Release\net8.0-windows\win-x64\publish\Fb3d2yPrint.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Fb3d2y Print"; Filename: "{app}\{#MyAppExeName}"
