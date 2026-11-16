@@ -17,7 +17,7 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Publicar aplicativo Windows
-        run: dotnet publish .\\windows-print\\Fb3d2yPrint.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+        run: dotnet publish windows-print/Fb3d2yPrint.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
       - name: Publicar atualização v0.2.7
         uses: softprops/action-gh-release@v2
         with:
