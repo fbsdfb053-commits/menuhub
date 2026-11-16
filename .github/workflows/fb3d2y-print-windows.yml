@@ -6,7 +6,6 @@ on:
     paths:
       - 'windows-print/**'
       - '.github/workflows/fb3d2y-print-windows.yml'
-      - 'windows-print/installer/**'
 permissions:
   contents: write
 jobs:
@@ -17,7 +16,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Gerar ícone do aplicativo
+      - name: Gerar ícone do aplicativo em várias resoluções
         shell: pwsh
         run: ./windows-print/GenerateIcon.ps1
       - name: Publicar aplicativo Windows
@@ -29,12 +28,12 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" windows-print/installer/Fb3d2yPrint.iss
-      - name: Publicar atualização v0.2.8
+      - name: Publicar atualização v0.2.9
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: fb3d2y-print-v0.2.8
-          name: Fb3d2y Print 0.2.8
-          target_commitish: feat/fb3d2y-print-windows
+          tag_name: fb3d2y-print-v0.2.9
+          name: Fb3d2y Print 0.2.9
+          target_commitish: main
           files: |
             artifacts/Fb3d2yPrint-Setup.exe
             windows-print/bin/Release/net8.0-windows/win-x64/publish/Fb3d2yPrint.exe
