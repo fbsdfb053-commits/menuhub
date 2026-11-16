@@ -1,4 +1,4 @@
-name: Build Fb3d2y Print Windows
+name: Build and release Fb3d2y Print Windows
 on:
   workflow_dispatch:
   push:
@@ -7,7 +7,7 @@ on:
       - 'windows-print/**'
       - '.github/workflows/fb3d2y-print-windows.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -17,9 +17,14 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Publicar aplicativo Windows
-        run: dotnet publish .\windows-print\Fb3d2yPrint.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
-      - uses: actions/upload-artifact@v4
+        run: dotnet publish .\\windows-print\\Fb3d2yPrint.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+      - name: Publicar atualização v0.2.7
+        uses: softprops/action-gh-release@v2
         with:
-          name: Fb3d2y-Print-Windows-x64
-          path: windows-print/bin/Release/net8.0-windows/win-x64/publish/Fb3d2yPrint.exe
-          if-no-files-found: error
+          tag_name: fb3d2y-print-v0.2.7
+          name: Fb3d2y Print 0.2.7
+          target_commitish: feat/fb3d2y-print-windows
+          files: windows-print/bin/Release/net8.0-windows/win-x64/publish/Fb3d2yPrint.exe
+          overwrite_files: true
+          make_latest: true
+          fail_on_unmatched_files: true
