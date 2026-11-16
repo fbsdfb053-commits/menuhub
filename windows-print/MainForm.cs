@@ -17,7 +17,9 @@ internal sealed class MainForm : Form
     public MainForm()
     {
         Text = "Fb3d2y Print";
-        Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
+        var appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
+        Icon = appIcon;
+        ShowInTaskbar = true;
         ClientSize = new Size(640, 390);
         MinimumSize = new Size(580, 360);
         StartPosition = FormStartPosition.CenterScreen;
@@ -32,7 +34,7 @@ internal sealed class MainForm : Form
         server = new PrintServer(token, () => printers.SelectedItem?.ToString() ?? "");
         tray = new NotifyIcon
         {
-            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application,
+            Icon = new Icon(appIcon, new Size(16, 16)),
             Text = "Fb3d2y Print — ativo",
             Visible = true,
             ContextMenuStrip = new ContextMenuStrip()
