@@ -6,6 +6,7 @@ on:
     paths:
       - 'windows-print/**'
       - '.github/workflows/fb3d2y-print-windows.yml'
+      - 'windows-print/installer/**'
 permissions:
   contents: write
 jobs:
@@ -16,15 +17,27 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Gerar ícone do aplicativo
+        shell: pwsh
+        run: ./windows-print/GenerateIcon.ps1
       - name: Publicar aplicativo Windows
         run: dotnet publish windows-print/Fb3d2yPrint.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
-      - name: Publicar atualização v0.2.7
+      - name: Instalar Inno Setup
+        run: choco install innosetup --yes --no-progress
+      - name: Criar instalador Windows
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" windows-print/installer/Fb3d2yPrint.iss
+      - name: Publicar atualização v0.2.8
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: fb3d2y-print-v0.2.7
-          name: Fb3d2y Print 0.2.7
+          tag_name: fb3d2y-print-v0.2.8
+          name: Fb3d2y Print 0.2.8
           target_commitish: feat/fb3d2y-print-windows
-          files: windows-print/bin/Release/net8.0-windows/win-x64/publish/Fb3d2yPrint.exe
+          files: |
+            artifacts/Fb3d2yPrint-Setup.exe
+            windows-print/bin/Release/net8.0-windows/win-x64/publish/Fb3d2yPrint.exe
           overwrite_files: true
           make_latest: true
           fail_on_unmatched_files: true
