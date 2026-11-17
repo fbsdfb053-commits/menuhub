@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Category, ComplementGroup, Product, Restaurant } from '../data'
+import { normalizeMenuLayout, type Category, type ComplementGroup, type Product, type Restaurant } from '../data'
 
 export type MenuData = {
   restaurant: Restaurant
@@ -98,6 +98,7 @@ export async function fetchMenu(slug: string): Promise<MenuData | null> {
     coverTone: `linear-gradient(120deg, color-mix(in srgb, ${accent} 40%, #000) 0%, ${accent} 100%)`,
     accent,
     deliveryRegions: Array.isArray(e.config_entrega) ? e.config_entrega : [],
+    menuLayout: normalizeMenuLayout(e.config_cardapio),
   }
 
   const rawProducts: any[] = raw.produtos ?? []
