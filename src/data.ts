@@ -1,7 +1,7 @@
 export type ComplementOption = { id: number; name: string; price: number; imageUrl?: string }
 export type ComplementGroup = { id: number; name: string; description?: string; maxSelections?: number; options: ComplementOption[] }
 
-export type Product = {
+export type ProductPromotion = { type: 'preco' | 'percentual' | 'outro'; value: number; description: string }\n\nexport type Product = {
   id: number
   name: string
   description: string
@@ -12,7 +12,7 @@ export type Product = {
   available: boolean
   imageUrl?: string
   maxComplementSelections?: number
-  complements?: ComplementGroup[]
+  complements?: ComplementGroup[]\n  originalPrice?: number\n  promotion?: ProductPromotion
 }
 
 export type MenuLayoutConfig = {
