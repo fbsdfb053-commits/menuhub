@@ -431,7 +431,7 @@ function AdminView({ onBack }: { onBack: () => void }) {
   const [deliveryFees,setDeliveryFees]=useState([5,10,15])
   const [restaurants,setRestaurants]=useState<AdminRestaurant[]>([]), [selectedId,setSelectedId]=useState<number|null>(null)
   const [cats,setCats]=useState<AdminCategory[]>([]), [items,setItems]=useState<AdminProduct[]>([]), [orders,setOrders]=useState<AdminOrder[]>([])
-  const [menuEditor,setMenuEditor]=useState<'home'|'categories'|'complements'|'products'|'layout'>('home')
+  const [menuEditor,setMenuEditor]=useState<'home'|'categories'|'complements'|'products'|'layout'|'promotions'>('home')
   const [layoutDraft,setLayoutDraft]=useState<MenuLayoutConfig>(DEFAULT_MENU_LAYOUT)
   const [promotions,setPromotions]=useState<AdminPromotion[]>([])
   const [promotionDraft,setPromotionDraft]=useState<Record<number,{tipo:'preco'|'percentual'|'outro';valor:string;descricao:string;ativo:boolean}>>({})
