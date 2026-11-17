@@ -288,7 +288,7 @@ function AppContent() {
       } finally { clearTimeout(timeout); }
       const latest = String(manifest?.version || '');
       const apkUrl = String(manifest?.apk_url || '');
-      if (!/^\\d+\\.\\d+\\.\\d+$/.test(latest) || !apkUrl.startsWith('https://github.com/')) {
+      if (!/^\d+\.\d+\.\d+$/.test(latest) || !apkUrl.startsWith('https://github.com/')) {
         throw new Error('O arquivo de atualização está incompleto.');
       }
       const currentParts = APP_VERSION.split('.').map(Number);
