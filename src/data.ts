@@ -15,6 +15,20 @@ export type Product = {
   complements?: ComplementGroup[]
 }
 
+export type MenuLayoutConfig = {
+  display: 'grid' | 'list'
+  imagePosition: 'left' | 'right'
+  imageSize: 'small' | 'medium' | 'large'
+  categoryMode: 'scroll' | 'pages'
+}
+
+export const DEFAULT_MENU_LAYOUT: MenuLayoutConfig = { display: 'grid', imagePosition: 'left', imageSize: 'medium', categoryMode: 'scroll' }
+
+export function normalizeMenuLayout(value: unknown): MenuLayoutConfig {
+  const config = value && typeof value === 'object' ? value as Partial<MenuLayoutConfig> : {}
+  return { display: config.display === 'list' ? 'list' : 'grid', imagePosition: config.imagePosition === 'right' ? 'right' : 'left', imageSize: config.imageSize === 'small' || config.imageSize === 'large' ? config.imageSize : 'medium', categoryMode: config.categoryMode === 'pages' ? 'pages' : 'scroll' }
+}
+
 export type Category = {
   id: string
   label: string
@@ -42,6 +56,7 @@ export type Restaurant = {
   coverTone: string
   accent: string
   deliveryRegions?: { name: string; fee: number; places: string[]; negotiate?: boolean }[]
+  menuLayout?: MenuLayoutConfig
 }
 
 export const demoRestaurant: Restaurant = {
