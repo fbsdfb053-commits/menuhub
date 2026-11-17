@@ -3034,3 +3034,5 @@ img, video, canvas, svg { max-width: 100%; }
   .menu-bottom-nav { width: 100%; border-radius: 16px 16px 0 0; gap: 6px; padding-left: 12px; padding-right: 12px; }
   .menu-bottom-nav__item { font-size: 12px; }
 }
+
+.promotion-empty { margin: 0; padding: 22px 14px; color: #8a7c73; text-align: center; font-size: 13px; }
