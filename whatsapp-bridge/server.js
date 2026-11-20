@@ -504,7 +504,12 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
     if (restaurant?.slug) return 'É só acessar nosso cardápio, escolher o que deseja e finalizar o pedido por lá.\n' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug)
     return 'Você pode fazer seu pedido diretamente com nossa equipe por aqui.'
   }
-  if (/\b(pagamento|pagar|pix|cartao|dinheiro|credito|debito|vale|forma de pagamento)\b/.test(normalized)) {
+  if (/\b(chave pix|pix copia e cola|pix|fazer pix|pagar via pix)\b/.test(normalized)) {
+    const pixKey = String(config?.pixKey || '').trim()
+    if (pixKey) return 'Claro! 😊 A chave Pix do restaurante é:\n*' + pixKey + '*\n\nDepois, envie o comprovante por aqui.'
+    return config.faqPayment?.trim() || humanHelpMessage(restaurant, 'A chave Pix ainda não foi cadastrada. Vou pedir à equipe para confirmar.')
+  }
+  if (/\b(pagamento|pagar|cartao|dinheiro|credito|debito|vale|forma de pagamento)\b/.test(normalized)) {
     return config.faqPayment?.trim() || humanHelpMessage(restaurant, 'Não encontrei as formas de pagamento cadastradas.')
   }
   if (/\b(taxa|frete|entrega|entregam|bairro|regiao|distancia|delivery)\b/.test(normalized)) {
