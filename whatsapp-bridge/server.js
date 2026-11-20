@@ -766,7 +766,8 @@ async function processCustomerMessage(restaurantId, sock, message, text, audioMe
     }
 
     const lastWelcome = welcomedContacts.get(senderKey) || 0
-    const shouldIntroduce = !lastWelcome
+    // Reenviar a apresentação com o link do cardápio no início de uma nova sessão.
+    const shouldIntroduce = !lastWelcome || Date.now() - lastWelcome >= 12 * 60 * 60 * 1000
     if (shouldIntroduce) {
       const welcome = await buildWelcomeMessage(restaurantId, config)
       const normalizedIncoming = normalizeText(text)
