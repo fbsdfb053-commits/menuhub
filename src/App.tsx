@@ -741,6 +741,7 @@ type WhatsAppBotConfig = {
   faqMenu: string
   faqHours: string
   faqPayment: string
+  pixKey: string
   statusNew: boolean
   statusPreparing: boolean
   statusReady: boolean
@@ -763,6 +764,7 @@ const defaultWhatsAppBotConfig: WhatsAppBotConfig = {
   faqMenu: 'Você pode consultar nosso cardápio e fazer seu pedido pelo link do nosso menu.',
   faqHours: 'Nosso horário de funcionamento está informado no cardápio. Se precisar, fale com nossa equipe.',
   faqPayment: 'As formas de pagamento disponíveis aparecem na finalização do pedido.',
+  pixKey: '',
   statusNew: true,
   statusPreparing: true,
   statusReady: true,
@@ -916,6 +918,7 @@ function WhatsAppBotPanel({restaurantId,restaurantName,notify}:{restaurantId:num
           <label>Resposta sobre cardápio<textarea rows={3} maxLength={1000} value={config.faqMenu} onChange={e=>update({faqMenu:e.target.value})}/></label>
           <label>Resposta sobre horário<textarea rows={3} maxLength={1000} value={config.faqHours} onChange={e=>update({faqHours:e.target.value})}/></label>
           <label>Resposta sobre pagamento<textarea rows={3} maxLength={1000} value={config.faqPayment} onChange={e=>update({faqPayment:e.target.value})}/></label>
+          <label>Chave Pix do restaurante<input type="text" maxLength={180} autoComplete="off" value={config.pixKey} onChange={e=>update({pixKey:e.target.value})} placeholder="CPF, CNPJ, telefone, e-mail ou chave aleatória"/><small>Quando o cliente perguntar sobre Pix ou pedir a chave, o bot enviará este dado. Deixe vazio para não oferecer Pix automaticamente.</small></label>
         </div>
       </section>
       <section className="admin-panel whatsapp-config-panel">
