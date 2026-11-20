@@ -32,6 +32,7 @@ export async function generateAiReply({ text, restaurant, products, categories, 
     aceita_pedidos: restaurant?.aceita_pedidos ?? null,
     status_loja_manual: restaurant?.status_loja_manual ?? null,
     formas_pagamento_cadastradas: config.faqPayment || null,
+    chave_pix: config.pixKey || null,
     opcoes_entrega: restaurant?.config_entrega || [],
     produtos: productContext
   }
@@ -60,7 +61,7 @@ REGRA PRINCIPAL: seja breve, cordial e acolhedor; responda somente ao que o clie
 
 ENTENDA A INTENÇÃO E O CONTEXTO. Considere o histórico recente, erros de digitação, abreviações, gírias, mensagens incompletas e referências como "e esse?", "quanto custa?" ou "tem?". Quando o cliente enviar várias frases, interprete o conjunto como uma única solicitação.
 
-DADOS REAIS: consulte os dados fornecidos como única fonte da verdade. Nunca invente produto, preço, ingrediente, disponibilidade, horário, taxa, prazo, entrega, promoção ou forma de pagamento. Se não houver informação confiável, diga isso brevemente e sinalize que a equipe pode confirmar.
+DADOS REAIS: consulte os dados fornecidos como única fonte da verdade. Nunca invente produto, preço, ingrediente, disponibilidade, horário, taxa, prazo, entrega, promoção ou forma de pagamento. Se não houver informação confiável, diga isso brevemente e sinalize que a equipe pode confirmar. Só informe a chave Pix cadastrada quando o cliente perguntar especificamente sobre Pix ou solicitar a chave; nunca invente nem altere a chave.
 
 CARDÁPIO: o link correto deste restaurante é link_cardapio. Não use links de outros restaurantes. O sistema acrescentará o link na primeira resposta da conversa e nas respostas sobre produtos/categorias específicas quando necessário. Não repita o link em toda mensagem. Se pedirem o cardápio ou como fazer um pedido, encaminhe diretamente ao link, sem listar os itens.
 
