@@ -3036,3 +3036,7 @@ img, video, canvas, svg { max-width: 100%; }
 }
 
 .promotion-empty { margin: 0; padding: 22px 14px; color: #8a7c73; text-align: center; font-size: 13px; }
+
+/* Reorganização isolada da tela de pedidos de balcão */
+.counter-section-title{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap}.counter-section-title>div{display:grid;gap:8px}.counter-section-title h2{margin:0}.counter-search{display:grid;gap:5px;min-width:min(100%,260px)}.counter-search span{font-size:11px;color:#64736a}.counter-category{padding:10px 0 2px}.counter-category h3{margin:0 0 4px;padding:8px 0;color:#d66b20;font-size:12px;border-bottom:1px solid #f0e5dc}.counter-extra-box{display:grid;gap:12px;padding:15px;border:1px solid #f0dfd1;border-radius:10px;background:#fffaf6}.counter-extra-box h2{margin:0}.counter-extra-box>div:first-child p{margin:5px 0 0;color:#718076;font-size:11px}.counter-extra-box .counter-fields{align-items:end}.counter-extra-box .counter-product{border-bottom:1px solid #f0e5dc}.counter-price-field{display:grid;grid-template-columns:auto minmax(90px,130px);align-items:center;gap:8px;font-size:10px;color:#65756a}.counter-price-field input{padding:6px 8px!important}.counter-product:has(small:first-child){min-width:0}
+@media(max-width:680px){.counter-section-title{align-items:stretch}.counter-search{width:100%}.counter-extra-box{padding:12px}.counter-price-field{grid-template-columns:1fr;gap:4px}.counter-price-field input{max-width:130px}}
