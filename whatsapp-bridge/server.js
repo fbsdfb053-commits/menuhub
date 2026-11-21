@@ -489,6 +489,15 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
     return 'Hoje é ' + current.weekday + ', ' + current.dateParts + '.'
   }
 
+  // Pedido de chave/QR Pix: tratar antes de perguntas genéricas de pagamento e horário.
+  const asksPixKey = /\bpix\b/.test(normalized) ||
+    (/\b(chave|codigo)\b/.test(normalized) && /\b(pagamento|pagar|me passa|manda|envia|enviar|qual|informa|preciso|quero|receber)\b/.test(normalized))
+  if (asksPixKey) {
+    const pixKey = String(config?.pixKey || '').trim()
+    if (pixKey) return 'Claro! 😊 A chave Pix do restaurante é:\n*' + pixKey + '*\n\nDepois, envie o comprovante por aqui.'
+    return humanHelpMessage(restaurant, 'A chave Pix ainda não está cadastrada. Vou pedir à equipe para confirmar.')
+  }
+
   if (isHoursQuestion(text)) {
     return formatBusinessHours(restaurant) || humanHelpMessage(restaurant, 'Ainda não temos o horário cadastrado corretamente.')
   }
@@ -503,11 +512,6 @@ async function buildIntelligentReply(restaurantId, text, config, senderKey, conv
     const baseUrl = String(process.env.PUBLIC_MENU_BASE_URL || 'https://fb3d2ymenu.com.br').replace(/\/$/, '')
     if (restaurant?.slug) return 'É só acessar nosso cardápio, escolher o que deseja e finalizar o pedido por lá.\n' + baseUrl + '/menu/' + encodeURIComponent(restaurant.slug)
     return 'Você pode fazer seu pedido diretamente com nossa equipe por aqui.'
-  }
-  if (/\b(chave pix|pix copia e cola|pix|fazer pix|pagar via pix)\b/.test(normalized)) {
-    const pixKey = String(config?.pixKey || '').trim()
-    if (pixKey) return 'Claro! 😊 A chave Pix do restaurante é:\n*' + pixKey + '*\n\nDepois, envie o comprovante por aqui.'
-    return config.faqPayment?.trim() || humanHelpMessage(restaurant, 'A chave Pix ainda não foi cadastrada. Vou pedir à equipe para confirmar.')
   }
   if (/\b(pagamento|pagar|cartao|dinheiro|credito|debito|vale|forma de pagamento)\b/.test(normalized)) {
     return config.faqPayment?.trim() || humanHelpMessage(restaurant, 'Não encontrei as formas de pagamento cadastradas.')
