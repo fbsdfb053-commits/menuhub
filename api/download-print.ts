@@ -15,8 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Sempre encontra o instalador da versão mais recente publicada.
-    const releaseResponse = await fetch('https://api.github.com/repos/fbsdfb053-commits/menuhub/releases/latest', {
+    // Busca a versão própria do Fb3d2y Print. O endpoint /releases/latest aponta para o app Android e não deve ser usado aqui.
+    const releaseResponse = await fetch('https://api.github.com/repos/fbsdfb053-commits/menuhub/releases/tags/fb3d2y-print-v0.2.9', {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Fb3d2y-Menu-Downloads' },
       cache: 'no-store',
     })
