@@ -26,7 +26,7 @@ declare
   v_preco numeric(10,2);
   v_total numeric(10,2) := 0;
   v_taxa numeric(10,2) := coalesce(p_taxa_entrega, 0);
-  v_fone text := regexp_replace(coalesce(p_whatsapp, ''), '\\D', '', 'g');
+  v_fone text := regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g');
   v_pedido_id integer;
 begin
   if auth.uid() is null then
