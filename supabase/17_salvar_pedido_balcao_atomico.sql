@@ -13,7 +13,7 @@ create or replace function public.salvar_pedido_balcao(
 )
 returns integer
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
