@@ -1,0 +1,134 @@
+-- Correção: aceita variações de texto na origem dos pedidos balcão.\n-- Gravação atômica dos pedidos de balcão: cria ou atualiza cabeçalho e itens em uma única transação.
+-- Não altera o fluxo de pedidos do menu digital.
+create or replace function public.salvar_pedido_balcao(
+  p_empresa_id integer,
+  p_pedido_id integer,
+  p_nome text,
+  p_whatsapp text,
+  p_tipo_entrega text,
+  p_endereco text,
+  p_forma_pagamento text,
+  p_taxa_entrega numeric,
+  p_itens jsonb
+)
+returns integer
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_emp public.empresas%rowtype;
+  v_pedido public.pedidos%rowtype;
+  v_item jsonb;
+  v_produto_id integer;
+  v_qtd integer;
+  v_nome_item text;
+  v_preco numeric(10,2);
+  v_total numeric(10,2) := 0;
+  v_taxa numeric(10,2) := coalesce(p_taxa_entrega, 0);
+  v_fone text := regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g');
+  v_pedido_id integer;
+begin
+  if auth.uid() is null then
+    raise exception 'Entre na sua conta para registrar pedido de balcão.';
+  end if;
+
+  select * into v_emp
+  from public.empresas e
+  where e.id = p_empresa_id
+    and e.ativo
+    and public.menuhub_user_can_access_empresa(e.id)
+    and public.menuhub_user_has_access();
+
+  if not found then
+    raise exception 'Restaurante não encontrado ou sem permissão de acesso.';
+  end if;
+  if length(trim(coalesce(p_nome, ''))) < 2 or length(p_nome) > 100 then
+    raise exception 'Informe um nome válido para o pedido.';
+  end if;
+  if length(v_fone) < 10 or length(v_fone) > 13 then v_fone := '0000000000'; end if;
+  if p_tipo_entrega not in ('Retirada', 'Entrega') then
+    raise exception 'Escolha retirada ou entrega.';
+  end if;
+  if p_tipo_entrega = 'Entrega' and length(trim(coalesce(p_endereco, ''))) < 5 then
+    raise exception 'Informe o endereço de entrega.';
+  end if;
+  if p_tipo_entrega <> 'Entrega' then v_taxa := 0; end if;
+  if v_taxa < 0 or v_taxa > 5000 then
+    raise exception 'Taxa de entrega inválida.';
+  end if;
+  if p_itens is null or jsonb_typeof(p_itens) <> 'array'
+     or jsonb_array_length(p_itens) = 0 or jsonb_array_length(p_itens) > 50 then
+    raise exception 'Adicione pelo menos um produto ou item avulso.';
+  end if;
+
+  if p_pedido_id is null then
+    insert into public.pedidos
+      (empresa_id, cliente_nome, cliente_whatsapp, total, status, tipo_entrega,
+       endereco_entrega, origem, forma_pagamento, taxa_entrega)
+    values
+      (v_emp.id, trim(p_nome), v_fone, 0, 'Novo', p_tipo_entrega,
+       case when p_tipo_entrega = 'Entrega' then trim(p_endereco) else null end,
+       'Balcão', coalesce(nullif(trim(p_forma_pagamento), ''), 'A combinar'), v_taxa)
+    returning id into v_pedido_id;
+  else
+    select * into v_pedido
+    from public.pedidos p
+    where p.id = p_pedido_id
+      and p.empresa_id = v_emp.id
+      and lower(coalesce(p.origem, '')) like '%balc%'
+    for update;
+    if not found then
+      raise exception 'Pedido de balcão não encontrado ou sem permissão para edição.';
+    end if;
+    v_pedido_id := v_pedido.id;
+    update public.pedidos
+    set cliente_nome = trim(p_nome),
+        cliente_whatsapp = v_fone,
+        tipo_entrega = p_tipo_entrega,
+        endereco_entrega = case when p_tipo_entrega = 'Entrega' then trim(p_endereco) else null end,
+        forma_pagamento = coalesce(nullif(trim(p_forma_pagamento), ''), 'A combinar'),
+        taxa_entrega = v_taxa,
+        total = 0
+    where id = v_pedido_id;
+    delete from public.itens_pedido where pedido_id = v_pedido_id;
+  end if;
+
+  for v_item in select value from jsonb_array_elements(p_itens) loop
+    v_qtd := (v_item ->> 'quantidade')::integer;
+    if v_qtd is null or v_qtd < 1 or v_qtd > 50 then
+      raise exception 'Quantidade inválida.';
+    end if;
+    v_nome_item := trim(coalesce(v_item ->> 'nome_produto', ''));
+    v_preco := (v_item ->> 'preco_unitario')::numeric;
+    v_produto_id := nullif(v_item ->> 'produto_id', '')::integer;
+    if length(v_nome_item) < 1 or length(v_nome_item) > 160 then
+      raise exception 'Informe um nome válido para cada item.';
+    end if;
+    if v_preco is null or v_preco < 0 or v_preco > 100000 then
+      raise exception 'Preço de item inválido.';
+    end if;
+    if v_produto_id is not null and not exists (
+      select 1 from public.produtos pr
+      where pr.id = v_produto_id and pr.empresa_id = v_emp.id
+    ) then
+      raise exception 'Um produto não pertence a este restaurante.';
+    end if;
+
+    insert into public.itens_pedido
+      (pedido_id, produto_id, nome_produto, quantidade, preco_unitario)
+    values
+      (v_pedido_id, v_produto_id, v_nome_item, v_qtd, v_preco);
+    v_total := v_total + v_preco * v_qtd;
+  end loop;
+
+  update public.pedidos
+  set total = v_total + v_taxa
+  where id = v_pedido_id;
+  return v_pedido_id;
+end;
+$$;
+
+revoke all on function public.salvar_pedido_balcao(integer, integer, text, text, text, text, text, numeric, jsonb) from public;
+revoke all on function public.salvar_pedido_balcao(integer, integer, text, text, text, text, text, numeric, jsonb) from anon;
+grant execute on function public.salvar_pedido_balcao(integer, integer, text, text, text, text, text, numeric, jsonb) to authenticated;
